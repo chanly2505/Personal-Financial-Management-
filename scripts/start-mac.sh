@@ -22,38 +22,66 @@ command -v node >/dev/null || fail "Node.js is missing. Install the LTS version 
 command -v npm >/dev/null || fail "npm is missing. Reinstall Node.js from https://nodejs.org"
 
 # ---------------------------------------------------------------- find the project
+# Only a Git checkout of the GitHub repository can be updated. Old copies
+# without Git (e.g. an unzipped download) are left untouched: a fresh checkout
+# is made instead and their .env is copied over.
 is_project() { [ -f "$1/package.json" ] && grep -q '"name": "personal-finance"' "$1/package.json" 2>/dev/null; }
+is_checkout() {
+  [ -d "$1/.git" ] && git -C "$1" remote get-url origin 2>/dev/null | grep -qi "Personal-Financial-Management-"
+}
+
+CANDIDATES=()
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+  here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  is_project "$here" && CANDIDATES+=("$here")
+fi
+while IFS= read -r pkg; do
+  dir="$(dirname "$pkg")"
+  is_project "$dir" && CANDIDATES+=("$dir")
+done < <(find "$HOME/Desktop" "$HOME/Documents" "$HOME/Downloads" "$HOME" -maxdepth 3 \
+           -name package.json -not -path "*/node_modules/*" 2>/dev/null | awk '!seen[$0]++')
 
 PROJECT=""
-if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
-  candidate="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  is_project "$candidate" && PROJECT="$candidate"
-fi
-if [ -z "$PROJECT" ]; then
-  while IFS= read -r pkg; do
-    dir="$(dirname "$pkg")"
-    if is_project "$dir"; then PROJECT="$dir"; break; fi
-  done < <(find "$HOME/Desktop" "$HOME/Documents" "$HOME/Downloads" "$HOME" -maxdepth 3 \
-             -name package.json -not -path "*/node_modules/*" 2>/dev/null)
-fi
+OLD_COPY=""
+for dir in "${CANDIDATES[@]+"${CANDIDATES[@]}"}"; do
+  if is_checkout "$dir"; then PROJECT="$dir"; break; fi
+  [ -z "$OLD_COPY" ] && OLD_COPY="$dir"
+done
+
 if [ -z "$PROJECT" ]; then
   PROJECT="$HOME/Desktop/Personal-Financial-Management-"
-  say "Project not found — downloading it to $PROJECT"
+  [ -e "$PROJECT" ] && PROJECT="$HOME/Desktop/Personal-Finance-App"
+  if [ -n "$OLD_COPY" ]; then
+    say "Found an old copy without updates at: $OLD_COPY"
+    echo "It is left as it is. Downloading an up-to-date copy to: $PROJECT"
+  else
+    say "Downloading the project to $PROJECT"
+  fi
   git clone "$REPO_URL" "$PROJECT"
+  if [ -n "$OLD_COPY" ] && [ -f "$OLD_COPY/.env" ] && [ ! -f "$PROJECT/.env" ]; then
+    cp "$OLD_COPY/.env" "$PROJECT/.env"
+    echo "Copied your settings (.env) from the old copy."
+  fi
 fi
 cd "$PROJECT"
 say "Project: $PROJECT"
 
 # ---------------------------------------------------------------- latest code
-if [ -d .git ]; then
-  if [ -n "$(git status --porcelain)" ]; then
-    say "Saving your local changes (git stash) so the update can be applied…"
-    git stash push --include-untracked -m "auto-saved before update $(date '+%Y-%m-%d %H:%M')"
-    echo "Restore them later with: git stash pop"
-  fi
-  say "Downloading the latest version…"
-  git pull --ff-only origin main || fail "Could not update. Send the message above to Claude."
+if [ -n "$(git status --porcelain)" ]; then
+  say "Saving your local changes (git stash) so the update can be applied…"
+  git stash push --include-untracked -m "auto-saved before update $(date '+%Y-%m-%d %H:%M')"
+  echo "Restore them later with: git stash pop"
 fi
+say "Downloading the latest version…"
+git fetch origin main || fail "Could not reach GitHub. Check your internet connection and run this again."
+git checkout -q main 2>/dev/null || git checkout -q -b main origin/main
+if ! git merge --ff-only -q origin/main; then
+  backup="backup-$(date '+%Y%m%d-%H%M%S')"
+  git branch "$backup"
+  git reset -q --hard origin/main
+  echo "Your local commits were kept on branch '$backup'; the app now matches GitHub."
+fi
+echo "Version: $(git log -1 --format='%h %s (%cd)' --date=short)"
 
 # ---------------------------------------------------------------- settings
 [ -f .env ] || fail ".env is missing in $PROJECT. Copy .env.example to .env and fill it in (see README → Setup)."
