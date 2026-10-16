@@ -1,0 +1,299 @@
+// Personal Finance Management System — database schema.
+// See docs/DATABASE.md for the rationale behind every model, constraint and index.
+//
+// Conventions:
+// - Money is stored as BIGINT minor units (`*Minor` fields). See src/lib/money.ts.
+// - Calendar dates (when something happened, in the user's timezone) use DATE.
+//   Audit timestamps use TIMESTAMPTZ (UTC).
+// - Every user-owned table carries `userId`. Child rows reference their parent through
+//   a composite foreign key (parentId, userId) so the database itself rejects any
+//   row that links records belonging to two different users.
+// - CHECK constraints that Prisma cannot express live in hand-written migration SQL.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Currency {
+  USD
+  KHR
+}
+
+enum AccountType {
+  CASH
+  BANK
+  DIGITAL_WALLET
+  OTHER
+}
+
+/// Cash-flow direction. Shared by categories, transactions and recurring rules so
+/// a composite foreign key can guarantee a transaction's category matches its type.
+/// Transfers are intentionally NOT a TransactionType: they live in `Transfer`.
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model User {
+  id                    String   @id @default(uuid(7)) @db.Uuid
+  email                 String   @unique /// Always stored lower-cased and trimmed.
+  name                  String?
+  passwordHash          String   @map("password_hash")
+  /// Bumped on password change / "sign out everywhere" to invalidate issued sessions.
+  sessionVersion        Int      @default(0) @map("session_version")
+  /// Set whenever the password is changed or reset.
+  passwordChangedAt     DateTime @default(now()) @map("password_changed_at") @db.Timestamptz(3)
+  baseCurrency          Currency @default(USD) @map("base_currency")
+  /// IANA timezone used to decide what "today" and "this month" mean for the user.
+  timezone              String   @default("Asia/Phnom_Penh")
+  /// User-maintained rate used only for approximate cross-currency totals (display).
+  exchangeRateKhrPerUsd Decimal  @default(4100) @map("exchange_rate_khr_per_usd") @db.Decimal(12, 4)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  accounts            FinancialAccount[]
+  categories          Category[]
+  transactions        Transaction[]
+  transfers           Transfer[]
+  recurringRules      RecurringRule[]
+  budgets             Budget[]
+  savingsGoals        SavingsGoal[]
+  contributions       SavingsContribution[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+/// A place money is kept: cash, bank account, digital wallet (e.g. ABA, Wing).
+/// Holds exactly one currency for its whole life. The current balance is derived:
+/// openingBalance + income - expenses - transfersOut + transfersIn.
+model FinancialAccount {
+  id                  String      @id @default(uuid(7)) @db.Uuid
+  userId              String      @map("user_id") @db.Uuid
+  name                String
+  type                AccountType
+  currency            Currency
+  /// May be negative (e.g. an overdrawn account).
+  openingBalanceMinor BigInt      @default(0) @map("opening_balance_minor")
+  isArchived          Boolean     @default(false) @map("is_archived")
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+  transfersOut   Transfer[]      @relation("TransferFrom")
+  transfersIn    Transfer[]      @relation("TransferTo")
+  recurringRules RecurringRule[]
+  savingsGoals   SavingsGoal[]
+
+  @@unique([userId, name])
+  @@unique([id, userId])
+  @@map("accounts")
+}
+
+model Category {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  userId     String          @map("user_id") @db.Uuid
+  name       String
+  type       TransactionType
+  /// Design-token name (e.g. "chart-3"), never a raw colour value.
+  color      String?
+  isArchived Boolean         @default(false) @map("is_archived")
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+  recurringRules RecurringRule[]
+  budgets        Budget[]
+
+  @@unique([userId, type, name])
+  @@unique([id, userId, type])
+  @@map("categories")
+}
+
+/// Income or expense. Amount is always positive; direction comes from `type`.
+model Transaction {
+  id              String          @id @default(uuid(7)) @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  accountId       String          @map("account_id") @db.Uuid
+  categoryId      String          @map("category_id") @db.Uuid
+  type            TransactionType
+  amountMinor     BigInt          @map("amount_minor")
+  /// Calendar date in the user's timezone. No time component by design.
+  occurredOn      DateTime        @map("occurred_on") @db.Date
+  description     String?
+  /// Set when generated from a recurring rule; (rule, date) is unique to prevent duplicates.
+  recurringRuleId String?         @map("recurring_rule_id") @db.Uuid
+  recurrenceDate  DateTime?       @map("recurrence_date") @db.Date
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       FinancialAccount @relation(fields: [accountId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
+  category      Category         @relation(fields: [categoryId, userId, type], references: [id, userId, type], onDelete: NoAction, onUpdate: NoAction)
+  recurringRule RecurringRule?   @relation(fields: [recurringRuleId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([recurringRuleId, recurrenceDate])
+  @@index([userId, occurredOn(sort: Desc)])
+  @@index([accountId, occurredOn])
+  @@index([userId, categoryId, occurredOn])
+  @@map("transactions")
+}
+
+/// Movement of money between two of the user's own accounts. Never income or expense.
+/// For cross-currency transfers the two amounts differ (implied exchange rate);
+/// for same-currency transfers the service layer requires them to be equal.
+model Transfer {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  fromAccountId   String   @map("from_account_id") @db.Uuid
+  toAccountId     String   @map("to_account_id") @db.Uuid
+  fromAmountMinor BigInt   @map("from_amount_minor")
+  toAmountMinor   BigInt   @map("to_amount_minor")
+  occurredOn      DateTime @map("occurred_on") @db.Date
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromAccount FinancialAccount @relation("TransferFrom", fields: [fromAccountId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
+  toAccount   FinancialAccount @relation("TransferTo", fields: [toAccountId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, occurredOn(sort: Desc)])
+  @@index([fromAccountId, occurredOn])
+  @@index([toAccountId, occurredOn])
+  @@map("transfers")
+}
+
+/// Template that materialises income/expense transactions on a schedule.
+/// The anchor day comes from `startOn`; month-end dates clamp (Jan 31 -> Feb 28).
+model RecurringRule {
+  id               String              @id @default(uuid(7)) @db.Uuid
+  userId           String              @map("user_id") @db.Uuid
+  accountId        String              @map("account_id") @db.Uuid
+  categoryId       String              @map("category_id") @db.Uuid
+  type             TransactionType
+  amountMinor      BigInt              @map("amount_minor")
+  description      String?
+  frequency        RecurrenceFrequency
+  interval         Int                 @default(1)
+  startOn          DateTime            @map("start_on") @db.Date
+  endOn            DateTime?           @map("end_on") @db.Date
+  /// Next date not yet materialised. NULL once the rule has finished.
+  nextOccurrenceOn DateTime?           @map("next_occurrence_on") @db.Date
+  isActive         Boolean             @default(true) @map("is_active")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account      FinancialAccount @relation(fields: [accountId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
+  category     Category         @relation(fields: [categoryId, userId, type], references: [id, userId, type], onDelete: NoAction, onUpdate: NoAction)
+  transactions Transaction[]
+
+  @@unique([id, userId])
+  @@index([userId])
+  @@index([isActive, nextOccurrenceOn])
+  @@map("recurring_rules")
+}
+
+/// Monthly spending limit for one expense category in one currency.
+model Budget {
+  id           String          @id @default(uuid(7)) @db.Uuid
+  userId       String          @map("user_id") @db.Uuid
+  categoryId   String          @map("category_id") @db.Uuid
+  /// Always EXPENSE (CHECK constraint); exists so the composite FK can enforce it.
+  categoryType TransactionType @default(EXPENSE) @map("category_type")
+  /// First day of the budgeted month (CHECK constraint).
+  month        DateTime        @db.Date
+  currency     Currency
+  amountMinor  BigInt          @map("amount_minor")
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId, userId, categoryType], references: [id, userId, type], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, categoryId, month, currency])
+  @@index([userId, month])
+  @@map("budgets")
+}
+
+/// A savings target. Progress = sum of its contributions. Contributions are
+/// earmarks, not cash movements: they never change account balances.
+model SavingsGoal {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  name              String
+  currency          Currency
+  targetAmountMinor BigInt    @map("target_amount_minor")
+  targetDate        DateTime? @map("target_date") @db.Date
+  /// Optional account where the money is kept (informational).
+  accountId         String?   @map("account_id") @db.Uuid
+  isArchived        Boolean   @default(false) @map("is_archived")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       FinancialAccount?     @relation(fields: [accountId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
+  contributions SavingsContribution[]
+
+  @@unique([userId, name])
+  @@unique([id, userId])
+  @@map("savings_goals")
+}
+
+/// Positive = money set aside for the goal, negative = money taken back out.
+model SavingsContribution {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  goalId      String   @map("goal_id") @db.Uuid
+  amountMinor BigInt   @map("amount_minor")
+  occurredOn  DateTime @map("occurred_on") @db.Date
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal SavingsGoal @relation(fields: [goalId, userId], references: [id, userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([goalId, occurredOn])
+  @@map("savings_contributions")
+}
+
+/// Single-use password reset token. Only a SHA-256 hash of the token is stored;
+/// the raw token exists only in the emailed link. See docs/SECURITY.md §2.
+model PasswordResetToken {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+/// Fixed-window counters for authentication rate limiting. `key` is a SHA-256
+/// hash of "<scope>:<email or IP>" — raw emails and IPs are never stored.
+model AuthRateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime @map("reset_at") @db.Timestamptz(3)
+
+  @@index([resetAt])
+  @@map("auth_rate_limits")
+}
