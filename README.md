@@ -4,7 +4,7 @@ Track income, expenses, transfers, accounts, budgets, recurring items, savings g
 
 Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL 16 and Prisma 7.
 
-**Status:** Phase 3 complete — authentication, profile settings, **accounts** (cash, bank, wallet; balances per currency; history) and **categories** (income/expense defaults and custom). Remaining modules are placeholders marked "Not available yet" until their phase — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Status:** Phase 4 complete — authentication, profile settings, **accounts** (cash, bank, wallet; balances per currency), **categories**, and **transactions** (income, expenses, same-currency transfers with reversal; searchable, filterable ledger with per-currency totals). Remaining modules are placeholders marked "Not available yet" until their phase — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Documentation
 
@@ -47,7 +47,7 @@ cp .env.example .env
 openssl rand -base64 32                 # paste into AUTH_SECRET in .env
 ```
 
-Then set the `finance_app` password in `DATABASE_URL`. `.env` is git-ignored; never commit real credentials. The app validates its environment at startup and names any missing or invalid variable.
+Then set the `finance_app` password in `DATABASE_URL`. Keep `AUTH_URL` equal to the address you open in the browser (default `http://localhost:3000`); if it is missing when running `npm run build && npm start`, accounts are created but signing in fails (the server logs `"errorType":"UntrustedHost"`). `.env` is git-ignored; never commit real credentials. The app validates its environment at startup and names any missing or invalid variable.
 
 Optional, to try password recovery locally (links are printed to the terminal, nothing is emailed):
 

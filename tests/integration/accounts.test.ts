@@ -176,7 +176,7 @@ describe("balances", () => {
     expect((await getAccount(user, cash)).balanceMinor).toBe(7000n);
   });
 
-  it("uses the amount received for cross-currency transfers", async () => {
+  it("cannot hold a cross-currency transfer in v1 (both legs must be equal)", async () => {
     const user = await newUser();
     const { id: usdId } = await createAccount(user, usd("USD", "100"));
     const { id: khrId } = await createAccount(user, {
@@ -185,18 +185,19 @@ describe("balances", () => {
       currency: "KHR",
       openingBalance: "0",
     });
-    await prisma.transfer.create({
-      data: {
-        userId: user.id,
-        fromAccountId: usdId,
-        toAccountId: khrId,
-        fromAmountMinor: 1000n,
-        toAmountMinor: 41000n,
-        occurredOn: day(0),
-      },
-    });
-    expect((await getAccount(user, usdId)).balanceMinor).toBe(9000n);
-    expect((await getAccount(user, khrId)).balanceMinor).toBe(41000n);
+    await expect(
+      prisma.transfer.create({
+        data: {
+          userId: user.id,
+          fromAccountId: usdId,
+          toAccountId: khrId,
+          fromAmountMinor: 1000n,
+          toAmountMinor: 41000n,
+          occurredOn: day(0),
+        },
+      }),
+    ).rejects.toThrow(/transfers_same_amount_chk/);
+    expect((await getAccount(user, usdId)).balanceMinor).toBe(10000n);
   });
 
   it("excludes future-dated records from the current balance but not the projection", async () => {

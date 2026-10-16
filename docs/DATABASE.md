@@ -139,12 +139,19 @@ Including `type` in the category key guarantees an expense can only use an expen
 | `accounts_archived_consistent_chk` / `categories_archived_consistent_chk` | `is_archived` is true exactly when `archived_at` is set |
 | `accounts_opening_balance_range_chk` | opening balance within ±999,999,999,999,999 minor units |
 | `categories_color_token_chk` | colour is NULL or one of `chart-1` … `chart-6` |
+| `transactions_amount_max_chk` / `transfers_amount_max_chk` | amounts ≤ 999,999,999,999,999 minor units |
+| `transfers_same_amount_chk` | amount sent = amount received (v1: same-currency transfers only; drop for FX transfers) |
+| `transfers_not_self_reversal_chk` | a transfer cannot reverse itself |
 
-Rules the database cannot express cheaply are enforced in services and covered by integration tests: same-currency transfers have equal amounts; account currency is immutable; account names are unique per user ignoring case and extra spaces (the database unique index is case-sensitive; names are normalised in the service); category names likewise per user and type; budget currency matches the user's accounts in use. Name length is capped by the column types (`VARCHAR(60)` accounts, `VARCHAR(40)` categories).
+Rules the database cannot express cheaply are enforced in services and covered by integration tests: both accounts of a transfer use the same currency; records of archived accounts are not changed; dates fall between 2000-01-01 and one year after today; account currency is immutable; account names are unique per user ignoring case and extra spaces (the database unique index is case-sensitive; names are normalised in the service); category names likewise per user and type; budget currency matches the user's accounts in use. Name length is capped by the column types (`VARCHAR(60)` accounts, `VARCHAR(40)` categories).
 
 ### Uniqueness
 
-`users.email`; `accounts (user_id, name)`; `categories (user_id, type, name)`; `savings_goals (user_id, name)`; `budgets (user_id, category_id, month, currency)`; `transactions (recurring_rule_id, recurrence_date)` — the duplicate-occurrence guard.
+`users.email`; `accounts (user_id, name)`; `categories (user_id, type, name)`; `savings_goals (user_id, name)`; `budgets (user_id, category_id, month, currency)`; `transactions (recurring_rule_id, recurrence_date)` — the duplicate-occurrence guard; `transactions (user_id, client_request_id)` and `transfers (user_id, client_request_id)` — one record per form submission (NULLs allowed for seed/recurring rows); `transfers (reverses_transfer_id, user_id)` — each transfer reversed at most once (with a composite FK to the original, same owner).
+
+### Concurrency (Phase 4)
+
+Ledger writes run in one transaction that locks the accounts they touch with `SELECT … FOR SHARE` (sorted by id, so writers never deadlock each other) and re-checks the rules against the locked rows. Archiving or deleting an account locks it `FOR UPDATE` and computes the balance / reference count inside that transaction, so it waits for in-flight writes and later writes see the archived flag. Edits lock the record `FOR UPDATE` and compare `updated_at` with the version the user loaded (stale → conflict). Reversal locks the original transfer, so two concurrent reversals cannot both succeed.
 
 ## 6. Indexes
 
@@ -181,7 +188,9 @@ npm run db:deploy                        # apply pending migrations (CI / produc
 |---|---|---|---|
 | 2 ✔ | `auth_rate_limits`, `password_reset_tokens`, `users.password_changed_at` (migration `…_auth`) | Rate limiting, password recovery, credential audit | — |
 | 2 ✔ | Default categories created with every new user (data, not schema) | PRD §5.3 | — |
-| 4 | `categories.kind` enum (`STANDARD`, `ADJUSTMENT`, `REFUND`) or `exclude_from_reports BOOLEAN` | Balance adjustments / refunds treatment | Q-3, Q-9 |
+| 4 ✔ | `payee`, `note` (renamed from `description`), `client_request_id`, `reverses_transfer_id` + constraints (migration `…_transactions_ledger`) | Ledger, idempotency, reversals | — |
+| later | `categories.kind` enum (`STANDARD`, `ADJUSTMENT`, `REFUND`) or `exclude_from_reports BOOLEAN` | Balance adjustments / refunds treatment | Q-3, Q-9 |
+| later | Drop `transfers_same_amount_chk` | Cross-currency transfers | — |
 | 7 | `recurring_rules.paused_at DATE` (nullable) | Skip occurrences missed while paused | Q-4, Q-5 |
 | 7 | `transactions.status` (`POSTED`, `PENDING`) | Only if recurring entries require confirmation | Q-4 |
 | 8 | None expected for the earmark model; a different model would change `savings_contributions` | — | Q-7 |

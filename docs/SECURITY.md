@@ -181,3 +181,5 @@ Each phase's exit criteria include:
 | Open-redirect protection | `tests/unit/safe-redirect.test.ts` · e2e "ignores off-site callback URLs" |
 | Security headers and cookie flags | e2e "security headers" block |
 | Accounts & categories: ownership, validation, currency rules (Phase 3) | `tests/integration/accounts.test.ts`, `categories.test.ts`, `accounts-categories-actions.test.ts` · `e2e/accounts.spec.ts` "another user's account is not found" |
+| Transactions: anonymous callers rejected before validation; client-supplied owner ignored; another user's accounts, categories, records and transfers are "not found" for read, edit, delete and reverse (Phase 4) | `tests/integration/transactions-actions.test.ts`, `transactions.test.ts` "never edits or deletes another user's records", "cannot reverse another user's transfer", `ledger.test.ts` "never shows another user's records" · `e2e/transactions.spec.ts` "another user's record is not found" |
+| Ledger search input is parameterised and LIKE wildcards are escaped; invalid filter params are dropped | `ledger.test.ts` "searches … literally", "ignores invalid filter values" |

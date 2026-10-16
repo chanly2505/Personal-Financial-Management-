@@ -125,7 +125,8 @@ async function main() {
         type: "INCOME" | "EXPENSE";
         amount: bigint;
         offset: number;
-        description: string;
+        payee?: string;
+        note?: string;
       }[] = [
         {
           account: bank,
@@ -133,7 +134,7 @@ async function main() {
           type: "INCOME",
           amount: money("1,100.00", "USD"),
           offset: -14,
-          description: "Monthly salary",
+          note: "Monthly salary",
         },
         {
           account: bank,
@@ -141,7 +142,8 @@ async function main() {
           type: "EXPENSE",
           amount: money("320.00", "USD"),
           offset: -13,
-          description: "Rent",
+          payee: "Landlord",
+          note: "Rent",
         },
         {
           account: bank,
@@ -149,7 +151,8 @@ async function main() {
           type: "EXPENSE",
           amount: money("15.00", "USD"),
           offset: -10,
-          description: "Internet",
+          payee: "Ezecom",
+          note: "Internet",
         },
         {
           account: cash,
@@ -157,7 +160,7 @@ async function main() {
           type: "EXPENSE",
           amount: money("4.50", "USD"),
           offset: -3,
-          description: "Lunch",
+          payee: "Noodle shop",
         },
         {
           account: cash,
@@ -165,7 +168,7 @@ async function main() {
           type: "EXPENSE",
           amount: money("2.25", "USD"),
           offset: -2,
-          description: "Tuk-tuk",
+          payee: "PassApp",
         },
         {
           account: wallet,
@@ -173,7 +176,8 @@ async function main() {
           type: "EXPENSE",
           amount: money("8,000", "KHR"),
           offset: -1,
-          description: "Market",
+          payee: "Phsar Thmei",
+          note: "Vegetables",
         },
         {
           account: wallet,
@@ -181,7 +185,7 @@ async function main() {
           type: "INCOME",
           amount: money("40,000", "KHR"),
           offset: 0,
-          description: "Birthday gift",
+          note: "Birthday gift",
         },
       ];
       await tx.transaction.createMany({
@@ -192,7 +196,8 @@ async function main() {
           type: e.type,
           amountMinor: e.amount,
           occurredOn: day(e.offset),
-          description: e.description,
+          payee: e.payee ?? null,
+          note: e.note ?? null,
         })),
       });
 
@@ -205,7 +210,7 @@ async function main() {
           fromAmountMinor: money("50.00", "USD"),
           toAmountMinor: money("50.00", "USD"),
           occurredOn: day(-5),
-          description: "ATM withdrawal",
+          note: "ATM withdrawal",
         },
       });
 

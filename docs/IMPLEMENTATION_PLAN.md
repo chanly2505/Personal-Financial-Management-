@@ -4,16 +4,17 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0–3 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–4 are complete.
 
-**Present and verified (end of Phase 3)**
+**Present and verified (end of Phase 4)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
 - Prisma 7.10 schema with 9 tables and the initial migration (with hand-written CHECK constraints), applied to `finance_dev` and `finance_test`; idempotent local seed (`npm run db:seed`).
 - Validated environment (`src/server/env.ts`), error model (`src/server/errors.ts`, `action-result.ts`), privacy-safe logger, `/api/health` database probe.
 - Design tokens and 20 UI primitives, 6 shared components, the responsive app shell, module placeholders, loading/error/not-found boundaries, and a `/design-system` reference page.
 - Authentication & authorization (Phase 2): Auth.js credentials + JWT sessions with database-checked session versions, argon2id, DB-backed rate limits, password change/recovery, sign-out-everywhere, account deletion, profile settings, nonce CSP and security headers, least-privilege DB role.
 - Accounts & categories (Phase 3): CRUD, archive/restore, delete-when-unused, derived balances, per-currency totals, account history, category type rules.
-- `npm run check` passes (typecheck, lint, format check, 210 Vitest tests); 149 Playwright tests pass on desktop, tablet and mobile against a production build.
+- Transactions (Phase 4): income/expense/transfer CRUD, transfer reversal, idempotent creates, optimistic edits, row-locked writes, ledger with search/filters/sort/pagination and per-currency totals.
+- `npm run check` passes (typecheck, lint, format check, 268 Vitest tests); 170 Playwright tests pass on desktop, tablet and mobile against a production build.
 
 **Known issues still open**
 | Issue | Impact | Plan |
@@ -40,9 +41,9 @@ Phase 1  Foundation, design system, app shell ✔
    │
 Phase 2  Auth & profile ─────────────────────────┐
    │                                              │
-Phase 3  Accounts + Categories                    │
+Phase 3  Accounts + Categories ✔                  │
    │                                              │
-Phase 4  Transactions & Transfers + history + CSV │
+Phase 4  Transactions & Transfers + history ✔    │
    │            │                │                │
 Phase 5  Dashboard (v1)   Phase 6 Budgets   Phase 7 Recurring
    │            │                                 │
@@ -70,12 +71,11 @@ Delivered: migration `…_accounts_categories` (`archived_at`, name length caps,
 Decisions applied without explicit confirmation: Q-1 (whole riel), Q-10 (archive at zero balance) and, for the balance display, Q-6 (current balance excludes future-dated records; projected shown separately).
 Verified: `npm run check` (210 tests); `npm run build`; 149 Playwright tests on desktop, tablet, mobile; screenshots with seed data (balances match the seed exactly).
 
-### Phase 4 — Transactions, transfers, history and CSV export
-Depends on: Phase 3. Decisions: **Q-3** (refunds), **Q-6** (future-dated entries — balance display already follows the default), **Q-9** (balance adjustments), **Q-11** (audit trail).
-
-Tasks: income/expense CRUD; transfer CRUD incl. cross-currency; quick-add form optimised for mobile; history list with filters (date range, account, category, type, search) via URL search params, pagination; edit with `updated_at` conflict check; delete with confirmation; CSV export route (streaming, BOM, injection-safe); upcoming/projected balance if Q-6 approved.
-
-Exit criteria: classification and balance rules (PRD §6.1–6.2) tested; same-currency transfer amounts equal; cross-currency amounts stored; atomic convert (delete + create); CSV escaping unit tests and an integration test comparing CSV totals with the list totals; authorization tests; e2e add expense and transfer → balances update.
+### Phase 4 — Transaction management ✔ (complete)
+Delivered: migration `…_transactions_ledger` (`description` renamed to `note`, new `payee`, `client_request_id` unique per user, `reverses_transfer_id` self-link unique per transfer, amount-max / same-amount / not-self-reversal CHECKs); transactions module — income/expense create/edit/delete, same-currency transfers, "Reverse" for transfers, ledger (`UNION ALL` of entries and transfers) with search, type/account/category/date/amount filters, four sort orders, pagination and per-currency income/expense/net totals over all matching rows; every write in one DB transaction that locks the touched accounts (`FOR SHARE`, id order) while archive/delete of an account take `FOR UPDATE`; idempotent creates and reversals (`clientRequestId`); optimistic concurrency on edits (`expectedUpdatedAt` → conflict); archived accounts frozen. UI: `/transactions` list (filters in the URL, collapsible on phones, summary strip, empty/no-match states, pagination, floating add button on phones, "n" shortcut), `/transactions/new` (Expense/Income/Transfer, amount focused, Enter saves, "Save and add another"), details with Edit/Delete/Reverse confirmations, edit page; account pages show the ledger for that account.
+Scope changes agreed in the Phase 4 brief: **cross-currency transfers deferred** (same currency only, enforced by service and CHECK); CSV export moved to Phase 9 (Reports); convert income ↔ transfer is "delete + create" by the user.
+Decisions applied without explicit confirmation: Q-6 (future-dated records allowed up to one year ahead, shown as Upcoming, excluded from current balance), Q-11 (no audit trail). Still open: **Q-3** (refunds — record as income for now), **Q-9** (balance adjustments — not built).
+Verified: `npm run check` (268 tests incl. `transactions`, `ledger` and `transactions-actions` integration suites: balance changes, transfers and reversals, duplicate submissions incl. races, invalid amounts/dates, edit/delete, stale and concurrent edits, archive-vs-write race, category/type mismatch, ownership, filters, pagination, reconciliation of balances and totals with the ledger); `npm run build`; 170 Playwright tests on desktop, tablet, mobile; screenshots.
 
 ### Phase 5 — Dashboard
 Depends on: Phase 4. Decision: **Q-2** (approximate combined total).

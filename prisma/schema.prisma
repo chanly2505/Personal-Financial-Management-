@@ -143,7 +143,11 @@ model Transaction {
   amountMinor     BigInt          @map("amount_minor")
   /// Calendar date in the user's timezone. No time component by design.
   occurredOn      DateTime        @map("occurred_on") @db.Date
-  description     String?
+  /// Who was paid or who paid (optional), e.g. "Lucky Supermarket".
+  payee           String?         @db.VarChar(80)
+  note            String?         @db.VarChar(500)
+  /// One-time id from the submitting form; (user, id) is unique so a double submit creates one row.
+  clientRequestId String?         @map("client_request_id") @db.Uuid
   /// Set when generated from a recurring rule; (rule, date) is unique to prevent duplicates.
   recurringRuleId String?         @map("recurring_rule_id") @db.Uuid
   recurrenceDate  DateTime?       @map("recurrence_date") @db.Date
@@ -156,6 +160,7 @@ model Transaction {
   recurringRule RecurringRule?   @relation(fields: [recurringRuleId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([recurringRuleId, recurrenceDate])
+  @@unique([userId, clientRequestId])
   @@index([userId, occurredOn(sort: Desc)])
   @@index([accountId, occurredOn])
   @@index([userId, categoryId, occurredOn])
@@ -166,21 +171,30 @@ model Transaction {
 /// For cross-currency transfers the two amounts differ (implied exchange rate);
 /// for same-currency transfers the service layer requires them to be equal.
 model Transfer {
-  id              String   @id @default(uuid(7)) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  fromAccountId   String   @map("from_account_id") @db.Uuid
-  toAccountId     String   @map("to_account_id") @db.Uuid
-  fromAmountMinor BigInt   @map("from_amount_minor")
-  toAmountMinor   BigInt   @map("to_amount_minor")
-  occurredOn      DateTime @map("occurred_on") @db.Date
-  description     String?
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  fromAccountId      String   @map("from_account_id") @db.Uuid
+  toAccountId        String   @map("to_account_id") @db.Uuid
+  fromAmountMinor    BigInt   @map("from_amount_minor")
+  toAmountMinor      BigInt   @map("to_amount_minor")
+  occurredOn         DateTime @map("occurred_on") @db.Date
+  note               String?  @db.VarChar(500)
+  clientRequestId    String?  @map("client_request_id") @db.Uuid
+  /// Set on a transfer created by "Reverse": the transfer it undoes. Each transfer can be reversed once.
+  reversesTransferId String?  @map("reverses_transfer_id") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   fromAccount FinancialAccount @relation("TransferFrom", fields: [fromAccountId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
   toAccount   FinancialAccount @relation("TransferTo", fields: [toAccountId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
+  reverses    Transfer?        @relation("TransferReversal", fields: [reversesTransferId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
+  reversedBy  Transfer?        @relation("TransferReversal")
 
+  @@unique([id, userId])
+  @@unique([userId, clientRequestId])
+  /// Each transfer can be reversed at most once (ids are globally unique, so this is per transfer).
+  @@unique([reversesTransferId, userId])
   @@index([userId, occurredOn(sort: Desc)])
   @@index([fromAccountId, occurredOn])
   @@index([toAccountId, occurredOn])

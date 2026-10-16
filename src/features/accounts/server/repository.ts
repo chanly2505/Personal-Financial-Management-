@@ -88,21 +88,83 @@ export async function setArchived(userId: string, id: string, archived: boolean)
   return count;
 }
 
-export async function deleteAccount(userId: string, id: string): Promise<number> {
-  const { count } = await prisma.financialAccount.deleteMany({ where: { id, userId } });
-  return count;
+export type ArchiveOutcome =
+  | { status: "not_found" | "already_archived" | "archived" }
+  | { status: "has_balance"; balanceMinor: bigint; projectedBalanceMinor: bigint };
+
+/**
+ * Archive only if the balance is zero, decided under a row lock. Ledger writes
+ * hold FOR SHARE on the accounts they touch, so FOR UPDATE here waits for them
+ * to commit, and any write that starts later sees the account as archived.
+ */
+export function archiveIfSettled(
+  userId: string,
+  id: string,
+  asOf: IsoDate,
+): Promise<ArchiveOutcome> {
+  return prisma.$transaction(
+    async (tx) => {
+      const rows = await tx.$queryRaw<{ is_archived: boolean }[]>`
+        SELECT is_archived FROM accounts
+        WHERE id = ${id}::uuid AND user_id = ${userId}::uuid
+        FOR UPDATE`;
+      const row = rows[0];
+      if (!row) return { status: "not_found" } as const;
+      if (row.is_archived) return { status: "already_archived" } as const;
+      const [current, projected] = await Promise.all([
+        computeBalances(userId, asOf, id, tx),
+        computeBalances(userId, null, id, tx),
+      ]);
+      const balanceMinor = current.get(id) ?? 0n;
+      const projectedBalanceMinor = projected.get(id) ?? 0n;
+      if (balanceMinor !== 0n || projectedBalanceMinor !== 0n) {
+        return { status: "has_balance", balanceMinor, projectedBalanceMinor } as const;
+      }
+      await tx.financialAccount.update({
+        where: { id, userId },
+        data: { isArchived: true, archivedAt: new Date() },
+      });
+      return { status: "archived" } as const;
+    },
+    { maxWait: 10_000, timeout: 15_000 },
+  );
+}
+
+/**
+ * Delete only while nothing references the account, decided under a row lock
+ * (so a record cannot be added between the check and the delete).
+ * Returns null when the account does not exist, otherwise the reference count.
+ */
+export function deleteIfUnused(userId: string, id: string): Promise<number | null> {
+  return prisma.$transaction(
+    async (tx) => {
+      const rows = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM accounts WHERE id = ${id}::uuid AND user_id = ${userId}::uuid FOR UPDATE`;
+      if (rows.length === 0) return null;
+      const refs = await countAccountReferences(userId, id, tx);
+      if (refs.total > 0) return refs.total;
+      await tx.financialAccount.delete({ where: { id, userId } });
+      return 0;
+    },
+    { maxWait: 10_000, timeout: 15_000 },
+  );
 }
 
 /** Records that reference the account. Any of them means the account has history. */
-export async function countAccountReferences(userId: string, id: string) {
-  const [transactions, transfersOut, transfersIn, recurringRules, savingsGoals] =
-    await prisma.$transaction([
-      prisma.transaction.count({ where: { userId, accountId: id } }),
-      prisma.transfer.count({ where: { userId, fromAccountId: id } }),
-      prisma.transfer.count({ where: { userId, toAccountId: id } }),
-      prisma.recurringRule.count({ where: { userId, accountId: id } }),
-      prisma.savingsGoal.count({ where: { userId, accountId: id } }),
-    ]);
+export async function countAccountReferences(
+  userId: string,
+  id: string,
+  db: Prisma.TransactionClient = prisma,
+) {
+  const [transactions, transfersOut, transfersIn, recurringRules, savingsGoals] = await Promise.all(
+    [
+      db.transaction.count({ where: { userId, accountId: id } }),
+      db.transfer.count({ where: { userId, fromAccountId: id } }),
+      db.transfer.count({ where: { userId, toAccountId: id } }),
+      db.recurringRule.count({ where: { userId, accountId: id } }),
+      db.savingsGoal.count({ where: { userId, accountId: id } }),
+    ],
+  );
   return {
     transactions: transactions + transfersOut + transfersIn,
     recurringRules,
@@ -124,13 +186,14 @@ export async function computeBalances(
   userId: string,
   asOf: IsoDate | null,
   accountId?: string,
+  db: Prisma.TransactionClient = prisma,
 ): Promise<Map<string, bigint>> {
   const dateFilterTx = asOf ? Prisma.sql`AND t.occurred_on <= ${isoDateToDb(asOf)}` : Prisma.empty;
   const dateFilterOut = asOf ? Prisma.sql`AND o.occurred_on <= ${isoDateToDb(asOf)}` : Prisma.empty;
   const dateFilterIn = asOf ? Prisma.sql`AND i.occurred_on <= ${isoDateToDb(asOf)}` : Prisma.empty;
   const accountFilter = accountId ? Prisma.sql`AND a.id = ${accountId}::uuid` : Prisma.empty;
 
-  const rows = await prisma.$queryRaw<{ id: string; balance: bigint }[]>`
+  const rows = await db.$queryRaw<{ id: string; balance: bigint }[]>`
     SELECT a.id,
       (a.opening_balance_minor
         + COALESCE((SELECT SUM(CASE WHEN t.type = 'INCOME' THEN t.amount_minor ELSE -t.amount_minor END)

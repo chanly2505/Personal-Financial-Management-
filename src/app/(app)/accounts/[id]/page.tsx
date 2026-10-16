@@ -1,31 +1,30 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { History } from "lucide-react";
+import Link from "next/link";
+import { History, Plus } from "lucide-react";
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Money } from "@/components/shared/money";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccountActions } from "@/features/accounts/components/account-actions";
 import { AccountTypeIcon } from "@/features/accounts/components/account-type-icon";
 import { ACCOUNT_TYPE_LABELS } from "@/features/accounts/constants";
 import { getAccount } from "@/features/accounts/server/service";
-import { getAccountActivity } from "@/features/transactions/server/service";
+import { LedgerList } from "@/features/transactions/components/ledger-list";
+import { ledgerFiltersSchema } from "@/features/transactions/schemas";
+import { getLedgerPage } from "@/features/transactions/server/service";
+import { ledgerHref } from "@/features/transactions/url";
 import { formatCalendarDate, todayInTimeZone } from "@/lib/dates";
-import { CURRENCIES, formatMoney } from "@/lib/money";
+import { CURRENCIES } from "@/lib/money";
 import { requirePageUser } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 
 export const metadata: Metadata = { title: "Account" };
 
-const KIND_LABEL = {
-  INCOME: "Income",
-  EXPENSE: "Expense",
-  TRANSFER_IN: "Transfer in",
-  TRANSFER_OUT: "Transfer out",
-} as const;
+const RECENT = 10;
 
 export default async function AccountDetailPage({ params }: PageProps<"/accounts/[id]">) {
   const user = await requirePageUser();
@@ -35,7 +34,11 @@ export default async function AccountDetailPage({ params }: PageProps<"/accounts
     if (error instanceof NotFoundError) notFound();
     throw error;
   });
-  const activity = await getAccountActivity(user, account.id);
+  const activity = await getLedgerPage(
+    user,
+    ledgerFiltersSchema.parse({ accountId: account.id }),
+    RECENT,
+  );
   const today = todayInTimeZone(user.timezone);
   const hasUpcoming = account.projectedBalanceMinor !== account.balanceMinor;
   const createdOn = formatCalendarDate(todayInTimeZone(user.timezone, account.createdAt));
@@ -109,66 +112,39 @@ export default async function AccountDetailPage({ params }: PageProps<"/accounts
           <EmptyState
             icon={History}
             title="No records yet"
-            description="Income, expenses and transfers for this account will appear here. Recording them arrives with the Transactions section."
+            description="Income, expenses and transfers for this account will appear here."
+            action={
+              account.isArchived ? undefined : (
+                <Button asChild>
+                  <Link href={`/transactions/new?accountId=${account.id}`}>
+                    <Plus aria-hidden="true" />
+                    Add transaction
+                  </Link>
+                </Button>
+              )
+            }
           />
         ) : (
           <>
-            <ul className="divide-y rounded-xl border bg-card">
-              {activity.items.map((item) => {
-                const tone =
-                  item.kind === "INCOME"
-                    ? "income"
-                    : item.kind === "EXPENSE"
-                      ? "expense"
-                      : "transfer";
-                const isTransfer = item.kind === "TRANSFER_IN" || item.kind === "TRANSFER_OUT";
-                return (
-                  <li
-                    key={`${item.kind}-${item.id}`}
-                    className="flex items-center gap-3 px-4 py-3 sm:px-5"
-                  >
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate font-medium">
-                        {item.description ||
-                          (isTransfer
-                            ? `Transfer ${item.kind === "TRANSFER_IN" ? "from" : "to"} ${item.label}`
-                            : item.label)}
-                      </span>
-                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        {formatCalendarDate(item.occurredOn, today)}
-                        <Badge variant={tone}>{KIND_LABEL[item.kind]}</Badge>
-                        {!isTransfer && (
-                          <span>
-                            {item.label}
-                            {item.labelArchived && " (archived)"}
-                          </span>
-                        )}
-                        {item.occurredOn > today && <Badge variant="info">Upcoming</Badge>}
-                      </span>
-                    </div>
-                    {isTransfer ? (
-                      <span className="text-sm font-medium amount text-transfer">
-                        {item.kind === "TRANSFER_IN" ? "+" : "-"}
-                        {formatMoney(item.amountMinor, account.currency)}
-                      </span>
-                    ) : (
-                      <Money
-                        minor={item.amountMinor}
-                        currency={account.currency}
-                        tone={tone === "income" ? "income" : "expense"}
-                        className="text-sm font-medium"
-                      />
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-            {activity.hasMore && (
-              <p className="text-xs text-muted-foreground">
-                Showing the 50 most recent records. Full history with filters arrives with the
-                Transactions section.
-              </p>
-            )}
+            <LedgerList items={activity.items} today={today} accountId={account.id} />
+            <div className="flex flex-wrap items-center gap-2">
+              {activity.total > RECENT && (
+                <p className="text-xs text-muted-foreground">
+                  Showing the {RECENT} most recent of {activity.total} records.
+                </p>
+              )}
+              <Button asChild variant="outline" size="sm" className="ml-auto">
+                <Link href={ledgerHref({ accountId: account.id })}>View all in Transactions</Link>
+              </Button>
+              {!account.isArchived && (
+                <Button asChild size="sm">
+                  <Link href={`/transactions/new?accountId=${account.id}`}>
+                    <Plus aria-hidden="true" />
+                    Add transaction
+                  </Link>
+                </Button>
+              )}
+            </div>
           </>
         )}
       </section>

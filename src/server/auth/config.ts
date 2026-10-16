@@ -84,7 +84,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error(error) {
       // CredentialsSignin is an expected outcome (wrong password), not a server error.
       if (error.name === "CredentialsSignin") return;
-      logger.error("auth.error", describeError(error));
+      // Auth.js error classes are renamed by minification; `type` survives.
+      const type = (error as { type?: string }).type;
+      logger.error("auth.error", {
+        ...describeError(error),
+        ...(type && { errorType: type }),
+        ...(type === "UntrustedHost" && {
+          hint: "Set AUTH_URL to the address the app is served from (e.g. http://localhost:3000), or AUTH_TRUST_HOST=true behind a trusted proxy. Sign-in cannot work until then.",
+        }),
+      });
     },
     warn(code) {
       logger.warn("auth.warning", { code });

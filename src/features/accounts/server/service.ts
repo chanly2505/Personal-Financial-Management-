@@ -147,15 +147,20 @@ export async function archiveAccount(
   user: Pick<CurrentUser, "id" | "timezone">,
   id: string,
 ): Promise<void> {
-  const account = await getAccount(user, id);
-  if (account.isArchived) return;
-  if (account.balanceMinor !== 0n || account.projectedBalanceMinor !== 0n) {
-    const amount = formatMoney(account.balanceMinor, account.currency);
+  const account = await repo.findAccount(user.id, id);
+  if (!account) throw new NotFoundError("We couldn't find that account.");
+  const outcome = await repo.archiveIfSettled(user.id, id, today(user));
+  if (outcome.status === "not_found") throw new NotFoundError("We couldn't find that account.");
+  if (outcome.status === "has_balance") {
+    const amount = formatMoney(
+      outcome.balanceMinor !== 0n ? outcome.balanceMinor : outcome.projectedBalanceMinor,
+      account.currency,
+    );
+    const upcoming = outcome.balanceMinor === 0n ? " (including upcoming records)" : "";
     throw new ValidationError(
-      `This account still holds ${amount}. Move the money to another account (or correct the opening balance) so the balance is zero, then archive it.`,
+      `This account still holds ${amount}${upcoming}. Move the money to another account (or correct the opening balance) so the balance is zero, then archive it.`,
     );
   }
-  await repo.setArchived(user.id, id, true);
 }
 
 export async function restoreAccount(user: Pick<CurrentUser, "id">, id: string): Promise<void> {
@@ -169,15 +174,13 @@ export async function restoreAccount(user: Pick<CurrentUser, "id">, id: string):
 }
 
 export async function deleteAccount(user: Pick<CurrentUser, "id">, id: string): Promise<void> {
-  const account = await repo.findAccount(user.id, id);
-  if (!account) throw new NotFoundError("We couldn't find that account.");
-  const refs = await repo.countAccountReferences(user.id, id);
-  if (refs.total > 0) {
+  const references = await repo.deleteIfUnused(user.id, id);
+  if (references === null) throw new NotFoundError("We couldn't find that account.");
+  if (references > 0) {
     throw new ValidationError(
       "This account has history, so it can't be deleted. Archive it instead — its records are kept.",
     );
   }
-  await repo.deleteAccount(user.id, id);
 }
 
 /** For other modules (e.g. transactions): an active account owned by the user, or NotFound. */

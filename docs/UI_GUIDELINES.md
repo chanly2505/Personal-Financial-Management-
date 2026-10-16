@@ -115,7 +115,8 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 
 ## 7. Forms
 
-- React Hook Form + the module's shared Zod schema. Validate on blur and on submit; re-validate on change after the first error.
+- React Hook Form + the module's shared Zod schema. Validate on blur and on submit; re-validate on change after the first error. Exception: forms whose first field is auto-focused (the transaction form) validate on submit only — a blur error would shift the layout under the pointer as the user clicks "Save".
+- Fast entry (transactions): amount focused on open, Enter saves, "Save and add another" keeps account/category/date and refocuses the amount; each create carries a one-time request id so double submits record once.
 - Every input has a visible `<Label>`; placeholders are examples, not labels.
 - Amount fields: `type="text" inputMode="decimal"` (KHR: `inputMode="numeric"`), currency shown as a prefix adornment, `autoComplete="off"`.
 - Error messages say what to do: "Enter an amount greater than zero." — not "Invalid input". Messages come from the Zod schema / `parseMoney` so client and server agree.
