@@ -108,7 +108,7 @@ Delivered: `features/reports` — periods (9 presets incl. custom, previous-peri
 Verified: `npm run check` (444 tests, incl. `csv` and `report-period` unit tests, `reports.test.ts` and `export.test.ts`: boundary days, every filter, multiple currencies, reconciliation with Transactions totals, account opening/closing, reversals, budgets, comparison, CSV escaping and injection, batching with date ties, row limit, 3,500-row export, cross-user ids); `npm run build`; 239 Playwright tests on desktop, tablet, mobile incl. `e2e/reports.spec.ts` (downloads checked); screenshots.
 
 ### Phase 10 — Hardening and release readiness
-Depends on: all. Decision: **Q-14** (deployment target).
+Depends on: all. Decision: **Q-14** (deployment target) — a free option is prepared: Vercel Hobby + Neon (docs/DEPLOYMENT.md, `vercel.json`, `vercel-build`, `prisma/sql/app-role-neon.sql`).
 
 Tasks: accessibility audit (keyboard, screen reader, contrast) and fixes; performance with 10,000+ seeded records (`EXPLAIN ANALYZE`, index review); full security review against SECURITY.md; dark-mode toggle; error/empty state review; deployment configuration (env, migrations on deploy, scheduler, backups); privacy notice.
 
