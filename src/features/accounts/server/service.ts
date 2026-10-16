@@ -192,3 +192,16 @@ export async function getUsableAccount(user: Pick<CurrentUser, "id">, id: string
   }
   return { id: account.id, name: account.name, currency: account.currency };
 }
+
+/** For other modules: the user's account (active or archived) in brief, or null. */
+export async function findOwnAccount(user: Pick<CurrentUser, "id">, id: string) {
+  const account = await repo.findAccount(user.id, id);
+  return account
+    ? {
+        id: account.id,
+        name: account.name,
+        currency: account.currency,
+        isArchived: account.isArchived,
+      }
+    : null;
+}

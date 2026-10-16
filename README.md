@@ -4,7 +4,7 @@ Track income, expenses, transfers, accounts, budgets, recurring items, savings g
 
 Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL 16 and Prisma 7.
 
-**Status:** Phase 6 complete — authentication, profile settings, **accounts**, **categories**, **transactions** (income, expenses, same-currency transfers with reversal; searchable ledger) the **dashboard** (period filter, per-currency income/expenses/net/savings rate, balances, charts with table views) and **budgets** (monthly category limits, live usage, in-app warnings). Remaining modules are placeholders marked "Not available yet" until their phase — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Status:** Phase 7 complete — authentication, profile settings, **accounts**, **categories**, **transactions** (income, expenses, same-currency transfers with reversal; searchable ledger), the **dashboard** (period filter, per-currency income/expenses/net/savings rate, balances, charts with table views), **budgets** (monthly category limits, live usage, in-app warnings) and **recurring** income and expenses (scheduled posting — see [docs/OPERATIONS.md](docs/OPERATIONS.md)). Remaining modules are placeholders marked "Not available yet" until their phase — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Documentation
 
@@ -16,6 +16,7 @@ Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL 16 and 
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, auth, authorization, headers, logging |
 | [docs/UI_GUIDELINES.md](docs/UI_GUIDELINES.md) | Design tokens, layouts, component catalogue, accessibility |
 | [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Phase order, tasks, exit criteria, known issues |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Recurring scheduler configuration and recovery runbook |
 | [CLAUDE.md](CLAUDE.md) | Commands and coding rules |
 
 ## Setup
@@ -97,6 +98,7 @@ Details, limits and test coverage: [docs/SECURITY.md](docs/SECURITY.md).
 | `MIGRATION_DATABASE_URL` | the owner role, used only by `npm run db:deploy` |
 | `TRUSTED_IP_HEADER` | your platform's client-IP header |
 | `MAIL_TRANSPORT` | `none` until an email provider is added |
+| `CRON_SECRET` / `RECURRING_SCHEDULER` | Recurring scheduler — see [docs/OPERATIONS.md](docs/OPERATIONS.md). Off by default |
 | `NEXT_PUBLIC_FIREBASE_*` | Optional. Firebase web app config (public identifiers; no Analytics). Set before `npm run build` — the values are built into the browser code |
 
 ## Database commands

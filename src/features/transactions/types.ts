@@ -49,7 +49,8 @@ export interface EntryDetail {
   note: string | null;
   account: { id: string; name: string; isArchived: boolean };
   category: { id: string; name: string; color: string | null; isArchived: boolean };
-  recurring: boolean;
+  /** Set when posted by a recurring rule (still an ordinary transaction). */
+  recurringRule: { id: string; name: string } | null;
   createdAt: Date;
   updatedAt: Date;
 }

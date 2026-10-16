@@ -182,7 +182,7 @@ export async function findEntry(userId: string, id: string): Promise<EntryDetail
       occurredOn: true,
       payee: true,
       note: true,
-      recurringRuleId: true,
+      recurringRule: { select: { id: true, name: true } },
       createdAt: true,
       updatedAt: true,
       account: { select: { id: true, name: true, currency: true, isArchived: true } },
@@ -201,7 +201,7 @@ export async function findEntry(userId: string, id: string): Promise<EntryDetail
     note: row.note,
     account: { id: row.account.id, name: row.account.name, isArchived: row.account.isArchived },
     category: row.category,
-    recurring: row.recurringRuleId !== null,
+    recurringRule: row.recurringRule,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

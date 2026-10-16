@@ -42,6 +42,22 @@ const envSchema = z
      * Used by the e2e suite; leave unset in deployed environments.
      */
     ENABLE_DESIGN_SYSTEM_PAGE: booleanFlag,
+    /**
+     * Shared secret for POST/GET /api/cron/recurring (sent as
+     * "Authorization: Bearer <secret>" by the hosting platform's cron).
+     * Unset = the endpoint is disabled. 32+ random characters.
+     */
+    CRON_SECRET: z
+      .string()
+      .min(32, "must be at least 32 characters (openssl rand -base64 32)")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    /**
+     * "in-process" runs recurring rules hourly inside the app server (for a
+     * single self-hosted server, e.g. a Mac). "off" (default) relies on an
+     * external scheduler calling the cron endpoint or `npm run recurring:run`.
+     */
+    RECURRING_SCHEDULER: z.enum(["off", "in-process"]).default("off"),
   })
   .superRefine((value, ctx) => {
     if (value.MAIL_TRANSPORT === "console" && value.NODE_ENV === "production") {

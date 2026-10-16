@@ -4,9 +4,9 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0–6 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–7 are complete.
 
-**Present and verified (end of Phase 6)**
+**Present and verified (end of Phase 7)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
 - Prisma 7.10 schema with 9 tables and the initial migration (with hand-written CHECK constraints), applied to `finance_dev` and `finance_test`; idempotent local seed (`npm run db:seed`).
 - Validated environment (`src/server/env.ts`), error model (`src/server/errors.ts`, `action-result.ts`), privacy-safe logger, `/api/health` database probe.
@@ -16,6 +16,7 @@ The project lives in `/home/user/personal-finance`. Phases 0–6 are complete.
 - Transactions (Phase 4): income/expense/transfer CRUD, transfer reversal, idempotent creates, optimistic edits, row-locked writes, ledger with search/filters/sort/pagination and per-currency totals.
 - Dashboard (Phase 5): period filter (6 presets incl. custom), per-currency income/expenses/net/savings rate, balances today with account breakdown, income-vs-expenses, spending-by-category and monthly-spending charts with table views, recent transactions; server-side aggregation with an index-only covering index.
 - Budgets (Phase 6): monthly per-category, per-currency limits with live spent/remaining/usage from expense records, configurable warning threshold, archive/restore/delete, copy last month, month navigation, category spending breakdown, in-app warnings (header bell) without duplicates, dashboard budget section.
+- Recurring (Phase 7): weekly/monthly/yearly rules with a documented month-end/leap-year policy, active/paused/completed states, upcoming dates, execution history, failure states; idempotent scheduled engine (cron endpoint, CLI, in-process timer) — docs/OPERATIONS.md.
 - Firebase client SDK initialized (no Analytics).
 - `npm run check` passes (typecheck, lint, format check, 328 Vitest tests); 203 Playwright tests pass on desktop, tablet and mobile against a production build.
 
@@ -90,12 +91,10 @@ Delivered: migration `…_budgets` (warning threshold, archive, `budget_alerts` 
 Decisions: Q-8 applied (per currency); monthly periods only (custom periods not justified — PRD §6.7); refunds unchanged (Q-3 open, documented); no email/push.
 Verified: `npm run check` (328 tests incl. `budgets.test.ts` — month boundaries, other categories/currencies/users, income and transfers excluded, edits and deletes of expenses, overspending, zero/invalid limits, validation, stale edits, archive/restore/delete, copy, warnings once per threshold incl. concurrent expenses, resolve and silent re-activation, threshold changes, reconciliation — and `budgets-actions.test.ts`); `npm run build`; 203 Playwright tests on desktop, tablet, mobile incl. `e2e/budgets.spec.ts`; screenshots.
 
-### Phase 7 — Recurring income and expenses
-Depends on: Phase 4. Decisions: **Q-4** (automatic vs confirm), **Q-5** (pause behaviour). Needs **Q-14** for the scheduler (lazy catch-up works without it).
-
-Tasks: rule CRUD, pause/resume, schedule computation (anchor-based, clamped), idempotent execution service, lazy catch-up on app load, `api/cron/recurring` with `CRON_SECRET`, auto-pause on archived account/category, delete detaches history.
-
-Exit criteria: unit tests for schedules (month-end, leap years, intervals, end dates); integration tests for exactly-once execution under concurrent runs, catch-up cap, pause/resume, rule edits not touching history; e2e create rule dated today → entry appears once after reload.
+### Phase 7 — Recurring income and expenses ✔ (complete)
+Delivered: migration `…_recurring` (rule name/status/pause reason/payee, `recurring_runs` history, consistency CHECKs); `features/recurring` — pure calendar engine (`schedule.ts`: from-anchor occurrences, month-end clamping, leap years, intervals, end dates, plain-language description), rule CRUD with explicit catch-up, pause/resume (paused dates skipped), edits affecting only unposted dates, delete keeping posted transactions; execution engine `runDueRules` (due per user timezone, per-rule transaction with `FOR UPDATE SKIP LOCKED`, unique occurrence, atomic next date, bounded batches, archived account/category → paused with reason, safe failure codes, retries, pause after 5 failures, budget warnings synced); schedulers: `/api/cron/recurring` (Bearer `CRON_SECRET`, off by default), `npm run recurring:run`, in-process hourly timer (`RECURRING_SCHEDULER=in-process`, used by the Mac launcher). UI: list with Upcoming (scheduled, not posted) and failures, rule form with live schedule preview and catch-up option, detail with upcoming dates and execution history, transactions show "Posted by Recurring: …". Docs: PRD §6.6, docs/OPERATIONS.md (configuration and recovery).
+Decisions: Q-4 (automatic) and Q-5 (skip paused dates) applied with the proposed defaults; the PRD's "run when the user opens the app" was removed (scheduled only).
+Verified: `npm run check` (359 tests, incl. `recurring-schedule` unit tests — month ends, leap years, intervals, end dates — and `recurring`, `recurring-failures`, `recurring-cron` integration suites: no posting on page reads, month-end posting, leap years, timezone due-ness, retries, concurrent workers, end dates, paused rules and resume, bounded catch-up, archived accounts, budget warnings, edits, deletes, isolation, recorded failures, retry after recovery, pause after repeated failures); `npm run build`; in-process scheduler verified against a running server; 212 Playwright tests on desktop, tablet, mobile incl. `e2e/recurring.spec.ts`; screenshots.
 
 ### Phase 8 — Savings goals
 Depends on: Phase 3 (accounts); dashboard card depends on Phase 5. Decision: **Q-7** (goal model).

@@ -43,6 +43,8 @@ export default defineConfig({
       AUTH_URL: baseURL,
       MAIL_TRANSPORT: "none",
       ENABLE_DESIGN_SYSTEM_PAGE: "true",
+      // Lets e2e tests trigger the recurring scheduler like a hosted cron would.
+      CRON_SECRET: "e2e-cron-secret-0123456789abcdefghijklmnop",
     },
   },
 });

@@ -133,6 +133,11 @@ Including `type` in the category key guarantees an expense can only use an expen
 | `budgets_amount_max_chk` | limit ≤ 999,999,999,999,999 minor units |
 | `budgets_alert_threshold_range_chk` / `budget_alerts_threshold_range_chk` | thresholds 1–100 % |
 | `budget_alerts_spent_positive_chk` | spent at warning time > 0 |
+| `recurring_rules_completed_chk` | `status = COMPLETED` exactly when `next_occurrence_on` is NULL |
+| `recurring_rules_pause_reason_chk` / `recurring_rules_paused_at_chk` | pause reason and time set exactly when PAUSED |
+| `recurring_rules_next_in_range_chk` | next date within [start, end] |
+| `recurring_rules_name_not_blank_chk`, `recurring_rules_amount_max_chk` | name not blank; amount ≤ max |
+| `recurring_runs_reason_required_chk` / `recurring_runs_posted_has_no_reason_chk` | FAILED/SKIPPED rows carry a reason code; POSTED rows none |
 | `savings_goals_target_positive_chk` | target > 0 |
 | `savings_contributions_amount_nonzero_chk` | amount ≠ 0 |
 | `users_session_version_nonnegative_chk` | session_version ≥ 0 |
@@ -151,6 +156,10 @@ Rules the database cannot express cheaply are enforced in services and covered b
 ### Uniqueness
 
 `users.email`; `accounts (user_id, name)`; `categories (user_id, type, name)`; `savings_goals (user_id, name)`; `budgets (user_id, category_id, month, currency)`; `transactions (recurring_rule_id, recurrence_date)` — the duplicate-occurrence guard; `transactions (user_id, client_request_id)` and `transfers (user_id, client_request_id)` — one record per form submission (NULLs allowed for seed/recurring rows); `transfers (reverses_transfer_id, user_id)` — each transfer reversed at most once (with a composite FK to the original, same owner).
+
+### Recurring execution (Phase 7)
+
+`recurring_runs` holds one row per (rule, occurrence date) — the execution history; retries update the same row (`attempts`, `last_attempt_at`). Posting relies on the original `transactions (recurring_rule_id, recurrence_date)` unique index plus `FOR UPDATE SKIP LOCKED` on the rule row; see docs/OPERATIONS.md. The due-rule query uses `recurring_rules (status, next_occurrence_on)`.
 
 ### Budget warnings (Phase 6)
 
@@ -197,6 +206,7 @@ npm run db:deploy                        # apply pending migrations (CI / produc
 | 2 ✔ | `auth_rate_limits`, `password_reset_tokens`, `users.password_changed_at` (migration `…_auth`) | Rate limiting, password recovery, credential audit | — |
 | 2 ✔ | Default categories created with every new user (data, not schema) | PRD §5.3 | — |
 | 4 ✔ | `payee`, `note` (renamed from `description`), `client_request_id`, `reverses_transfer_id` + constraints (migration `…_transactions_ledger`) | Ledger, idempotency, reversals | — |
+| 7 ✔ | `recurring_rules`: `name`, `status` (ACTIVE/PAUSED/COMPLETED, replaces `is_active`), `pause_reason`, `paused_at`, `payee`; new `recurring_runs` table; consistency CHECKs (migration `…_recurring`) | Recurring engine, history, states | Q-4, Q-5 |
 | 6 ✔ | `budgets.alert_threshold_percent`, `budgets.archived_at`, `budgets (id, user_id)` unique; new `budget_alerts` table (unique `(budget_id, threshold_percent)`, composite FK to the budget's owner, cascade delete) (migration `…_budgets`) | Configurable warnings without duplicates; archive | — |
 | 5 ✔ | Covering index `transactions_user_date_covering_idx` replaces `(user_id, occurred_on DESC)` (migration `…_dashboard_covering_index`) | Index-only dashboard aggregations | — |
 | later | `categories.kind` enum (`STANDARD`, `ADJUSTMENT`, `REFUND`) or `exclude_from_reports BOOLEAN` | Balance adjustments / refunds treatment | Q-3, Q-9 |

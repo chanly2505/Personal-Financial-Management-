@@ -22,7 +22,13 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../src/generated/prisma/client";
 import { DEFAULT_CATEGORIES } from "../src/features/categories/default-categories";
-import { addDays, isoDateToDb, startOfMonth, todayInTimeZone } from "../src/lib/dates";
+import {
+  addDays,
+  addMonthsClamped,
+  isoDateToDb,
+  startOfMonth,
+  todayInTimeZone,
+} from "../src/lib/dates";
 import { parseMoney, type CurrencyCode } from "../src/lib/money";
 import { hashPassword } from "../src/server/auth/password";
 
@@ -233,6 +239,38 @@ async function main() {
           },
         });
       }
+
+      // Recurring rules: schedules only — the engine posts them on their dates.
+      const nextMonthFirst = addMonthsClamped(startOfMonth(today), 1);
+      await tx.recurringRule.create({
+        data: {
+          userId,
+          name: "Salary",
+          type: "INCOME",
+          accountId: bank.id,
+          categoryId: category("Salary").id,
+          amountMinor: money("1,100.00", "USD"),
+          payee: "Employer",
+          frequency: "MONTHLY",
+          startOn: isoDateToDb(nextMonthFirst),
+          nextOccurrenceOn: isoDateToDb(nextMonthFirst),
+        },
+      });
+      const phoneBill = addDays(today, 3);
+      await tx.recurringRule.create({
+        data: {
+          userId,
+          name: "Phone bill",
+          type: "EXPENSE",
+          accountId: bank.id,
+          categoryId: category("Utilities").id,
+          amountMinor: money("15.00", "USD"),
+          payee: "Smart",
+          frequency: "MONTHLY",
+          startOn: isoDateToDb(phoneBill),
+          nextOccurrenceOn: isoDateToDb(phoneBill),
+        },
+      });
 
       const goal = await tx.savingsGoal.create({
         data: {

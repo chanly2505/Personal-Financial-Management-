@@ -127,6 +127,7 @@ describe("recurring transactions", () => {
     const { user, account, expenseCategory } = await seedOwner();
     const rule = await prisma.recurringRule.create({
       data: {
+        name: "Rent",
         userId: user.id,
         accountId: account.id,
         categoryId: expenseCategory.id,

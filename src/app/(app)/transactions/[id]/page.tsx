@@ -157,6 +157,16 @@ export default async function TransactionDetailPage({ params }: PageProps<"/tran
                 {record.payee && (
                   <Row label={record.kind === "INCOME" ? "From" : "Paid to"}>{record.payee}</Row>
                 )}
+                {record.recurringRule && (
+                  <Row label="Posted by">
+                    <Link
+                      href={`/recurring/${record.recurringRule.id}`}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      Recurring: {record.recurringRule.name}
+                    </Link>
+                  </Row>
+                )}
               </>
             )}
             <Row label="Currency">{record.currency}</Row>

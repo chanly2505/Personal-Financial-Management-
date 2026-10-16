@@ -36,6 +36,7 @@ test.describe("module placeholders", () => {
         "/transactions",
         "/dashboard",
         "/budgets",
+        "/recurring",
       ].includes(m.path),
   )) {
     test(`${path} renders inside the shell and is clearly not available yet`, async ({ page }) => {

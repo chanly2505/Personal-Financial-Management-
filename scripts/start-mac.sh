@@ -163,5 +163,6 @@ say "Starting the app at $APP_URL (keep this window open; close it to stop the a
     if curl -fs "$APP_URL/api/health" >/dev/null 2>&1; then open "$APP_URL"; exit 0; fi
     sleep 2
   done ) &
+export RECURRING_SCHEDULER="${RECURRING_SCHEDULER:-in-process}"  # post recurring rules hourly while the app runs
 exec npm run dev
 }

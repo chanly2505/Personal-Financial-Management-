@@ -70,6 +70,7 @@ model User {
   recurringRules      RecurringRule[]
   budgets             Budget[]
   budgetAlerts        BudgetAlert[]
+  recurringRuns       RecurringRun[]
   savingsGoals        SavingsGoal[]
   contributions       SavingsContribution[]
   passwordResetTokens PasswordResetToken[]
@@ -206,33 +207,90 @@ model Transfer {
 
 /// Template that materialises income/expense transactions on a schedule.
 /// The anchor day comes from `startOn`; month-end dates clamp (Jan 31 -> Feb 28).
+/// A schedule that posts an income or expense on its dates. A rule is never a
+/// transaction itself; the execution engine posts real transactions.
 model RecurringRule {
-  id               String              @id @default(uuid(7)) @db.Uuid
-  userId           String              @map("user_id") @db.Uuid
-  accountId        String              @map("account_id") @db.Uuid
-  categoryId       String              @map("category_id") @db.Uuid
+  id               String                @id @default(uuid(7)) @db.Uuid
+  userId           String                @map("user_id") @db.Uuid
+  name             String                @db.VarChar(60)
+  accountId        String                @map("account_id") @db.Uuid
+  categoryId       String                @map("category_id") @db.Uuid
   type             TransactionType
-  amountMinor      BigInt              @map("amount_minor")
-  description      String?
+  /// > 0; the currency is the account's.
+  amountMinor      BigInt                @map("amount_minor")
+  payee            String?               @db.VarChar(80)
+  /// Copied to each posted transaction's note.
+  description      String?               @db.VarChar(500)
+  /// WEEKLY, MONTHLY or YEARLY (DAILY exists in the enum but is not offered yet).
   frequency        RecurrenceFrequency
-  interval         Int                 @default(1)
-  startOn          DateTime            @map("start_on") @db.Date
-  endOn            DateTime?           @map("end_on") @db.Date
-  /// Next date not yet materialised. NULL once the rule has finished.
-  nextOccurrenceOn DateTime?           @map("next_occurrence_on") @db.Date
-  isActive         Boolean             @default(true) @map("is_active")
-  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  /// Every N weeks/months/years (1–365).
+  interval         Int                   @default(1)
+  /// Anchor of the schedule: occurrence k is computed from it (docs/PRD.md §6.6).
+  startOn          DateTime              @map("start_on") @db.Date
+  endOn            DateTime?             @map("end_on") @db.Date
+  /// Next date not yet posted, in the user's calendar. NULL once COMPLETED.
+  nextOccurrenceOn DateTime?             @map("next_occurrence_on") @db.Date
+  status           RecurringStatus       @default(ACTIVE)
+  /// Why a PAUSED rule is paused (CHECK: set exactly when PAUSED).
+  pauseReason      RecurringPauseReason? @map("pause_reason")
+  pausedAt         DateTime?             @map("paused_at") @db.Timestamptz(3)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   account      FinancialAccount @relation(fields: [accountId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
   category     Category         @relation(fields: [categoryId, userId, type], references: [id, userId, type], onDelete: NoAction, onUpdate: NoAction)
   transactions Transaction[]
+  runs         RecurringRun[]
 
   @@unique([id, userId])
   @@index([userId])
-  @@index([isActive, nextOccurrenceOn])
+  @@index([status, nextOccurrenceOn])
   @@map("recurring_rules")
+}
+
+enum RecurringStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum RecurringPauseReason {
+  USER
+  ACCOUNT_ARCHIVED
+  CATEGORY_ARCHIVED
+  REPEATED_FAILURES
+}
+
+enum RecurringRunStatus {
+  POSTED
+  FAILED
+  SKIPPED
+}
+
+/// Execution history: one row per (rule, occurrence date). Unique, so a retried
+/// job updates the same row; the posted transaction is itself unique on
+/// (recurring_rule_id, recurrence_date), so an occurrence can post only once.
+model RecurringRun {
+  id            String             @id @default(uuid(7)) @db.Uuid
+  userId        String             @map("user_id") @db.Uuid
+  ruleId        String             @map("rule_id") @db.Uuid
+  occurrenceOn  DateTime           @map("occurrence_on") @db.Date
+  status        RecurringRunStatus
+  /// The posted transaction (POSTED); NULL if it was deleted later.
+  transactionId String?            @map("transaction_id") @db.Uuid
+  /// Safe, non-sensitive reason code for FAILED/SKIPPED (no amounts, names or SQL).
+  reason        String?            @db.VarChar(64)
+  attempts      Int                @default(1) @db.SmallInt
+  lastAttemptAt DateTime           @default(now()) @map("last_attempt_at") @db.Timestamptz(3)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rule RecurringRule @relation(fields: [ruleId, userId], references: [id, userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([ruleId, occurrenceOn])
+  @@index([userId, status, lastAttemptAt(sort: Desc)])
+  @@map("recurring_runs")
 }
 
 /// Monthly spending limit for one expense category in one currency.
