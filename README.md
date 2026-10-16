@@ -97,6 +97,7 @@ Details, limits and test coverage: [docs/SECURITY.md](docs/SECURITY.md).
 | `MIGRATION_DATABASE_URL` | the owner role, used only by `npm run db:deploy` |
 | `TRUSTED_IP_HEADER` | your platform's client-IP header |
 | `MAIL_TRANSPORT` | `none` until an email provider is added |
+| `NEXT_PUBLIC_FIREBASE_*` | Optional. Firebase web app config (public identifiers; no Analytics). Set before `npm run build` — the values are built into the browser code |
 
 ## Database commands
 

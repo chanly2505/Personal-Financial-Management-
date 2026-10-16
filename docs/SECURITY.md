@@ -139,7 +139,7 @@ Fonts are self-hosted by `next/font` at build time, so no third-party origins ar
 - Logs contain: timestamp, level, event name, ids, duration, error class. Auth events (`auth.registered`, `auth.rate_limited`, `auth.password_changed`, …) carry no email, IP or token.
 - Logs never contain: amounts, descriptions, account or category names, emails, passwords, tokens, cookies, full request bodies.
 - Users see friendly messages; stack traces and database errors are never sent to the browser (`error.tsx` boundaries, generic action errors).
-- No third-party analytics, trackers or session-replay tools.
+- No third-party analytics, trackers or session-replay tools. The Firebase SDK is initialized in the browser (`src/lib/firebase/`) **without** Google Analytics: no `measurementId`, `getAnalytics()` is never called, and initialization alone makes no network requests (verified: no external requests, CSP unchanged). Its web config values are public identifiers, read from `NEXT_PUBLIC_FIREBASE_*`; any Firebase service added later must update the CSP and this section.
 - `next dev` would print every server action call with its arguments (passwords, amounts); this is disabled with `logging.serverFunctions: false` in `next.config.ts`.
 - The development-only `console` mail transport prints reset links (which contain tokens) to the terminal by design; it is refused in production.
 

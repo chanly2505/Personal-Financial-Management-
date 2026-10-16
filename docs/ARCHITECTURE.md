@@ -172,6 +172,7 @@ There is deliberately no `src/server/repositories` or `src/server/services` fold
 - **Errors:** services throw `DomainError` subclasses (`NotFoundError`, `ValidationError`, `ConflictError`, `UnauthorizedError`, `RateLimitedError` in `server/errors.ts`). Server actions are wrapped with `action(schema, handler)` (`server/action-result.ts`), which validates input and converts every failure into an `ActionResult`; unexpected errors are logged via `server/logger.ts` and shown as a generic message. Rendering errors hit `(app)/error.tsx` or `global-error.tsx`.
 - **Caching:** authenticated pages are dynamic and per-user; no shared cache holds financial data; `cacheComponents` stays off.
 - **Configuration:** `server/env.ts` validates environment variables at startup with Zod.
+- **Firebase (client SDK):** `lib/firebase/config.ts` reads the public `NEXT_PUBLIC_FIREBASE_*` config (null = disabled), `lib/firebase/client.ts` creates the browser app once (`getFirebaseApp()`), and `components/providers/firebase-init.tsx` in the root layout initializes it. No Analytics. PostgreSQL and Auth.js remain the source of truth for data and sign-in; Firebase services (e.g. Cloud Messaging for reminders) are added on top when a phase needs them.
 - **Observability:** JSON-line logs from `server/logger.ts` (time, level, event, ids, durations, error class) with no financial content; `/api/health` reports database reachability only.
 
 ## 8. Testing strategy
