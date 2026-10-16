@@ -4,9 +4,9 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0–5 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–6 are complete.
 
-**Present and verified (end of Phase 5)**
+**Present and verified (end of Phase 6)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
 - Prisma 7.10 schema with 9 tables and the initial migration (with hand-written CHECK constraints), applied to `finance_dev` and `finance_test`; idempotent local seed (`npm run db:seed`).
 - Validated environment (`src/server/env.ts`), error model (`src/server/errors.ts`, `action-result.ts`), privacy-safe logger, `/api/health` database probe.
@@ -15,8 +15,9 @@ The project lives in `/home/user/personal-finance`. Phases 0–5 are complete.
 - Accounts & categories (Phase 3): CRUD, archive/restore, delete-when-unused, derived balances, per-currency totals, account history, category type rules.
 - Transactions (Phase 4): income/expense/transfer CRUD, transfer reversal, idempotent creates, optimistic edits, row-locked writes, ledger with search/filters/sort/pagination and per-currency totals.
 - Dashboard (Phase 5): period filter (6 presets incl. custom), per-currency income/expenses/net/savings rate, balances today with account breakdown, income-vs-expenses, spending-by-category and monthly-spending charts with table views, recent transactions; server-side aggregation with an index-only covering index.
+- Budgets (Phase 6): monthly per-category, per-currency limits with live spent/remaining/usage from expense records, configurable warning threshold, archive/restore/delete, copy last month, month navigation, category spending breakdown, in-app warnings (header bell) without duplicates, dashboard budget section.
 - Firebase client SDK initialized (no Analytics).
-- `npm run check` passes (typecheck, lint, format check, 301 Vitest tests); 188 Playwright tests pass on desktop, tablet and mobile against a production build.
+- `npm run check` passes (typecheck, lint, format check, 328 Vitest tests); 203 Playwright tests pass on desktop, tablet and mobile against a production build.
 
 **Known issues still open**
 | Issue | Impact | Plan |
@@ -47,7 +48,7 @@ Phase 3  Accounts + Categories ✔                  │
    │                                              │
 Phase 4  Transactions & Transfers + history ✔    │
    │            │                │                │
-Phase 5  Dashboard (v1) ✔   Phase 6 Budgets   Phase 7 Recurring
+Phase 5  Dashboard (v1) ✔   Phase 6 Budgets ✔   Phase 7 Recurring
    │            │                                 │
    │      Phase 8 Savings goals ──────────────────┤
    │            │                                 │
@@ -84,12 +85,10 @@ Delivered: `features/dashboard` — period resolution (`period.ts`, single defin
 Definitions: PRD §6.12. Not built: Q-2 approximate combined total (no FX); budget and goal cards arrive with Phases 6 and 8.
 Verified: `npm run check` (301 tests incl. `dashboard.test.ts` — hand-calculated fixtures with transfers, empty months, multiple accounts, an archived account and two currencies; dashboard totals equal the ledger totals; daily and weekly series sum to the totals — and unit tests for periods, buckets and percentages); `npm run build`; 188 Playwright tests on desktop, tablet, mobile incl. `e2e/dashboard.spec.ts` (period switching updates every widget, empty ranges, custom range, table view, currency switch, link to the ledger); screenshots with seed data.
 
-### Phase 6 — Budgets
-Depends on: Phases 3–5. Decision: **Q-8** (per-currency budgets).
-
-Tasks: monthly budget editor, copy last month, spent/remaining/percent (PRD §6.7), status badges, dashboard budget card.
-
-Exit criteria: spent excludes transfers and income, respects currency and month boundaries in the user's timezone; percent rounding; authorization; e2e set budget → add expense → progress updates.
+### Phase 6 — Budget management ✔ (complete)
+Delivered: migration `…_budgets` (warning threshold, archive, `budget_alerts` with unique (budget, threshold)); `features/budgets` — usage rules (`usage.ts`: remaining, floored usage > 100 % allowed, statuses, exact threshold checks), month helpers, spent computed in SQL per (category, currency, month), create/edit (optimistic concurrency)/archive/restore/delete, copy last month, month overview with per-currency totals and unbudgeted spending, category spending breakdown with "Set budget" shortcuts; in-app warnings synced after every expense create/edit/delete and budget change (advisory-locked per budget, resolve/re-activate without duplicates) plus reconciliation on view; header bell with unread count, list and mark-read; dashboard "Budgets in <month>" section. Progress bars carry icon + words + pattern for overspending (not colour alone) and a threshold tick; meters expose full text values.
+Decisions: Q-8 applied (per currency); monthly periods only (custom periods not justified — PRD §6.7); refunds unchanged (Q-3 open, documented); no email/push.
+Verified: `npm run check` (328 tests incl. `budgets.test.ts` — month boundaries, other categories/currencies/users, income and transfers excluded, edits and deletes of expenses, overspending, zero/invalid limits, validation, stale edits, archive/restore/delete, copy, warnings once per threshold incl. concurrent expenses, resolve and silent re-activation, threshold changes, reconciliation — and `budgets-actions.test.ts`); `npm run build`; 203 Playwright tests on desktop, tablet, mobile incl. `e2e/budgets.spec.ts`; screenshots.
 
 ### Phase 7 — Recurring income and expenses
 Depends on: Phase 4. Decisions: **Q-4** (automatic vs confirm), **Q-5** (pause behaviour). Needs **Q-14** for the scheduler (lazy catch-up works without it).

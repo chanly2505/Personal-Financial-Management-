@@ -8,6 +8,9 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Money } from "@/components/shared/money";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BudgetProgress, BudgetStatusLabel } from "@/features/budgets/components/budget-progress";
+import { monthLabel } from "@/features/budgets/month";
+import { getCurrentMonthSummary } from "@/features/budgets/server/service";
 import { BarList } from "@/features/dashboard/components/bar-list";
 import { ChartCard, DataTable } from "@/features/dashboard/components/chart-card";
 import { CashFlowChart, type ChartPoint, TrendChart } from "@/features/dashboard/components/charts";
@@ -104,7 +107,10 @@ function PeriodSummary({ totals, multi }: { totals: PeriodTotals; multi: boolean
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const user = await requirePageUser();
   const filters = dashboardFiltersSchema.parse(await searchParams);
-  const d = await getDashboard(user, filters);
+  const [d, budgets] = await Promise.all([
+    getDashboard(user, filters),
+    getCurrentMonthSummary(user),
+  ]);
   const { period, charts } = d;
   const range = rangeLabel(period.from, period.to);
   const addButton = (
@@ -345,6 +351,82 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
               )}
             </ChartCard>
           </div>
+        </section>
+
+        <section aria-labelledby="budgets-heading" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="flex flex-col gap-1">
+              <h2 id="budgets-heading" className="text-lg font-semibold">
+                Budgets in {monthLabel(budgets.month)}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                This calendar month&apos;s limits — not affected by the period above.
+              </p>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/budgets">
+                {budgets.budgetCount > 0 ? "View budgets" : "Set a budget"}
+              </Link>
+            </Button>
+          </div>
+          {budgets.budgetCount === 0 ? (
+            <p className="rounded-xl border border-dashed bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              No budgets this month. Set monthly limits for categories to track your spending.
+            </p>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {budgets.currencies.map((c) => (
+                <Card key={c.currency} className="gap-3 px-6">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      Budgeted spending · {c.currency}
+                    </p>
+                    <p className="text-sm font-medium tabular-nums">
+                      {formatMoney(c.spentMinor, c.currency)}{" "}
+                      <span className="text-muted-foreground">
+                        of {formatMoney(c.limitMinor, c.currency)}
+                      </span>
+                    </p>
+                  </div>
+                  <BudgetProgress
+                    usagePercent={c.usagePercent}
+                    // The combined bar is neutral unless the total itself is over;
+                    // individual budgets are counted in words below.
+                    status={c.spentMinor > c.limitMinor ? "over" : "on_track"}
+                    thresholdPercent={100}
+                    valueText={`${c.usagePercent ?? 0}% of ${c.currency} budgets used`}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {c.overCount} over budget · {c.nearCount} near or at the limit
+                  </p>
+                </Card>
+              ))}
+              {budgets.attention.length > 0 && (
+                <Card className="gap-2 px-6 lg:col-span-2">
+                  <p className="text-sm font-medium">Needs attention</p>
+                  <ul className="flex flex-col divide-y text-sm">
+                    {budgets.attention.map((b) => (
+                      <li key={b.id} className="flex items-center justify-between gap-3 py-2">
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate">
+                            {b.category.name} · {b.currency}
+                          </span>
+                          <BudgetStatusLabel status={b.status} />
+                        </span>
+                        <span className="text-right tabular-nums">
+                          {b.usagePercent ?? 0}%
+                          <span className="block text-xs text-muted-foreground">
+                            {formatMoney(b.spentMinor, b.currency)} of{" "}
+                            {formatMoney(b.limitMinor, b.currency)}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+            </div>
+          )}
         </section>
 
         <section aria-labelledby="balances-heading" className="flex flex-col gap-3">

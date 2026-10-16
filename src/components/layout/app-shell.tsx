@@ -16,10 +16,12 @@ export function AppShell({
   children,
   user,
   signOutAction,
+  notifications,
 }: {
   children: React.ReactNode;
   user?: AccountMenuUser;
   signOutAction?: () => Promise<void>;
+  notifications?: React.ReactNode;
 }) {
   return (
     <div className="min-h-dvh">
@@ -31,7 +33,7 @@ export function AppShell({
       </a>
       <AppSidebar />
       <div className="flex min-h-dvh flex-col md:pl-rail lg:pl-sidebar">
-        <AppHeader user={user} signOutAction={signOutAction} />
+        <AppHeader user={user} signOutAction={signOutAction} notifications={notifications} />
         <main
           id="main-content"
           tabIndex={-1}

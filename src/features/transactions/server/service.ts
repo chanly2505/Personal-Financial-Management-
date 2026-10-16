@@ -1,7 +1,8 @@
 import "server-only";
 
+import { syncAlertsForExpenses } from "@/features/budgets/server/service";
 import { assertCategoryUsable } from "@/features/categories/server/service";
-import { type IsoDate, addDays, todayInTimeZone } from "@/lib/dates";
+import { type IsoDate, addDays, startOfMonth, todayInTimeZone } from "@/lib/dates";
 import { CURRENCIES, type CurrencyCode, MAX_AMOUNT_MINOR, parseMoney } from "@/lib/money";
 import type { CurrentUser } from "@/server/auth/session";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
@@ -104,7 +105,7 @@ async function prepareEntry(
   user: User,
   input: EntryInput,
   keepCategoryId?: string,
-): Promise<repo.EntryWrite> {
+): Promise<repo.EntryWrite & { currency: CurrencyCode }> {
   const occurredOn = assertDateAllowed(user, input.occurredOn);
   // An account's currency never changes, so reading it before the lock is safe.
   const accounts = await repo.findAccounts(user.id, [input.accountId]);
@@ -122,17 +123,38 @@ async function prepareEntry(
     occurredOn,
     payee: input.payee ?? null,
     note: input.note ?? null,
+    currency: account.currency,
   };
+}
+
+/** The budget an expense counts toward (its category, currency and month), or none for income. */
+function budgetKey(entry: {
+  type: EntryType;
+  categoryId: string;
+  currency: CurrencyCode;
+  occurredOn: IsoDate;
+}) {
+  return entry.type === "EXPENSE"
+    ? [
+        {
+          categoryId: entry.categoryId,
+          currency: entry.currency,
+          month: startOfMonth(entry.occurredOn),
+        },
+      ]
+    : [];
 }
 
 export async function createEntry(
   user: User,
   input: EntryInput & { clientRequestId: string },
 ): Promise<{ id: string; created: boolean }> {
-  const data = await prepareEntry(user, input);
-  return repo.createEntry(user.id, input.clientRequestId, data, (accounts) => {
+  const { currency, ...data } = await prepareEntry(user, input);
+  const result = await repo.createEntry(user.id, input.clientRequestId, data, (accounts) => {
     assertActive(requireAccount(accounts, data.accountId, "accountId"), "accountId");
   });
+  if (result.created) await syncAlertsForExpenses(user.id, budgetKey({ ...data, currency }));
+  return result;
 }
 
 export async function updateEntry(
@@ -143,16 +165,27 @@ export async function updateEntry(
   if (!existing) throw new NotFoundError("We couldn't find that transaction.");
   // Keeping an archived category on an existing record is fine; switching to one is not.
   const keepCategoryId = input.type === existing.type ? existing.category.id : undefined;
-  const data = await prepareEntry(user, input, keepCategoryId);
+  const { currency, ...data } = await prepareEntry(user, input, keepCategoryId);
   await repo.updateEntry(user.id, input.id, input.expectedUpdatedAt, data, (accounts) => {
     // Covers the old account too: moving a record off an archived account would change its balance.
     assertAllActive(accounts);
     requireAccount(accounts, data.accountId, "accountId");
   });
+  // Both the budget it left and the budget it joined change.
+  await syncAlertsForExpenses(user.id, [
+    ...budgetKey({ ...existing, categoryId: existing.category.id }),
+    ...budgetKey({ ...data, currency }),
+  ]);
 }
 
 export async function deleteEntry(user: Pick<CurrentUser, "id">, id: string): Promise<void> {
+  const existing = await repo.findEntry(user.id, id);
+  if (!existing) throw new NotFoundError("We couldn't find that transaction.");
   await repo.deleteEntry(user.id, id, assertAllActive);
+  await syncAlertsForExpenses(
+    user.id,
+    budgetKey({ ...existing, categoryId: existing.category.id }),
+  );
 }
 
 /* ------------------------------------------------------------------------- */

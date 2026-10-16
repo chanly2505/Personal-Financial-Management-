@@ -1,6 +1,6 @@
 /**
  * Local development seed: one demo user with realistic accounts, categories,
- * transactions, a transfer, a budget and a savings goal.
+ * transactions, a transfer, budgets and a savings goal.
  *
  *   npm run db:seed
  *
@@ -214,15 +214,25 @@ async function main() {
         },
       });
 
-      await tx.budget.create({
-        data: {
-          userId,
-          categoryId: category("Food and drinks").id,
-          month: isoDateToDb(startOfMonth(today)),
-          currency: "USD",
-          amountMinor: money("150.00", "USD"),
-        },
-      });
+      // Budgets in each state: on track, near the limit and over. Their warnings
+      // are created the first time the budgets page is viewed (reconciliation).
+      const budgetMonth = isoDateToDb(startOfMonth(today));
+      for (const b of [
+        { name: "Food and drinks", currency: "USD", amount: "150.00" },
+        { name: "Housing and rent", currency: "USD", amount: "300.00" },
+        { name: "Transportation", currency: "USD", amount: "5.00" },
+        { name: "Food and drinks", currency: "KHR", amount: "10,000" },
+      ] as const) {
+        await tx.budget.create({
+          data: {
+            userId,
+            categoryId: category(b.name).id,
+            month: budgetMonth,
+            currency: b.currency,
+            amountMinor: money(b.amount, b.currency),
+          },
+        });
+      }
 
       const goal = await tx.savingsGoal.create({
         data: {

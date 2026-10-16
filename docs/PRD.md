@@ -105,6 +105,7 @@ All users are non-technical. The UI uses plain language; no accounting jargon ("
 ### 5.5 Budgets
 - Must: set a monthly limit per expense category per currency; copy last month's budgets.
 - Must: show spent, remaining and percentage (§6.7); approaching-limit and over-limit states are distinct and not conveyed by colour alone.
+- Must (Phase 6): edit (limit, warning threshold), archive/restore and delete budgets; month navigation; category spending breakdown incl. unbudgeted spending; in-app warnings at a configurable threshold and at 100 %, never duplicated. No email or push notifications until their infrastructure and consent rules exist.
 
 ### 5.6 Recurring income and expenses
 - Must: create rules (daily/weekly/monthly/yearly, every N), start date, optional end date; pause, resume, edit, delete.
@@ -214,8 +215,13 @@ balance(account, asOf) = opening_balance
 - A budget is (expense category, month, currency, limit > 0). One budget per category per month per currency.
 - **Spent** = Σ expenses in that category, dated within that calendar month, on accounts in the budget's currency — including future-dated entries in the month. Transfers and income never count (refunds: Q-3).
 - **Remaining** = limit − spent (may be negative: "Over by …").
-- **Percent used** = ⌊spent × 100 ÷ limit⌋ (integer arithmetic).
-- Status: under 80% normal; 80–99% "Almost at limit"; ≥ 100% "Over limit" **[D-4]**.
+- **Percent used** = ⌊spent × 100 ÷ limit⌋ (integer arithmetic). May exceed 100 % so overspending is visible. A limit ≤ 0 is impossible (validation + CHECK) and would be shown as "Invalid limit" without dividing.
+- Status **[D-4]**, per budget with its own warning threshold *t* (1–100 %, default 80): below *t* "On track" (neutral); ≥ *t* "Almost at limit"; spent = limit "Limit reached"; spent > limit "Over budget". Each status has an icon and words, never colour alone.
+- **Warnings (in-app):** one when spending first reaches *t* and one at 100 %, stored per (budget, threshold) with a unique constraint, so a threshold warns at most once per budget (= per month). Warnings are re-evaluated after every expense create/edit/delete (old and new budget), budget create/edit/archive/restore, and reconciled when the month is viewed. If spending falls back below a threshold the warning is marked resolved (hidden, kept); reaching it again re-activates the same warning silently — no duplicate. Archived budgets never warn.
+- **Archive:** hides a budget from its month's totals and warnings; restorable; history kept. **Delete** removes the budget and its warnings; expenses are never affected.
+- **Copy last month:** creates the previous month's active budgets (limit and threshold) that do not yet exist, skipping archived categories.
+- **Periods:** monthly only. Custom budget periods are not supported: months match how users plan, keep one budget per category per period unambiguous, and make warnings "once per period" well defined; a custom period would overlap months and double-count. Revisit only with a concrete need.
+- **Refunds (Q-3, open):** not a separate concept yet. A refund recorded as income does not reduce budget spending; to correct a mistaken expense, edit or delete it (the budget updates immediately).
 - No rollover of unused budget in v1 **[D-5]**. Month total = Σ category limits per currency; unbudgeted spending is shown separately.
 - Budgets for archived categories remain visible for past months; new budgets require an active category.
 
@@ -321,7 +327,7 @@ Proposed defaults are used for planning only. Items marked ★ block the phase s
 | Q-5 | Missed occurrences while paused | Skipped on resume | Phase 7 |
 | Q-6 | Do future-dated entries affect the current balance? | No; shown as Upcoming and in a projected balance | ★ Phase 4 |
 | Q-7 | Savings goal model | Earmark contributions (don't move money) | ★ Phase 8 |
-| Q-8 | Budgets across currencies | Per currency only; no conversion | ★ Phase 6 |
+| Q-8 | Budgets across currencies | Per currency only; no conversion — **applied in Phase 6** | ★ Phase 6 |
 | Q-9 | Balance corrections | "Adjust balance" entry excluded from reports and budgets (needs a category flag) | Phase 4 |
 | Q-10 | Archiving an account with money in it | **Applied in Phase 3:** not allowed; current and projected balance must be zero. Not explicitly confirmed | — |
 | Q-11 | Edit history / audit trail in v1 | No | Phase 4 |

@@ -130,6 +130,9 @@ Including `type` in the category key guarantees an expense can only use an expen
 | `budgets_amount_positive_chk` | amount > 0 |
 | `budgets_expense_only_chk` | category_type = EXPENSE |
 | `budgets_month_first_day_chk` | month is the 1st |
+| `budgets_amount_max_chk` | limit ≤ 999,999,999,999,999 minor units |
+| `budgets_alert_threshold_range_chk` / `budget_alerts_threshold_range_chk` | thresholds 1–100 % |
+| `budget_alerts_spent_positive_chk` | spent at warning time > 0 |
 | `savings_goals_target_positive_chk` | target > 0 |
 | `savings_contributions_amount_nonzero_chk` | amount ≠ 0 |
 | `users_session_version_nonnegative_chk` | session_version ≥ 0 |
@@ -149,6 +152,10 @@ Rules the database cannot express cheaply are enforced in services and covered b
 
 `users.email`; `accounts (user_id, name)`; `categories (user_id, type, name)`; `savings_goals (user_id, name)`; `budgets (user_id, category_id, month, currency)`; `transactions (recurring_rule_id, recurrence_date)` — the duplicate-occurrence guard; `transactions (user_id, client_request_id)` and `transfers (user_id, client_request_id)` — one record per form submission (NULLs allowed for seed/recurring rows); `transfers (reverses_transfer_id, user_id)` — each transfer reversed at most once (with a composite FK to the original, same owner).
 
+### Budget warnings (Phase 6)
+
+`budget_alerts` stores one row per (budget, threshold). The unique index makes a duplicate warning impossible even when several expenses are saved at once; evaluation of one budget is serialised with a transaction-scoped advisory lock (`pg_advisory_xact_lock(hashtextextended(budget_id))`), recomputes spent from committed records, inserts with `ON CONFLICT DO NOTHING`/re-activation, and marks rows resolved when no longer reached.
+
 ### Concurrency (Phase 4)
 
 Ledger writes run in one transaction that locks the accounts they touch with `SELECT … FOR SHARE` (sorted by id, so writers never deadlock each other) and re-checks the rules against the locked rows. Archiving or deleting an account locks it `FOR UPDATE` and computes the balance / reference count inside that transaction, so it waits for in-flight writes and later writes see the archived flag. Edits lock the record `FOR UPDATE` and compare `updated_at` with the version the user loaded (stale → conflict). Reversal locks the original transfer, so two concurrent reversals cannot both succeed.
@@ -163,6 +170,7 @@ Ledger writes run in one transaction that locks the accounts they touch with `SE
 | `transfers (user_id, occurred_on DESC)`, `(from_account_id, occurred_on)`, `(to_account_id, occurred_on)` | activity list, balances |
 | `recurring_rules (is_active, next_occurrence_on)` | finding due rules |
 | `budgets (user_id, month)` | month view |
+| `budget_alerts (user_id, read_at, created_at DESC)` | header bell: unread count and newest warnings |
 | `accounts (user_id, is_archived)` | active/archived account lists |
 | `categories (user_id, type, is_archived)` | category pickers by type |
 | `savings_contributions (goal_id, occurred_on)` | goal progress |
@@ -189,6 +197,7 @@ npm run db:deploy                        # apply pending migrations (CI / produc
 | 2 ✔ | `auth_rate_limits`, `password_reset_tokens`, `users.password_changed_at` (migration `…_auth`) | Rate limiting, password recovery, credential audit | — |
 | 2 ✔ | Default categories created with every new user (data, not schema) | PRD §5.3 | — |
 | 4 ✔ | `payee`, `note` (renamed from `description`), `client_request_id`, `reverses_transfer_id` + constraints (migration `…_transactions_ledger`) | Ledger, idempotency, reversals | — |
+| 6 ✔ | `budgets.alert_threshold_percent`, `budgets.archived_at`, `budgets (id, user_id)` unique; new `budget_alerts` table (unique `(budget_id, threshold_percent)`, composite FK to the budget's owner, cascade delete) (migration `…_budgets`) | Configurable warnings without duplicates; archive | — |
 | 5 ✔ | Covering index `transactions_user_date_covering_idx` replaces `(user_id, occurred_on DESC)` (migration `…_dashboard_covering_index`) | Index-only dashboard aggregations | — |
 | later | `categories.kind` enum (`STANDARD`, `ADJUSTMENT`, `REFUND`) or `exclude_from_reports BOOLEAN` | Balance adjustments / refunds treatment | Q-3, Q-9 |
 | later | Drop `transfers_same_amount_chk` | Cross-currency transfers | — |

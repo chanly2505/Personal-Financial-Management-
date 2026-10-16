@@ -69,6 +69,7 @@ model User {
   transfers           Transfer[]
   recurringRules      RecurringRule[]
   budgets             Budget[]
+  budgetAlerts        BudgetAlert[]
   savingsGoals        SavingsGoal[]
   contributions       SavingsContribution[]
   passwordResetTokens PasswordResetToken[]
@@ -236,24 +237,56 @@ model RecurringRule {
 
 /// Monthly spending limit for one expense category in one currency.
 model Budget {
-  id           String          @id @default(uuid(7)) @db.Uuid
-  userId       String          @map("user_id") @db.Uuid
-  categoryId   String          @map("category_id") @db.Uuid
+  id                    String          @id @default(uuid(7)) @db.Uuid
+  userId                String          @map("user_id") @db.Uuid
+  categoryId            String          @map("category_id") @db.Uuid
   /// Always EXPENSE (CHECK constraint); exists so the composite FK can enforce it.
-  categoryType TransactionType @default(EXPENSE) @map("category_type")
+  categoryType          TransactionType @default(EXPENSE) @map("category_type")
   /// First day of the budgeted month (CHECK constraint).
-  month        DateTime        @db.Date
-  currency     Currency
-  amountMinor  BigInt          @map("amount_minor")
-  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  month                 DateTime        @db.Date
+  currency              Currency
+  /// The spending limit, > 0 (CHECK constraint).
+  amountMinor           BigInt          @map("amount_minor")
+  /// Warn when spending reaches this share of the limit (1–100 %, CHECK). 100 % always warns too.
+  alertThresholdPercent Int             @default(80) @map("alert_threshold_percent") @db.SmallInt
+  /// Archived budgets are hidden from the month's overview and never warn; history is kept.
+  archivedAt            DateTime?       @map("archived_at") @db.Timestamptz(3)
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId, userId, categoryType], references: [id, userId, type], onDelete: Cascade, onUpdate: NoAction)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category      @relation(fields: [categoryId, userId, categoryType], references: [id, userId, type], onDelete: Cascade, onUpdate: NoAction)
+  alerts   BudgetAlert[]
 
   @@unique([userId, categoryId, month, currency])
+  @@unique([id, userId])
   @@index([userId, month])
   @@map("budgets")
+}
+
+/// In-app budget warning: one row per (budget, threshold), so a threshold can
+/// warn at most once per budget period (a budget is one month). The row stays
+/// when spending later drops below the threshold (`resolved_at` is set) and is
+/// never re-created, so editing records cannot produce duplicate warnings.
+model BudgetAlert {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  budgetId         String    @map("budget_id") @db.Uuid
+  /// The threshold crossed: the budget's warning percentage, or 100 (limit reached).
+  thresholdPercent Int       @map("threshold_percent") @db.SmallInt
+  /// Spent amount (minor units, budget currency) when the warning was raised.
+  spentMinor       BigInt    @map("spent_minor")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt           DateTime? @map("read_at") @db.Timestamptz(3)
+  /// Set while spending is back below the threshold (e.g. an expense was deleted).
+  resolvedAt       DateTime? @map("resolved_at") @db.Timestamptz(3)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget Budget @relation(fields: [budgetId, userId], references: [id, userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([budgetId, thresholdPercent])
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@map("budget_alerts")
 }
 
 /// A savings target. Progress = sum of its contributions. Contributions are

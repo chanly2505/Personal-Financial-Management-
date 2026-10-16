@@ -1,5 +1,10 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { signOutAction } from "@/features/auth/actions";
+import { toAlertMenuItems } from "@/features/budgets/alert-items";
+import { AlertsMenu } from "@/features/budgets/components/alerts-menu";
+import { ALERT_MENU_LIMIT } from "@/features/budgets/constants";
+import { getAlertsSummary } from "@/features/budgets/server/service";
+import { todayInTimeZone } from "@/lib/dates";
 import { requirePageUser } from "@/server/auth/session";
 
 /**
@@ -9,8 +14,19 @@ import { requirePageUser } from "@/server/auth/session";
  */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requirePageUser();
+  // In-app budget warnings for the header bell (two small indexed queries).
+  const alerts = await getAlertsSummary(user, ALERT_MENU_LIMIT);
   return (
-    <AppShell user={{ name: user.name, email: user.email }} signOutAction={signOutAction}>
+    <AppShell
+      user={{ name: user.name, email: user.email }}
+      signOutAction={signOutAction}
+      notifications={
+        <AlertsMenu
+          unread={alerts.unread}
+          items={toAlertMenuItems(alerts.alerts, user.timezone, todayInTimeZone(user.timezone))}
+        />
+      }
+    >
       {children}
     </AppShell>
   );

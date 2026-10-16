@@ -32,13 +32,13 @@ import {
 /**
  * Ledger mutations. The owner is always the session user (authedAction); ids
  * from the client are only ever looked up within that user's records.
- * Balances are derived, so every change refreshes the account pages too.
+ * Balances, budgets and warnings are derived, so every change refreshes them too.
  */
 
 function refresh() {
-  revalidatePath("/transactions", "layout");
-  revalidatePath("/accounts", "layout");
-  revalidatePath("/dashboard");
+  // Balances, the dashboard, budgets and the header's budget warnings all
+  // derive from the ledger, so refresh the whole signed-in area.
+  revalidatePath("/", "layout");
 }
 
 const runCreateEntry = authedAction(createEntrySchema, async (input, user) => {

@@ -29,7 +29,14 @@ const MODULES = [
 test.describe("module placeholders", () => {
   for (const { path, title } of MODULES.filter(
     (m) =>
-      !["/settings", "/accounts", "/categories", "/transactions", "/dashboard"].includes(m.path),
+      ![
+        "/settings",
+        "/accounts",
+        "/categories",
+        "/transactions",
+        "/dashboard",
+        "/budgets",
+      ].includes(m.path),
   )) {
     test(`${path} renders inside the shell and is clearly not available yet`, async ({ page }) => {
       await page.goto(path);
