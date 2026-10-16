@@ -11,16 +11,38 @@
 # anything: local edits are stashed (git stash) and listed.
 set -euo pipefail
 
+# The whole script is one block, so bash reads it completely before running —
+# safe even when the update below rewrites this file.
+{
+
 REPO_URL="https://github.com/chanly2505/Personal-Financial-Management-.git"
 APP_URL="http://localhost:3000"
 
+LOG="$HOME/Desktop/personal-finance-log.txt"
+mkdir -p "$(dirname "$LOG")"
+# Everything shown is also saved to the log, so problems can be shared.
+exec > >(tee "$LOG") 2>&1
+echo "Personal Finance start — $(date)"
+echo "macOS $(sw_vers -productVersion 2>/dev/null || uname -sr) · $(uname -m)"
+
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
-fail() { printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
+fail() {
+  printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2
+  printf '\nA log was saved to: %s\nSend that file (or a screenshot of this window) to Claude.\n' "$LOG" >&2
+  exit 1
+}
 
 # ---------------------------------------------------------------- tools
 command -v git >/dev/null || fail "Git is missing. Install it with: xcode-select --install"
-command -v node >/dev/null || fail "Node.js is missing. Install the LTS version from https://nodejs.org"
-command -v npm >/dev/null || fail "npm is missing. Reinstall Node.js from https://nodejs.org"
+command -v node >/dev/null || fail "Node.js is missing. Install the LTS version (22 or newer) from https://nodejs.org, then run this again."
+command -v npm >/dev/null || fail "npm is missing. Reinstall Node.js (22 or newer) from https://nodejs.org"
+node_version="$(node -p 'process.versions.node')"
+node_major="${node_version%%.*}"
+node_minor="$(echo "$node_version" | cut -d. -f2)"
+echo "Node $node_version · npm $(npm -v)"
+if [ "$node_major" -lt 22 ] || { [ "$node_major" -eq 22 ] && [ "$node_minor" -lt 12 ]; }; then
+  fail "Node.js $node_version is too old (this app needs 22.12 or newer). Install the LTS version from https://nodejs.org, close Terminal, and run this again."
+fi
 
 # ---------------------------------------------------------------- find the project
 # Only a Git checkout of the GitHub repository can be updated. Old copies
@@ -120,8 +142,15 @@ if command -v pg_isready >/dev/null && ! db_ready; then
 fi
 
 # ---------------------------------------------------------------- packages + migrations
-say "Installing packages and updating the database (first time takes a few minutes)…"
-npm run setup || fail "Setup failed. Send the message above to Claude."
+say "Installing packages (first time takes a few minutes)…"
+if ! npm install --no-audit --no-fund; then
+  # npm 10 can fail with "Cannot read properties of null (reading 'edgesOut')"; npm 11 does not.
+  say "Retrying the install with a newer npm…"
+  npx -y npm@11 install --no-audit --no-fund || fail "Installing packages failed (see the messages above)."
+fi
+say "Updating the database…"
+npx prisma generate >/dev/null || fail "Preparing the database client failed (see the messages above)."
+npx prisma migrate deploy || fail "Updating the database failed. Check DATABASE_URL / MIGRATION_DATABASE_URL in .env (see the messages above)."
 
 # ---------------------------------------------------------------- start
 if lsof -ti tcp:3000 >/dev/null 2>&1; then
@@ -135,3 +164,4 @@ say "Starting the app at $APP_URL (keep this window open; close it to stop the a
     sleep 2
   done ) &
 exec npm run dev
+}
