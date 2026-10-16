@@ -132,7 +132,21 @@ npm run format       # apply Prettier formatting
 
 Integration tests run against `TEST_DATABASE_URL`, migrate it automatically and truncate it between tests. End-to-end tests build the app and run it against `E2E_DATABASE_URL`, which is migrated and cleaned of test users before each run. If Chromium is already installed (CI images, cloud sandboxes), set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` instead of running `npx playwright install`.
 
+## After every `git pull`
+
+New phases add packages and database migrations. Before starting the app:
+
+```bash
+npm run setup        # npm install + prisma generate + prisma migrate deploy
+npm run db:status    # optional: confirms the database is up to date
+```
+
+Then rebuild if you run the production server (`npm run build && npm start`).
+
 ## Troubleshooting
+
+- **Can't sign in / "Something went wrong" right after signing in** — usually the database is missing the latest migrations: run `npm run setup` (or `npm run db:deploy`) and restart. The server log names the missing table. With `npm start`, also check `AUTH_URL` (below).
+- **Accounts are created but signing in sends you back to the sign-in page** — `AUTH_URL` is missing in production mode; set it to the address you open (e.g. `http://localhost:3000`) and rebuild. The log shows `"errorType":"UntrustedHost"`.
 
 - **`Invalid environment configuration`** — a variable in `.env` is missing or malformed; the message names it.
 - **`Can't reach database server`** — start PostgreSQL (`service postgresql start` in containers).

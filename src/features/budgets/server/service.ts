@@ -161,6 +161,27 @@ export async function getAlertsSummary(
   return { unread, alerts: rows.map(toAlertView) };
 }
 
+/**
+ * For the header bell on every page: never let warnings take the app down.
+ * On failure (e.g. a database without the latest migrations) the bell is
+ * hidden and the cause is logged, so signing in and every other page still work.
+ */
+export async function getAlertsSummaryOrNull(user: Pick<CurrentUser, "id">, take: number) {
+  try {
+    return await getAlertsSummary(user, take);
+  } catch (error) {
+    // P2021: "table does not exist" (also surfaced as TableDoesNotExist by the driver adapter).
+    const details = error as { code?: unknown; message?: unknown };
+    const missingTable =
+      details?.code === "P2021" || String(details?.message ?? "").includes("TableDoesNotExist");
+    logger.error("budgets.alerts_unavailable", {
+      ...describeError(error),
+      ...(missingTable && { hint: "Database is missing tables. Run: npm run db:deploy" }),
+    });
+    return null;
+  }
+}
+
 export function markAlertsRead(user: Pick<CurrentUser, "id">, ids?: string[]) {
   return repo.markAlertsRead(user.id, ids);
 }
