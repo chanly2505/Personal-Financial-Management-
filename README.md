@@ -132,6 +132,16 @@ npm run format       # apply Prettier formatting
 
 Integration tests run against `TEST_DATABASE_URL`, migrate it automatically and truncate it between tests. End-to-end tests build the app and run it against `E2E_DATABASE_URL`, which is migrated and cleaned of test users before each run. If Chromium is already installed (CI images, cloud sandboxes), set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` instead of running `npx playwright install`.
 
+## Easiest way on a Mac
+
+Paste this one line into Terminal. It finds (or downloads) the project, gets the latest version, sets `AUTH_URL`, starts PostgreSQL if Homebrew manages it, installs packages, applies database migrations, starts the app and opens it in your browser:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chanly2505/Personal-Financial-Management-/main/scripts/start-mac.sh | bash
+```
+
+Afterwards, double-click **Start Personal Finance.command** in the project folder to do the same. Keep the Terminal window open while you use the app; close it to stop. Local edits are never deleted — they are saved with `git stash`.
+
 ## After every `git pull`
 
 New phases add packages and database migrations. Before starting the app:
