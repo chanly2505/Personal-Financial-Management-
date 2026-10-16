@@ -345,3 +345,15 @@ export async function getLedgerPage(
     .sort((a, b) => CURRENCY_ORDER.indexOf(a.currency) - CURRENCY_ORDER.indexOf(b.currency));
   return { items, total, page, pageCount, summary };
 }
+
+/**
+ * The most recent records (income, expenses and transfers) within a date range,
+ * newest first — one query, no totals. Used by the dashboard.
+ */
+export function listRecentRecords(
+  user: Pick<CurrentUser, "id">,
+  range: { from: IsoDate; to: IsoDate },
+  limit: number,
+) {
+  return repo.listLedger(user.id, { from: range.from, to: range.to, sort: "date_desc" }, 1, limit);
+}

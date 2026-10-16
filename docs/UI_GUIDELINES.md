@@ -148,7 +148,10 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 ## 10. Charts
 
 - Use only when a chart answers a question better than a number or table: trend over time (bar/line), share of spending (horizontal bar preferred over pie).
-- Colours from `chart-1…6` in order; income/expense comparisons use `income` / `expense` tokens.
+- One series → one colour (`chart-1`). Income vs expenses use the dedicated `chart-income` / `chart-expense` pair (validated for colour-vision deficiency with the dataviz palette validator; the text `income`/`expense` tokens are not used for marks). A category's own colour appears only as a swatch beside its label.
+- Ranked labelled amounts (spending by category, account balances) are plain-HTML bar lists: every label and value is text. Time series are Recharts columns (≤ 24px, 4px rounded tops, 2px gap, 1px solid grid, one y-axis, compact ticks).
+- Every chart has a "Show as table" view (or shows all values as text), an `aria-label` summary, and an empty state. Tooltips never gate data.
+- Period changes keep the current view dimmed while loading (no skeleton flash).
 - Always label axes with formatted currency; start bars at zero; include a legend only with ≥ 2 series.
 - No 3D, no gradients, no animation on load beyond Recharts' default (disabled when reduced motion is set).
 

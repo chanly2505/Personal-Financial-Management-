@@ -119,6 +119,7 @@ All users are non-technical. The UI uses plain language; no accounting jargon ("
 - Must: budget progress for this month; savings goal progress; recent activity.
 - Must: one spending-by-category chart for the month. No decorative charts.
 - Must: every figure reconciles exactly with the history list for the same filters (automated tests).
+- Must (Phase 5): a period filter — this month, last month, last 30 days, last 90 days, this year, custom range — shared by every period figure, chart and list; income vs expenses over time; monthly spending trend; account balance breakdown; savings rate. Definitions in §6.12.
 
 ### 5.9 Reports & export
 - Must: income vs. expenses per month for a chosen date range (default last 12 months), per currency.
@@ -270,6 +271,22 @@ balance(account, asOf) = opening_balance
 - The user maps the file to one account; amounts must be in that account's currency. Transfers are never inferred from imports.
 - Likely duplicates (same date, amount, description) are flagged for the user to decide.
 - File size and row limits; no formulas evaluated; imported text treated as plain text.
+
+### 6.12 Dashboard metrics (Phase 5)
+
+| Figure | Definition |
+|---|---|
+| Period | Inclusive calendar dates in the user's timezone. This month = 1st → today; last month = whole previous month; last 30 / 90 days = today and the 29 / 89 days before; this year = 1 Jan → today; custom = any range up to 1,830 days (reversed bounds are swapped). Presets stop at today, so upcoming (future-dated) records are not counted as income or spending that already happened. |
+| Income / Expenses | Σ income / Σ expense records dated in the period, **per currency** (the account's currency). Transfers are never included. Records on archived accounts **are** included — history is never dropped. |
+| Net cash flow | Income − expenses, per currency. |
+| Savings rate | (income − expenses) / income × 100, one decimal, per currency, only when income > 0; otherwise shown as "—" ("No income in this period"). May be negative. |
+| Balance | Current balance (as of today, §6.2) of **active** accounts per currency — the same figures as the Accounts page. Not a period figure and labelled "Balances today". Archived accounts are excluded because they hold zero by rule (Q-10), so nothing is hidden. |
+| Spending by category | Σ expenses per category in the period, in the selected chart currency; top 7 shown, the rest grouped as "Other"; shares of that currency's period spending. |
+| Income vs expenses chart | The same records as the income/expense figures, per day (≤ 31 days), week (Mondays, ≤ 183 days) or month; empty buckets shown as zero. The cards and this chart come from one query, so they always agree. |
+| Monthly spending | Σ expenses per month for the 6 calendar months ending with the period's last month, cut off at the period's end date. |
+| Recent transactions | The 8 newest records (including transfers) dated in the period. |
+
+Amounts in different currencies are never added together. Charts show one currency at a time (switchable).
 
 ## 7. Non-functional requirements
 

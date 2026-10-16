@@ -131,3 +131,19 @@ export function formatCalendarDate(date: IsoDate, today?: IsoDate): string {
   }
   return calendarFormat.format(isoDateToDb(date));
 }
+
+/** Whole days from `a` to `b` (positive when b is later). */
+export function daysBetween(a: IsoDate, b: IsoDate): number {
+  return Math.round((isoDateToDb(b).getTime() - isoDateToDb(a).getTime()) / 86_400_000);
+}
+
+/** Monday of the ISO week containing `date` (matches PostgreSQL date_trunc('week')). */
+export function startOfWeek(date: IsoDate): IsoDate {
+  const weekday = isoDateToDb(date).getUTCDay(); // 0 = Sunday
+  return addDays(date, -((weekday + 6) % 7));
+}
+
+/** First day of the year containing `date`. */
+export function startOfYear(date: IsoDate): IsoDate {
+  return fromParts(parts(date).year, 1, 1);
+}

@@ -63,6 +63,10 @@
   --chart-4: oklch(0.58 0.16 330);
   --chart-5: oklch(0.6 0.13 145);
   --chart-6: oklch(0.65 0.03 258);
+  /* Income vs expenses in charts: validated as a pair for colour-vision deficiency
+     (dataviz validator, light surface: all checks pass). Text never uses these. */
+  --chart-income: oklch(0.46 0.1 160);
+  --chart-expense: oklch(0.65 0.16 48);
 
   /* Sidebar */
   --sidebar: oklch(1 0 0);
@@ -121,6 +125,8 @@
   --chart-4: oklch(0.7 0.15 330);
   --chart-5: oklch(0.72 0.13 150);
   --chart-6: oklch(0.6 0.02 258);
+  --chart-income: oklch(0.64 0.12 160);
+  --chart-expense: oklch(0.5 0.15 35);
 
   --sidebar: oklch(0.19 0.013 262);
   --sidebar-foreground: oklch(0.96 0.004 255);
@@ -176,6 +182,8 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  --color-chart-income: var(--chart-income);
+  --color-chart-expense: var(--chart-expense);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);

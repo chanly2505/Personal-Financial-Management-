@@ -161,7 +161,9 @@ model Transaction {
 
   @@unique([recurringRuleId, recurrenceDate])
   @@unique([userId, clientRequestId])
-  @@index([userId, occurredOn(sort: Desc)])
+  /// Ledger date order and dashboard aggregations. The trailing columns make the
+  /// dashboard's sums index-only (no table reads); see docs/DATABASE.md §6.
+  @@index([userId, occurredOn(sort: Desc), type, accountId, categoryId, amountMinor], map: "transactions_user_date_covering_idx")
   @@index([accountId, occurredOn])
   @@index([userId, categoryId, occurredOn])
   @@map("transactions")

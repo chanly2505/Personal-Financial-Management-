@@ -4,9 +4,9 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0–4 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–5 are complete.
 
-**Present and verified (end of Phase 4)**
+**Present and verified (end of Phase 5)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
 - Prisma 7.10 schema with 9 tables and the initial migration (with hand-written CHECK constraints), applied to `finance_dev` and `finance_test`; idempotent local seed (`npm run db:seed`).
 - Validated environment (`src/server/env.ts`), error model (`src/server/errors.ts`, `action-result.ts`), privacy-safe logger, `/api/health` database probe.
@@ -14,7 +14,9 @@ The project lives in `/home/user/personal-finance`. Phases 0–4 are complete.
 - Authentication & authorization (Phase 2): Auth.js credentials + JWT sessions with database-checked session versions, argon2id, DB-backed rate limits, password change/recovery, sign-out-everywhere, account deletion, profile settings, nonce CSP and security headers, least-privilege DB role.
 - Accounts & categories (Phase 3): CRUD, archive/restore, delete-when-unused, derived balances, per-currency totals, account history, category type rules.
 - Transactions (Phase 4): income/expense/transfer CRUD, transfer reversal, idempotent creates, optimistic edits, row-locked writes, ledger with search/filters/sort/pagination and per-currency totals.
-- `npm run check` passes (typecheck, lint, format check, 268 Vitest tests); 170 Playwright tests pass on desktop, tablet and mobile against a production build.
+- Dashboard (Phase 5): period filter (6 presets incl. custom), per-currency income/expenses/net/savings rate, balances today with account breakdown, income-vs-expenses, spending-by-category and monthly-spending charts with table views, recent transactions; server-side aggregation with an index-only covering index.
+- Firebase client SDK initialized (no Analytics).
+- `npm run check` passes (typecheck, lint, format check, 301 Vitest tests); 188 Playwright tests pass on desktop, tablet and mobile against a production build.
 
 **Known issues still open**
 | Issue | Impact | Plan |
@@ -45,7 +47,7 @@ Phase 3  Accounts + Categories ✔                  │
    │                                              │
 Phase 4  Transactions & Transfers + history ✔    │
    │            │                │                │
-Phase 5  Dashboard (v1)   Phase 6 Budgets   Phase 7 Recurring
+Phase 5  Dashboard (v1) ✔   Phase 6 Budgets   Phase 7 Recurring
    │            │                                 │
    │      Phase 8 Savings goals ──────────────────┤
    │            │                                 │
@@ -77,12 +79,10 @@ Scope changes agreed in the Phase 4 brief: **cross-currency transfers deferred**
 Decisions applied without explicit confirmation: Q-6 (future-dated records allowed up to one year ahead, shown as Upcoming, excluded from current balance), Q-11 (no audit trail). Still open: **Q-3** (refunds — record as income for now), **Q-9** (balance adjustments — not built).
 Verified: `npm run check` (268 tests incl. `transactions`, `ledger` and `transactions-actions` integration suites: balance changes, transfers and reversals, duplicate submissions incl. races, invalid amounts/dates, edit/delete, stale and concurrent edits, archive-vs-write race, category/type mismatch, ownership, filters, pagination, reconciliation of balances and totals with the ledger); `npm run build`; 170 Playwright tests on desktop, tablet, mobile; screenshots.
 
-### Phase 5 — Dashboard
-Depends on: Phase 4. Decision: **Q-2** (approximate combined total).
-
-Tasks: balance per currency, month income/expense/net per currency, recent activity, spending-by-category chart (Recharts, with data-table alternative), optional ≈ combined total; loading skeletons.
-
-Exit criteria: reconciliation integration test — dashboard figures equal sums from the history service for the same period; e2e on desktop, tablet and mobile widths.
+### Phase 5 — Financial dashboard ✔ (complete)
+Delivered: `features/dashboard` — period resolution (`period.ts`, single definition of every preset in the user's timezone), `getDashboard` running five parallel queries (accounts overview, period cash flow, spending by category, 6-month trend, recent records); income/expenses/net/savings rate per currency (null rate without income); balances today per currency with per-account bars (negative balances grow left); Recharts income-vs-expenses (day/week/month buckets) and monthly-spending columns; HTML bar lists for categories and balances; table view, aria summary and empty state on every chart; currency switcher for charts; period picker (segmented on wide screens, dropdown on phones, custom range form) that keeps the view dimmed while loading; floating add button on phones. Migration `…_dashboard_covering_index` replaces `transactions (user_id, occurred_on DESC)` with a covering index (measured on 400k rows: "this year" 13.6 → 3.0 ms, heap reads 3,371 → 0). Chart colours validated for colour-vision deficiency.
+Definitions: PRD §6.12. Not built: Q-2 approximate combined total (no FX); budget and goal cards arrive with Phases 6 and 8.
+Verified: `npm run check` (301 tests incl. `dashboard.test.ts` — hand-calculated fixtures with transfers, empty months, multiple accounts, an archived account and two currencies; dashboard totals equal the ledger totals; daily and weekly series sum to the totals — and unit tests for periods, buckets and percentages); `npm run build`; 188 Playwright tests on desktop, tablet, mobile incl. `e2e/dashboard.spec.ts` (period switching updates every widget, empty ranges, custom range, table view, currency switch, link to the ledger); screenshots with seed data.
 
 ### Phase 6 — Budgets
 Depends on: Phases 3–5. Decision: **Q-8** (per-currency budgets).

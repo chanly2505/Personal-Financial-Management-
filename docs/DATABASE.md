@@ -157,7 +157,7 @@ Ledger writes run in one transaction that locks the accounts they touch with `SE
 
 | Index | Serves |
 |---|---|
-| `transactions (user_id, occurred_on DESC)` | activity list, date-range filters, monthly totals |
+| `transactions (user_id, occurred_on DESC, type, account_id, category_id, amount_minor)` — `transactions_user_date_covering_idx` (Phase 5) | ledger date order and date-range filters; dashboard cash flow, category and trend sums as index-only scans (measured on 400k rows: 13.6 → 3.0 ms for a year) |
 | `transactions (account_id, occurred_on)` | account balance and account history |
 | `transactions (user_id, category_id, occurred_on)` | budget spent, category reports |
 | `transfers (user_id, occurred_on DESC)`, `(from_account_id, occurred_on)`, `(to_account_id, occurred_on)` | activity list, balances |
@@ -189,6 +189,7 @@ npm run db:deploy                        # apply pending migrations (CI / produc
 | 2 ✔ | `auth_rate_limits`, `password_reset_tokens`, `users.password_changed_at` (migration `…_auth`) | Rate limiting, password recovery, credential audit | — |
 | 2 ✔ | Default categories created with every new user (data, not schema) | PRD §5.3 | — |
 | 4 ✔ | `payee`, `note` (renamed from `description`), `client_request_id`, `reverses_transfer_id` + constraints (migration `…_transactions_ledger`) | Ledger, idempotency, reversals | — |
+| 5 ✔ | Covering index `transactions_user_date_covering_idx` replaces `(user_id, occurred_on DESC)` (migration `…_dashboard_covering_index`) | Index-only dashboard aggregations | — |
 | later | `categories.kind` enum (`STANDARD`, `ADJUSTMENT`, `REFUND`) or `exclude_from_reports BOOLEAN` | Balance adjustments / refunds treatment | Q-3, Q-9 |
 | later | Drop `transfers_same_amount_chk` | Cross-currency transfers | — |
 | 7 | `recurring_rules.paused_at DATE` (nullable) | Skip occurrences missed while paused | Q-4, Q-5 |
