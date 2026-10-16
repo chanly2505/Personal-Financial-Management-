@@ -202,10 +202,10 @@ balance(account, asOf) = opening_balance
 - A **rule** defines: name, type (income/expense), account (its currency), category of the matching type, amount > 0, optional payee and note, frequency (**weekly, monthly, yearly**; daily is not offered yet), interval N (every N periods, 1–365), start date, optional end date. A rule is a schedule, never a transaction; the UI labels them differently and lists scheduled dates as "Upcoming — not posted".
 - **States:** Active, Paused (with a reason: by the user, account archived, category archived, repeated failures) and Completed (no dates left).
 - **Calendar policy:** occurrence *k* is computed **from the start date** (not from the previous occurrence). Monthly and yearly dates clamp to the last day of short months: 31 Jan → 28/29 Feb → 31 Mar → 30 Apr; 29 Feb → 28 Feb in common years → 29 Feb in leap years. Weekly = start + 7 × N × k days. Dates are calendar dates in the user's timezone.
-- An occurrence becomes a real transaction **on its date or later, never earlier**, posted **automatically** **[Q-4, applied]**. Posted transactions link to their rule ("Posted by Recurring: …") and are otherwise ordinary records.
-- **Execution** is done only by the scheduled engine (docs/OPERATIONS.md): never because a page is opened. Each occurrence is unique on `(rule, occurrence date)`; posting, history and the next date are written in one database transaction under a row lock that concurrent workers skip; retries and concurrent runs cannot post twice.
+- An occurrence becomes a real transaction **on its date or later, never earlier**, posted **automatically** **[Q-4, confirmed]**. Posted transactions link to their rule ("Posted by Recurring: …") and are otherwise ordinary records.
+- **Execution** is done only by the scheduled engine (docs/OPERATIONS.md): never because a page is opened (confirmed by the user, Phase 7). Each occurrence is unique on `(rule, occurrence date)`; posting, history and the next date are written in one database transaction under a row lock that concurrent workers skip; retries and concurrent runs cannot post twice.
 - **Catch-up policy:** a new rule starts at its first date on or after today; past dates (start up to one year back) are posted only if the user explicitly chooses "Also record the past occurrences". Dates missed while the scheduler was not running and the rule was active are posted by the next run (≤ 50 per rule per run).
-- **Paused** rules post nothing. On resume, dates that fell during the pause are **skipped** **[Q-5, applied]**.
+- **Paused** rules post nothing. On resume, dates that fell during the pause are **skipped** **[Q-5, confirmed]**.
 - **Editing** affects only dates not yet posted; a date already posted is never posted again. **Deleting** a rule keeps its posted transactions (the link is removed).
 - **Archived account or category:** new and edited rules are refused; the engine pauses an existing rule with that reason; resuming requires restoring it (or editing the rule).
 - **Failures** are recorded per occurrence with a safe reason and retried on later runs; after 5 failed attempts the rule is paused and shown to the user.
@@ -324,8 +324,8 @@ Proposed defaults are used for planning only. Items marked ★ block the phase s
 | Q-1 | KHR precision | **Applied in Phase 3:** whole riel only (exponent 0). Not explicitly confirmed; change before real data exists if needed | — |
 | Q-2 | Show approximate combined totals across currencies? | Yes, dashboard only, user-maintained rate, labelled "≈ approx." | Phase 5 |
 | Q-3 | How are refunds recorded? | Income in a "Refunds" category; budgets not reduced. Alternative: a refund entry that reduces spending in the original expense category | ★ Phase 4 |
-| Q-4 | Recurring entries: automatic or confirm first? | Automatic on the due date — **applied in Phase 7** | ★ Phase 7 |
-| Q-5 | Missed occurrences while paused | Skipped on resume — **applied in Phase 7** | Phase 7 |
+| Q-4 | Recurring entries: automatic or confirm first? | Automatic on the due date — **confirmed by the user (Phase 7)** | ★ Phase 7 |
+| Q-5 | Missed occurrences while paused | Skipped on resume — **confirmed by the user (Phase 7)** | Phase 7 |
 | Q-6 | Do future-dated entries affect the current balance? | No; shown as Upcoming and in a projected balance | ★ Phase 4 |
 | Q-7 | Savings goal model | Earmark contributions (don't move money) | ★ Phase 8 |
 | Q-8 | Budgets across currencies | Per currency only; no conversion — **applied in Phase 6** | ★ Phase 6 |
