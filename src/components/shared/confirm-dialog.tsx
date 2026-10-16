@@ -15,8 +15,11 @@ import {
 import { Button } from "@/components/ui/button";
 
 interface ConfirmDialogProps {
-  /** Element that opens the dialog, e.g. a "Delete" button. */
-  trigger: React.ReactNode;
+  /** Element that opens the dialog, e.g. a "Delete" button. Omit when controlled. */
+  trigger?: React.ReactNode;
+  /** Controlled mode (e.g. opened from a dropdown menu item). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   /** Name the thing: "Delete 'Groceries – 12 Oct'?" */
   title: string;
   description: string;
@@ -34,6 +37,8 @@ interface ConfirmDialogProps {
  */
 export function ConfirmDialog({
   trigger,
+  open: controlledOpen,
+  onOpenChange,
   title,
   description,
   confirmLabel = "Delete",
@@ -41,7 +46,12 @@ export function ConfirmDialog({
   destructive = true,
   onConfirm,
 }: ConfirmDialogProps) {
-  const [open, setOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const [pending, setPending] = React.useState(false);
 
   async function handleConfirm() {
@@ -56,7 +66,7 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

@@ -4,7 +4,7 @@ Track income, expenses, transfers, accounts, budgets, recurring items, savings g
 
 Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL 16 and Prisma 7.
 
-**Status:** Phase 2 (authentication and authorization) complete: registration, sign-in/out, session revocation, password change and recovery, profile settings, account deletion. Financial modules are placeholders marked "Not available yet" until their phase — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Status:** Phase 3 complete — authentication, profile settings, **accounts** (cash, bank, wallet; balances per currency; history) and **categories** (income/expense defaults and custom). Remaining modules are placeholders marked "Not available yet" until their phase — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Documentation
 

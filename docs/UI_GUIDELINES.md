@@ -159,7 +159,7 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 |---|---|---|
 | Actions | `Button` (variants `default` · `secondary` · `outline` · `ghost` · `link` · `destructive`; sizes `sm` · `default` · `lg` · `icon`; `loading`, `disabled`, `asChild`) | `ui/button.tsx` |
 | Text input | `Input`, `Textarea` | `ui/input.tsx`, `ui/textarea.tsx` |
-| Choice | `Select` (+ `SelectTrigger`, `SelectContent`, `SelectItem`, …) | `ui/select.tsx` |
+| Choice | `SelectField` (use inside `FormField`: puts the label/description on the trigger) · low-level `Select` parts | `shared/select-field.tsx`, `ui/select.tsx` |
 | Date | `DateInput` | `ui/date-input.tsx` |
 | Field wrapper | `FormField` — label, description, error, wires `aria-describedby` / `aria-invalid` | `shared/form-field.tsx` |
 | Modal | `Dialog`, `Sheet` (side panels, phone "More") | `ui/dialog.tsx`, `ui/sheet.tsx` |
@@ -173,7 +173,7 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 | Feedback | `toast()` from `sonner`; host `Toaster` mounted in the root layout | `ui/sonner.tsx` |
 | Loading | `Skeleton` | `ui/skeleton.tsx` |
 | Empty / error | `EmptyState`, `ErrorState` | `shared/` |
-| Money | `Money` | `shared/money.tsx` |
+| Money | `Money` (display), `MoneyInput` (amount entry with currency prefix; works inside `FormField`) | `shared/money.tsx`, `shared/money-input.tsx` |
 | Placeholders | `PlannedFeature`, `ModulePlaceholder` | `shared/`, `layout/` |
 | Page frame | `AppShell`, `AppSidebar`, `MobileNav`, `AppHeader`, `PageContainer`, `PageHeader` (with breadcrumbs), `Breadcrumb` | `layout/`, `ui/breadcrumb.tsx` |
 
@@ -184,6 +184,8 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 - `src/features/<module>/components/` — module UI. Server components by default; `"use client"` only for interactivity, kept small and leaf-level.
 - File names are kebab-case (`confirm-dialog.tsx`), matching shadcn; exported components are PascalCase. Props use an explicit `interface`.
 - Every interactive component must work with keyboard only and expose an accessible name; this is verified on the design-system page by e2e tests.
+- `FormField` attaches the label, description and error to its **direct child element**. Children that render no element of their own (Radix `Select` root) or wrap the input (prefix adornments) must forward those props — use `SelectField` and `MoneyInput`.
+- Option groups (radio cards, colour swatches) use real `<input type="radio">` stretched transparently over the visual (`absolute inset-0 opacity-0`) so they are keyboard-, screen-reader- and touch-friendly.
 
 ## 12. Copy
 

@@ -111,3 +111,23 @@ export function endOfMonth(date: IsoDate): IsoDate {
 export function compareIsoDates(a: IsoDate, b: IsoDate): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
+
+const calendarFormat = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/**
+ * Display a calendar date as "15 Oct 2026" (docs/UI_GUIDELINES.md §6), or
+ * "Today" / "Yesterday" relative to `today` when given. Formatting happens in
+ * UTC because IsoDate has no time zone — the date is already the user's date.
+ */
+export function formatCalendarDate(date: IsoDate, today?: IsoDate): string {
+  if (today) {
+    if (date === today) return "Today";
+    if (date === addDays(today, -1)) return "Yesterday";
+  }
+  return calendarFormat.format(isoDateToDb(date));
+}

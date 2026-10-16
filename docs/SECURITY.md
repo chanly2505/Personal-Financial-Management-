@@ -68,7 +68,7 @@ Three independent layers; a bug in one is caught by the next.
 
 | Context | Not signed in | Signed in, not allowed | Someone else's record |
 |---|---|---|---|
-| Page | redirect to `/sign-in?callbackUrl=…` | — | `notFound()` → 404 page |
+| Page | redirect to `/sign-in?callbackUrl=…` | — | `notFound()` → the same not-found page as an unknown id. Pages under the shared loading skeleton stream, so the HTTP status is 200 with a `noindex` not-found body; the content is identical either way (no existence leak). |
 | Server action | `{ ok: false, code: "UNAUTHORIZED", error: "Please sign in to continue." }` | `code: "FORBIDDEN"` (`ForbiddenError`) | `code: "NOT_FOUND"` |
 | Route handler | `401 { error: { code: "UNAUTHORIZED", message } }` | `403 { error: { code: "FORBIDDEN", … } }` | `404 { error: { code: "NOT_FOUND", … } }` |
 
@@ -180,3 +180,4 @@ Each phase's exit criteria include:
 | Password recovery single-use, hashed, expiring, revoking | auth-service "password recovery" block |
 | Open-redirect protection | `tests/unit/safe-redirect.test.ts` · e2e "ignores off-site callback URLs" |
 | Security headers and cookie flags | e2e "security headers" block |
+| Accounts & categories: ownership, validation, currency rules (Phase 3) | `tests/integration/accounts.test.ts`, `categories.test.ts`, `accounts-categories-actions.test.ts` · `e2e/accounts.spec.ts` "another user's account is not found" |

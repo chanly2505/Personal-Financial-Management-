@@ -79,3 +79,14 @@ describe("date arithmetic", () => {
     expect(endOfMonth(toIsoDate("2028-02-01"))).toBe("2028-02-29");
   });
 });
+
+describe("formatCalendarDate", () => {
+  it("formats without timezone drift and uses relative words when asked", async () => {
+    const { formatCalendarDate } = await import("@/lib/dates");
+    expect(formatCalendarDate(toIsoDate("2026-01-01"))).toBe("1 Jan 2026");
+    const today = toIsoDate("2026-10-16");
+    expect(formatCalendarDate(today, today)).toBe("Today");
+    expect(formatCalendarDate(toIsoDate("2026-10-15"), today)).toBe("Yesterday");
+    expect(formatCalendarDate(toIsoDate("2026-10-14"), today)).toBe("14 Oct 2026");
+  });
+});

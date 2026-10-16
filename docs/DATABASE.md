@@ -2,7 +2,7 @@
 
 PostgreSQL 16, managed with Prisma Migrate. Source of truth: `prisma/schema.prisma` plus hand-written constraints at the end of each migration (`prisma/migrations/*/migration.sql`).
 
-The business rules this schema implements are in [PRD §6 Financial rules](PRD.md#6-financial-rules). Status: migrations `…_init` and `…_auth` are applied to the development, test and e2e databases; no production data exists, so the schema can still change freely. The app connects with a least-privilege role (SECURITY.md §8); migrations run as the owner via `MIGRATION_DATABASE_URL`. Planned changes are listed in §8.
+The business rules this schema implements are in [PRD §6 Financial rules](PRD.md#6-financial-rules). Status: migrations `…_init`, `…_auth` and `…_accounts_categories` are applied to the development, test and e2e databases; no production data exists, so the schema can still change freely. The app connects with a least-privilege role (SECURITY.md §8); migrations run as the owner via `MIGRATION_DATABASE_URL`. Planned changes are listed in §8.
 
 ## 1. Entity relationships
 
@@ -32,8 +32,8 @@ erDiagram
 | Table | Purpose |
 |---|---|
 | `users` | Identity, argon2id password hash, session version (revocation), password-changed timestamp, preferences (base currency, timezone, KHR/USD rate). |
-| `accounts` | Cash / bank / digital wallet. One currency, fixed. Opening balance. |
-| `categories` | Income or expense label, per user. |
+| `accounts` | Cash / bank / digital wallet / other. One currency, fixed. Opening balance. Active or archived (`is_archived` + `archived_at`). |
+| `categories` | Income or expense label, per user; colour token; active or archived (`is_archived` + `archived_at`). |
 | `transactions` | Income or expense on one account with one category. |
 | `transfers` | Movement between two of the user's accounts; two amounts for cross-currency. |
 | `recurring_rules` | Schedule template for income/expense. |
@@ -98,7 +98,18 @@ Including `type` in the category key guarantees an expense can only use an expen
 ### Delete behaviour
 
 - Deleting a **user** cascades to all their data.
-- **Accounts** and **categories** referenced by transactions, transfers or rules cannot be deleted (`NO ACTION`); the UI archives them instead.
+- **Accounts** and **categories** referenced by transactions, transfers, rules (or, for categories, budgets) cannot be deleted (`NO ACTION`); the service refuses with an explanation and the UI offers archiving instead.
+
+### Archiving with history (Phase 3)
+
+| | Account | Category |
+|---|---|---|
+| Allowed when | Current **and** projected balance are zero (PRD Q-10), so totals never hide money | Always |
+| Past records | Unchanged; still shown on the account page and in reports | Unchanged; still show the category name, marked "(archived)" |
+| New records | Blocked (`getUsableAccount` → "This account is archived") | Blocked (`assertCategoryUsable`); not offered in pickers |
+| Totals | Excluded from per-currency totals | — |
+| Restore | Any time, unless another account now has the same name | Any time |
+| Delete | Only with no transactions, transfers, recurring rules or savings goals | Only with no transactions, recurring rules or budgets |
 - Deleting a **category** deletes its budgets; deleting a **goal** deletes its contributions.
 - Deleting a **recurring rule**: the FK from `transactions` is `NO ACTION`, so the service first detaches created transactions (sets `recurring_rule_id` and `recurrence_date` to NULL) and then deletes the rule, in one transaction (PRD §6.6).
 
@@ -125,8 +136,11 @@ Including `type` in the category key guarantees an expense can only use an expen
 | `password_reset_tokens_hash_format_chk` | token_hash is 64 lowercase hex characters (a SHA-256, never a raw token) |
 | `auth_rate_limits_key_format_chk` | key is a SHA-256 hex digest (no raw email/IP) |
 | `auth_rate_limits_count_positive_chk` | count > 0 |
+| `accounts_archived_consistent_chk` / `categories_archived_consistent_chk` | `is_archived` is true exactly when `archived_at` is set |
+| `accounts_opening_balance_range_chk` | opening balance within ±999,999,999,999,999 minor units |
+| `categories_color_token_chk` | colour is NULL or one of `chart-1` … `chart-6` |
 
-Rules the database cannot express cheaply are enforced in services and covered by integration tests: same-currency transfers have equal amounts; account currency is immutable; budget currency matches the user's accounts in use.
+Rules the database cannot express cheaply are enforced in services and covered by integration tests: same-currency transfers have equal amounts; account currency is immutable; account names are unique per user ignoring case and extra spaces (the database unique index is case-sensitive; names are normalised in the service); category names likewise per user and type; budget currency matches the user's accounts in use. Name length is capped by the column types (`VARCHAR(60)` accounts, `VARCHAR(40)` categories).
 
 ### Uniqueness
 
@@ -142,6 +156,8 @@ Rules the database cannot express cheaply are enforced in services and covered b
 | `transfers (user_id, occurred_on DESC)`, `(from_account_id, occurred_on)`, `(to_account_id, occurred_on)` | activity list, balances |
 | `recurring_rules (is_active, next_occurrence_on)` | finding due rules |
 | `budgets (user_id, month)` | month view |
+| `accounts (user_id, is_archived)` | active/archived account lists |
+| `categories (user_id, type, is_archived)` | category pickers by type |
 | `savings_contributions (goal_id, occurred_on)` | goal progress |
 
 Revisit with `EXPLAIN ANALYZE` once realistic seed data exists (Phase 10).

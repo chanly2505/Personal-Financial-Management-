@@ -92,7 +92,7 @@ All files under `server/` start with `import "server-only"`, so a mistaken clien
 | Module | Folder | Responsibility | Owns tables | Depends on (services) |
 |---|---|---|---|---|
 | Authentication & profile | `features/auth`, `features/settings` | Registration, sign-in, sessions, password change, rate limiting, profile & preferences, account deletion | `users`, `auth_rate_limits` (Phase 2) | categories (seed defaults) |
-| Accounts | `features/accounts` | Account CRUD/archival, derived balances | `accounts` | — |
+| Accounts | `features/accounts` | Account CRUD/archival, derived balances (the one read-only aggregate over `transactions`/`transfers`, in its repository) | `accounts` | — |
 | Categories | `features/categories` | Category CRUD/archival, default seed | `categories` | — |
 | Transactions | `features/transactions` | Income/expense and transfer CRUD, history, filters, CSV export | `transactions`, `transfers` | accounts, categories |
 | Dashboard | `features/dashboard` | Read-only composition of other modules | — | accounts, transactions, budgets, goals |
@@ -127,8 +127,10 @@ src/
   proxy.ts                           ✔ optimistic redirect + per-request CSP nonce
   components/ui/                     ✔ shadcn/ui primitives (UI_GUIDELINES §11)
   components/layout/                 ✔ app shell, sidebar, mobile nav, header, page header/container, navigation.ts
-  components/shared/                 ✔ FormField, EmptyState, ErrorState, ConfirmDialog, Money, PlannedFeature
-  features/categories/default-categories.ts  ✔ seed data shared by local seed and registration
+  components/shared/                 ✔ FormField, SelectField, MoneyInput, EmptyState, ErrorState, ConfirmDialog, Money, PlannedFeature
+  features/accounts, features/categories     ✔ schemas, types, actions, components, server/{service,repository}
+  features/transactions/server              ✔ read-only account activity (create/edit in Phase 4)
+  features/categories/default-categories.ts  ✔ defaults shared by registration and the local seed
   features/<module>/...              see §3
   server/db.ts, env.ts               ✔ Prisma client, validated environment
   server/errors.ts, action-result.ts ✔ DomainError types; ActionResult + action() wrapper

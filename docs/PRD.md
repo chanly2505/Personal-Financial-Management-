@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Phase 2 complete (authentication & authorization) |
+| Status | Phase 3 complete (accounts & categories) |
 | Related | [ARCHITECTURE](ARCHITECTURE.md) · [DATABASE](DATABASE.md) · [SECURITY](SECURITY.md) · [UI_GUIDELINES](UI_GUIDELINES.md) · [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) |
 
 Decision markers used in this document:
@@ -82,14 +82,16 @@ All users are non-technical. The UI uses plain language; no accounting jargon ("
 - New users receive a default set of categories and are guided to create their first account.
 
 ### 5.2 Accounts
-- Must: create, rename, archive/unarchive; choose type (cash, bank, digital wallet, other) and currency; set an opening balance.
+- Must: create, rename, archive/restore; choose type (cash, bank, digital wallet, other) and currency; set an opening balance. The create form offers starting points (Cash, ABA Bank, ACLEDA Bank, Wing) but any name is allowed; names are unique per user, ignoring case and extra spaces.
 - Must: show current balance (derived, §6.2) and transaction history per account.
 - Must: currency cannot be changed after creation.
-- Must: an account with any history cannot be deleted, only archived (§6.10).
+- Must: an account with any history cannot be deleted, only archived (§6.10). Totals are shown per currency and never combined.
 
 ### 5.3 Categories
-- Must: default income and expense categories seeded per user; create, rename, recolour, archive.
-- Must: a category used by any record cannot be deleted, only archived; its type (income/expense) cannot change once used.
+- Must: default categories seeded per user — income: Salary, Business income, Freelance income, Investment income, Other income; expense: Food and drinks, Transportation, Housing and rent, Utilities, Shopping, Health, Entertainment, Education, Family, Subscriptions, Other expenses.
+- Must: create, rename, recolour (fixed palette), archive and restore; delete only while unused.
+- Must: every category is income **or** expense; an income record can only use an income category and vice versa (service check + composite foreign key).
+- Must: the type cannot change once the category is used; archiving keeps it on past records but removes it from pickers.
 
 ### 5.4 Transactions & transfers
 - Must: create, edit and delete income, expenses and transfers.
@@ -290,7 +292,7 @@ Proposed defaults are used for planning only. Items marked ★ block the phase s
 
 | ID | Question | Proposed default | Blocks |
 |---|---|---|---|
-| Q-1 | KHR precision | Whole riel only (exponent 0) | ★ Phase 3 (already in schema; reversible until real data exists) |
+| Q-1 | KHR precision | **Applied in Phase 3:** whole riel only (exponent 0). Not explicitly confirmed; change before real data exists if needed | — |
 | Q-2 | Show approximate combined totals across currencies? | Yes, dashboard only, user-maintained rate, labelled "≈ approx." | Phase 5 |
 | Q-3 | How are refunds recorded? | Income in a "Refunds" category; budgets not reduced. Alternative: a refund entry that reduces spending in the original expense category | ★ Phase 4 |
 | Q-4 | Recurring entries: automatic or confirm first? | Automatic on the due date | ★ Phase 7 |
@@ -299,7 +301,7 @@ Proposed defaults are used for planning only. Items marked ★ block the phase s
 | Q-7 | Savings goal model | Earmark contributions (don't move money) | ★ Phase 8 |
 | Q-8 | Budgets across currencies | Per currency only; no conversion | ★ Phase 6 |
 | Q-9 | Balance corrections | "Adjust balance" entry excluded from reports and budgets (needs a category flag) | Phase 4 |
-| Q-10 | Archiving an account with money in it | Not allowed; balance must be zero | Phase 3 |
+| Q-10 | Archiving an account with money in it | **Applied in Phase 3:** not allowed; current and projected balance must be zero. Not explicitly confirmed | — |
 | Q-11 | Edit history / audit trail in v1 | No | Phase 4 |
 | Q-12 | Email provider for password reset / email verification | Recovery flow is implemented behind `MAIL_TRANSPORT`; production stays `none` (feature hidden) until a provider is chosen | Production enablement of recovery |
 | Q-13 | Credit cards / liabilities | Out of v1 | — |

@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { FormField } from "@/components/shared/form-field";
+import { SelectField } from "@/components/shared/select-field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,13 +27,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -43,15 +38,7 @@ export function InteractiveDemos() {
         <h2 className="text-lg font-semibold">Select and tabs</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <FormField id="ds-currency" label="Currency">
-            <Select defaultValue="USD">
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a currency" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="USD">US Dollar (USD)</SelectItem>
-                <SelectItem value="KHR">Cambodian Riel (KHR)</SelectItem>
-              </SelectContent>
-            </Select>
+            <CurrencyDemo />
           </FormField>
           <Tabs defaultValue="expense">
             <TabsList>
@@ -151,5 +138,24 @@ export function InteractiveDemos() {
         </div>
       </section>
     </>
+  );
+}
+
+function CurrencyDemo(props: {
+  id?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
+}) {
+  const [value, setValue] = useState("USD");
+  return (
+    <SelectField
+      {...props}
+      value={value}
+      onValueChange={setValue}
+      options={[
+        { value: "USD", label: "US Dollar (USD)" },
+        { value: "KHR", label: "Cambodian Riel (KHR)" },
+      ]}
+    />
   );
 }

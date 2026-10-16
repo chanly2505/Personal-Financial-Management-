@@ -137,7 +137,7 @@ async function main() {
         },
         {
           account: bank,
-          cat: "Housing & utilities",
+          cat: "Housing and rent",
           type: "EXPENSE",
           amount: money("320.00", "USD"),
           offset: -13,
@@ -145,7 +145,7 @@ async function main() {
         },
         {
           account: bank,
-          cat: "Phone & internet",
+          cat: "Utilities",
           type: "EXPENSE",
           amount: money("15.00", "USD"),
           offset: -10,
@@ -153,7 +153,7 @@ async function main() {
         },
         {
           account: cash,
-          cat: "Food & drinks",
+          cat: "Food and drinks",
           type: "EXPENSE",
           amount: money("4.50", "USD"),
           offset: -3,
@@ -161,7 +161,7 @@ async function main() {
         },
         {
           account: cash,
-          cat: "Transport",
+          cat: "Transportation",
           type: "EXPENSE",
           amount: money("2.25", "USD"),
           offset: -2,
@@ -169,7 +169,7 @@ async function main() {
         },
         {
           account: wallet,
-          cat: "Food & drinks",
+          cat: "Food and drinks",
           type: "EXPENSE",
           amount: money("8,000", "KHR"),
           offset: -1,
@@ -177,7 +177,7 @@ async function main() {
         },
         {
           account: wallet,
-          cat: "Gifts received",
+          cat: "Other income",
           type: "INCOME",
           amount: money("40,000", "KHR"),
           offset: 0,
@@ -212,7 +212,7 @@ async function main() {
       await tx.budget.create({
         data: {
           userId,
-          categoryId: category("Food & drinks").id,
+          categoryId: category("Food and drinks").id,
           month: isoDateToDb(startOfMonth(today)),
           currency: "USD",
           amountMinor: money("150.00", "USD"),

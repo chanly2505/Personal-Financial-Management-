@@ -82,12 +82,16 @@ model User {
 model FinancialAccount {
   id                  String      @id @default(uuid(7)) @db.Uuid
   userId              String      @map("user_id") @db.Uuid
-  name                String
+  /// Unique per user, case-insensitively (enforced in the accounts service).
+  name                String      @db.VarChar(60)
   type                AccountType
+  /// Fixed at creation; the service never updates it (history stays in one currency).
   currency            Currency
   /// May be negative (e.g. an overdrawn account).
   openingBalanceMinor BigInt      @default(0) @map("opening_balance_minor")
+  /// Archived accounts keep all history but are hidden from pickers and totals.
   isArchived          Boolean     @default(false) @map("is_archived")
+  archivedAt          DateTime?   @map("archived_at") @db.Timestamptz(3)
   createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -100,17 +104,21 @@ model FinancialAccount {
 
   @@unique([userId, name])
   @@unique([id, userId])
+  @@index([userId, isArchived])
   @@map("accounts")
 }
 
 model Category {
   id         String          @id @default(uuid(7)) @db.Uuid
   userId     String          @map("user_id") @db.Uuid
-  name       String
+  name       String          @db.VarChar(40)
+  /// Income or expense. Cannot change once the category has been used (composite FKs).
   type       TransactionType
-  /// Design-token name (e.g. "chart-3"), never a raw colour value.
-  color      String?
+  /// Design-token name ("chart-1" … "chart-6"), never a raw colour value.
+  color      String?         @db.VarChar(16)
+  /// Archived categories stay attached to past records but cannot be picked for new ones.
   isArchived Boolean         @default(false) @map("is_archived")
+  archivedAt DateTime?       @map("archived_at") @db.Timestamptz(3)
   createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -121,6 +129,7 @@ model Category {
 
   @@unique([userId, type, name])
   @@unique([id, userId, type])
+  @@index([userId, type, isArchived])
   @@map("categories")
 }
 

@@ -4,15 +4,16 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0, 1 and 2 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–3 are complete.
 
-**Present and verified (end of Phase 2)**
+**Present and verified (end of Phase 3)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
 - Prisma 7.10 schema with 9 tables and the initial migration (with hand-written CHECK constraints), applied to `finance_dev` and `finance_test`; idempotent local seed (`npm run db:seed`).
 - Validated environment (`src/server/env.ts`), error model (`src/server/errors.ts`, `action-result.ts`), privacy-safe logger, `/api/health` database probe.
 - Design tokens and 20 UI primitives, 6 shared components, the responsive app shell, module placeholders, loading/error/not-found boundaries, and a `/design-system` reference page.
 - Authentication & authorization (Phase 2): Auth.js credentials + JWT sessions with database-checked session versions, argon2id, DB-backed rate limits, password change/recovery, sign-out-everywhere, account deletion, profile settings, nonce CSP and security headers, least-privilege DB role.
-- `npm run check` passes (typecheck, lint, format check, 162 Vitest tests); 122 Playwright tests pass on desktop, tablet and mobile against a production build.
+- Accounts & categories (Phase 3): CRUD, archive/restore, delete-when-unused, derived balances, per-currency totals, account history, category type rules.
+- `npm run check` passes (typecheck, lint, format check, 210 Vitest tests); 149 Playwright tests pass on desktop, tablet and mobile against a production build.
 
 **Known issues still open**
 | Issue | Impact | Plan |
@@ -64,15 +65,13 @@ Verified: `npm run check`; `npm run build`; Playwright on desktop (1280), tablet
 Delivered: Auth.js v5 Credentials provider with encrypted JWT cookie (7 days) and per-request session-version verification; argon2id hashing; registration (with default categories), sign-in, sign-out, sign-out-everywhere, password change, password recovery (behind `MAIL_TRANSPORT`), account deletion; profile & preferences settings; PostgreSQL-backed rate limits (email, IP, user); `requirePageUser` / `authedAction` / `withUser` helpers with consistent 401/403/404 responses; `src/proxy.ts` (optimistic redirect + per-request CSP nonce) and static security headers; open-redirect-safe `callbackUrl`; least-privilege `finance_app` database role; dev seed user without hard-coded credentials; dedicated e2e database; Next.js dev server-function argument logging disabled.
 Verified: `npm run check` (162 tests incl. integration auth/session/authorization suites); `npm run build`; 122 Playwright tests on desktop, tablet, mobile; manual dev-server run of the full recovery flow (link → reset → sign-in → link reuse rejected); `finance_app` privilege checks. Test map: docs/SECURITY.md §13.
 
-### Phase 3 — Accounts and categories
-Depends on: Phase 2. Decisions: **Q-1** (KHR precision), **Q-10** (archive requires zero balance).
-
-Tasks: account CRUD, archive/unarchive, currency immutable, balance query (derived, SQL aggregate per PRD §6.2), account detail page; category CRUD, archive, colour palette, type immutable once used; shared `Money`, `EmptyState`, `ConfirmDialog`, `PageHeader` components.
-
-Exit criteria: balance formula tested with opening balance, income, expenses and transfers in both directions (transfers inserted directly until Phase 4); user B cannot see/modify user A's accounts or categories; delete-vs-archive rules; e2e create account → appears with correct formatted balance on desktop and mobile.
+### Phase 3 — Accounts and categories ✔ (complete)
+Delivered: migration `…_accounts_categories` (`archived_at`, name length caps, archive/colour/range CHECKs, listing indexes); accounts module (create with presets, edit without currency change, opening balance parsed per currency, case-/space-insensitive unique names, archive only at zero balance, restore, delete only without history, details with current/projected balance and history); per-currency totals (never combined); categories module (new default list, create/edit dialog with type and colour, type locked once used, archive/restore, delete only when unused, `assertCategoryUsable` / `listSelectableCategories` for Phase 4); read-only account activity; `SelectField` and `MoneyInput` shared components (fixing unlabelled dropdowns found during testing).
+Decisions applied without explicit confirmation: Q-1 (whole riel), Q-10 (archive at zero balance) and, for the balance display, Q-6 (current balance excludes future-dated records; projected shown separately).
+Verified: `npm run check` (210 tests); `npm run build`; 149 Playwright tests on desktop, tablet, mobile; screenshots with seed data (balances match the seed exactly).
 
 ### Phase 4 — Transactions, transfers, history and CSV export
-Depends on: Phase 3. Decisions: **Q-3** (refunds), **Q-6** (future-dated entries), **Q-9** (balance adjustments), **Q-11** (audit trail).
+Depends on: Phase 3. Decisions: **Q-3** (refunds), **Q-6** (future-dated entries — balance display already follows the default), **Q-9** (balance adjustments), **Q-11** (audit trail).
 
 Tasks: income/expense CRUD; transfer CRUD incl. cross-currency; quick-add form optimised for mobile; history list with filters (date range, account, category, type, search) via URL search params, pagination; edit with `updated_at` conflict check; delete with confirmation; CSV export route (streaming, BOM, injection-safe); upcoming/projected balance if Q-6 approved.
 

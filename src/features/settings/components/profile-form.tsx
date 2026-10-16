@@ -7,15 +7,9 @@ import { toast } from "sonner";
 
 import { FormAlert } from "@/components/shared/form-alert";
 import { FormField } from "@/components/shared/form-field";
+import { SelectField } from "@/components/shared/select-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { applyActionErrors } from "@/lib/form-errors";
 import { CURRENCIES, CURRENCY_CODES } from "@/lib/money";
 
@@ -71,18 +65,15 @@ export function ProfileForm({
             description="Used for approximate combined totals."
             error={errors.baseCurrency?.message}
           >
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger onBlur={field.onBlur}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCY_CODES.map((code) => (
-                  <SelectItem key={code} value={code}>
-                    {CURRENCIES[code].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SelectField
+              value={field.value}
+              onValueChange={field.onChange}
+              onBlur={field.onBlur}
+              options={CURRENCY_CODES.map((code) => ({
+                value: code,
+                label: CURRENCIES[code].label,
+              }))}
+            />
           </FormField>
         )}
       />
@@ -97,18 +88,13 @@ export function ProfileForm({
             description={`Decides what "today" and "this month" mean for you.`}
             error={errors.timezone?.message}
           >
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger onBlur={field.onBlur}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {timezones.map((tz) => (
-                  <SelectItem key={tz} value={tz}>
-                    {tz.replaceAll("_", " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SelectField
+              value={field.value}
+              onValueChange={field.onChange}
+              onBlur={field.onBlur}
+              contentClassName="max-h-72"
+              options={timezones.map((tz) => ({ value: tz, label: tz.replaceAll("_", " ") }))}
+            />
           </FormField>
         )}
       />
