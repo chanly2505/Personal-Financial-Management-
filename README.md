@@ -6,8 +6,8 @@ Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL 16 and 
 
 **Status:** Phase 9 complete — authentication, profile settings, **accounts**, **categories**, **transactions** (income, expenses, same-currency transfers with reversal; searchable ledger), the **dashboard** (period filter, per-currency income/expenses/net/savings rate, balances, charts with table views), **budgets** (monthly category limits, live usage, in-app warnings) **recurring** income and expenses (scheduled posting — see [docs/OPERATIONS.md](docs/OPERATIONS.md)) **savings goals** (earmarked progress toward targets) and **reports** with CSV export (see [docs/REPORTS.md](docs/REPORTS.md)). Every module is now built; Phase 10 (hardening and release readiness) is next — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
-
 **Put it online for free:** see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Vercel + Neon, no credit card).
+
 ## Documentation
 
 | Document | Contents |
