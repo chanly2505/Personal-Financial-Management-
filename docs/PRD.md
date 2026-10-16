@@ -230,10 +230,13 @@ balance(account, asOf) = opening_balance
 
 - A goal has a name, currency, target amount > 0, optional target date and optional linked account.
 - Progress is tracked by **contributions** — positive (set aside) or negative (withdrawn), never zero. **Saved** = Σ contributions; it can never go below zero (a withdrawal larger than saved is rejected).
-- Contributions are **earmarks**, not money movements: they do not change any account balance **[Q-7]** (proposed; alternative: goal progress = linked account's balance).
+- Contributions are **earmarks**, not money movements: they do not change any account balance, the ledger, budgets or reports **[Q-7 A — chosen in Phase 8 on the user's request for a recommendation]**.
 - Achieved when saved ≥ target; saving beyond the target is allowed. Achieved state is derived, not stored.
 - If the total earmarked for goals linked to an account exceeds that account's current balance, the UI shows a warning (not a block).
-- Required monthly saving to reach a dated goal = ⌈remaining ÷ months left⌉, displayed only.
+- Required monthly saving to reach a dated goal = ⌈remaining ÷ months left⌉, displayed only; months left = calendar months from this month to the target month, inclusive. A passed target date shows "Target date passed".
+- The goal's currency must match its linked account and is fixed once money has been set aside. Names are unique per user (case/space-insensitive). Contribution dates run from 2000-01-01 to today.
+- A withdrawal larger than saved, or removing a contribution that later withdrawals rely on, is rejected — checked under the goal's row lock so concurrent withdrawals cannot overdraw. Each contribution carries a one-time request id (double submits record once).
+- Archived goals keep their history but accept no contributions; deleting a goal deletes its contributions (no balance changes).
 
 ### 6.9 User data ownership
 
@@ -327,7 +330,7 @@ Proposed defaults are used for planning only. Items marked ★ block the phase s
 | Q-4 | Recurring entries: automatic or confirm first? | Automatic on the due date — **confirmed by the user (Phase 7)** | ★ Phase 7 |
 | Q-5 | Missed occurrences while paused | Skipped on resume — **confirmed by the user (Phase 7)** | Phase 7 |
 | Q-6 | Do future-dated entries affect the current balance? | No; shown as Upcoming and in a projected balance | ★ Phase 4 |
-| Q-7 | Savings goal model | Earmark contributions (don't move money) | ★ Phase 8 |
+| Q-7 | Savings goal model | Earmark contributions (don't move money) — **chosen (A) in Phase 8** | ★ Phase 8 |
 | Q-8 | Budgets across currencies | Per currency only; no conversion — **applied in Phase 6** | ★ Phase 6 |
 | Q-9 | Balance corrections | "Adjust balance" entry excluded from reports and budgets (needs a category flag) | Phase 4 |
 | Q-10 | Archiving an account with money in it | **Applied in Phase 3:** not allowed; current and projected balance must be zero. Not explicitly confirmed | — |

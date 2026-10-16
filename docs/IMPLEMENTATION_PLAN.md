@@ -4,9 +4,9 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0–7 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–8 are complete.
 
-**Present and verified (end of Phase 7)**
+**Present and verified (end of Phase 8)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
 - Prisma 7.10 schema with 9 tables and the initial migration (with hand-written CHECK constraints), applied to `finance_dev` and `finance_test`; idempotent local seed (`npm run db:seed`).
 - Validated environment (`src/server/env.ts`), error model (`src/server/errors.ts`, `action-result.ts`), privacy-safe logger, `/api/health` database probe.
@@ -17,6 +17,7 @@ The project lives in `/home/user/personal-finance`. Phases 0–7 are complete.
 - Dashboard (Phase 5): period filter (6 presets incl. custom), per-currency income/expenses/net/savings rate, balances today with account breakdown, income-vs-expenses, spending-by-category and monthly-spending charts with table views, recent transactions; server-side aggregation with an index-only covering index.
 - Budgets (Phase 6): monthly per-category, per-currency limits with live spent/remaining/usage from expense records, configurable warning threshold, archive/restore/delete, copy last month, month navigation, category spending breakdown, in-app warnings (header bell) without duplicates, dashboard budget section.
 - Recurring (Phase 7): weekly/monthly/yearly rules with a documented month-end/leap-year policy, active/paused/completed states, upcoming dates, execution history, failure states; idempotent scheduled engine (cron endpoint, CLI, in-process timer) — docs/OPERATIONS.md.
+- Savings goals (Phase 8): earmark goals (Q-7 A) with progress, monthly suggestion, set aside / take back (never below zero), earmark-exceeds-balance warning, archive, dashboard section.
 - Firebase client SDK initialized (no Analytics).
 - `npm run check` passes (typecheck, lint, format check, 328 Vitest tests); 203 Playwright tests pass on desktop, tablet and mobile against a production build.
 
@@ -96,12 +97,10 @@ Delivered: migration `…_recurring` (rule name/status/pause reason/payee, `recu
 Decisions (confirmed by the user): Q-4 — due dates post automatically; Q-5 — dates missed while paused are skipped on resume; the earlier "run when the user opens the app" behaviour was removed — posting is scheduled only.
 Verified: `npm run check` (359 tests, incl. `recurring-schedule` unit tests — month ends, leap years, intervals, end dates — and `recurring`, `recurring-failures`, `recurring-cron` integration suites: no posting on page reads, month-end posting, leap years, timezone due-ness, retries, concurrent workers, end dates, paused rules and resume, bounded catch-up, archived accounts, budget warnings, edits, deletes, isolation, recorded failures, retry after recovery, pause after repeated failures); `npm run build`; in-process scheduler verified against a running server; 212 Playwright tests on desktop, tablet, mobile incl. `e2e/recurring.spec.ts`; screenshots.
 
-### Phase 8 — Savings goals
-Depends on: Phase 3 (accounts); dashboard card depends on Phase 5. Decision: **Q-7** (goal model).
-
-Tasks: goal CRUD, contributions (+/−, cannot go below zero), progress, achieved state, required monthly saving, earmark-exceeds-balance warning, dashboard card.
-
-Exit criteria: progress and withdrawal rules tested; authorization; e2e create goal → contribute → progress shown.
+### Phase 8 — Savings goals ✔ (complete)
+Delivered: migration `…_savings_goals` (names capped, notes, archive time, idempotent contributions, CHECKs); `features/goals` — progress maths (`progress.ts`: remaining, floored percent > 100 allowed, achieved, overdue, ⌈remaining ÷ months left⌉), goal CRUD with unique names, same-currency optional account, currency fixed after first contribution, optimistic edits, archive/restore/delete; contributions (set aside / take back) under the goal's row lock so saved never goes below zero, idempotent per form submission, removable with the same rule; earmark-exceeds-balance warning per linked account; pages `/goals`, `/goals/new`, `/goals/[id]` (update savings form, history), `/goals/[id]/edit`; dashboard "Savings goals" section.
+Decision: Q-7 A (earmarks) — recommended and built on the user's request.
+Verified: `npm run check` (380 tests, incl. `goal-progress` unit tests and `goals.test.ts`: balances unchanged, progress/achieved/over-target, monthly amount, withdrawal limit incl. concurrent withdrawals, contribution removal rule, validation, unique names, currency/account rules, archived accounts and goals, double submissions, earmark warning, isolation); `npm run build`; 221 Playwright tests on desktop, tablet, mobile incl. `e2e/goals.spec.ts`; screenshots.
 
 ### Phase 9 — Reports
 Depends on: Phases 4, 6. 

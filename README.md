@@ -4,7 +4,7 @@ Track income, expenses, transfers, accounts, budgets, recurring items, savings g
 
 Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL 16 and Prisma 7.
 
-**Status:** Phase 7 complete — authentication, profile settings, **accounts**, **categories**, **transactions** (income, expenses, same-currency transfers with reversal; searchable ledger), the **dashboard** (period filter, per-currency income/expenses/net/savings rate, balances, charts with table views), **budgets** (monthly category limits, live usage, in-app warnings) and **recurring** income and expenses (scheduled posting — see [docs/OPERATIONS.md](docs/OPERATIONS.md)). Remaining modules are placeholders marked "Not available yet" until their phase — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Status:** Phase 8 complete — authentication, profile settings, **accounts**, **categories**, **transactions** (income, expenses, same-currency transfers with reversal; searchable ledger), the **dashboard** (period filter, per-currency income/expenses/net/savings rate, balances, charts with table views), **budgets** (monthly category limits, live usage, in-app warnings) **recurring** income and expenses (scheduled posting — see [docs/OPERATIONS.md](docs/OPERATIONS.md)) and **savings goals** (earmarked progress toward targets). Remaining modules are placeholders marked "Not available yet" until their phase — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Documentation
 

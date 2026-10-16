@@ -349,16 +349,21 @@ model BudgetAlert {
 
 /// A savings target. Progress = sum of its contributions. Contributions are
 /// earmarks, not cash movements: they never change account balances.
+/// A savings target. Contributions are earmarks (Q-7 A): they track money set
+/// aside and never change any account balance.
 model SavingsGoal {
   id                String    @id @default(uuid(7)) @db.Uuid
   userId            String    @map("user_id") @db.Uuid
-  name              String
+  /// Unique per user, case-insensitively (service).
+  name              String    @db.VarChar(60)
   currency          Currency
   targetAmountMinor BigInt    @map("target_amount_minor")
   targetDate        DateTime? @map("target_date") @db.Date
-  /// Optional account where the money is kept (informational).
+  /// Optional account where the money is kept; must use the goal's currency (service).
   accountId         String?   @map("account_id") @db.Uuid
+  note              String?   @db.VarChar(500)
   isArchived        Boolean   @default(false) @map("is_archived")
+  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(3)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -368,22 +373,27 @@ model SavingsGoal {
 
   @@unique([userId, name])
   @@unique([id, userId])
+  @@index([userId, isArchived])
   @@map("savings_goals")
 }
 
-/// Positive = money set aside for the goal, negative = money taken back out.
+/// Money set aside (+) or taken back (−) for a goal; never zero. The running
+/// total can never go below zero (enforced under the goal's row lock).
 model SavingsContribution {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  goalId      String   @map("goal_id") @db.Uuid
-  amountMinor BigInt   @map("amount_minor")
-  occurredOn  DateTime @map("occurred_on") @db.Date
-  note        String?
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id              String   @id @default(uuid(7)) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  goalId          String   @map("goal_id") @db.Uuid
+  amountMinor     BigInt   @map("amount_minor")
+  occurredOn      DateTime @map("occurred_on") @db.Date
+  note            String?  @db.VarChar(200)
+  /// One-time id from the submitting form, so a double submit records once.
+  clientRequestId String?  @map("client_request_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   goal SavingsGoal @relation(fields: [goalId, userId], references: [id, userId], onDelete: Cascade, onUpdate: NoAction)
 
+  @@unique([userId, clientRequestId])
   @@index([goalId, occurredOn])
   @@map("savings_contributions")
 }

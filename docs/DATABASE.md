@@ -138,6 +138,8 @@ Including `type` in the category key guarantees an expense can only use an expen
 | `recurring_rules_next_in_range_chk` | next date within [start, end] |
 | `recurring_rules_name_not_blank_chk`, `recurring_rules_amount_max_chk` | name not blank; amount ≤ max |
 | `recurring_runs_reason_required_chk` / `recurring_runs_posted_has_no_reason_chk` | FAILED/SKIPPED rows carry a reason code; POSTED rows none |
+| `savings_goals_target_max_chk`, `savings_goals_archived_consistent_chk` | target ≤ max; `is_archived` exactly when `archived_at` is set |
+| `savings_contributions_amount_range_chk` | contribution within ±max (and ≠ 0 by the earlier CHECK) |
 | `savings_goals_target_positive_chk` | target > 0 |
 | `savings_contributions_amount_nonzero_chk` | amount ≠ 0 |
 | `users_session_version_nonnegative_chk` | session_version ≥ 0 |
@@ -206,6 +208,7 @@ npm run db:deploy                        # apply pending migrations (CI / produc
 | 2 ✔ | `auth_rate_limits`, `password_reset_tokens`, `users.password_changed_at` (migration `…_auth`) | Rate limiting, password recovery, credential audit | — |
 | 2 ✔ | Default categories created with every new user (data, not schema) | PRD §5.3 | — |
 | 4 ✔ | `payee`, `note` (renamed from `description`), `client_request_id`, `reverses_transfer_id` + constraints (migration `…_transactions_ledger`) | Ledger, idempotency, reversals | — |
+| 8 ✔ | `savings_goals`: `name` VARCHAR(60), `note`, `archived_at`, index `(user_id, is_archived)`; `savings_contributions`: `note` VARCHAR(200), `client_request_id` unique per user (migration `…_savings_goals`) | Earmark goals (Q-7 A), idempotent contributions | Q-7 |
 | 7 ✔ | `recurring_rules`: `name`, `status` (ACTIVE/PAUSED/COMPLETED, replaces `is_active`), `pause_reason`, `paused_at`, `payee`; new `recurring_runs` table; consistency CHECKs (migration `…_recurring`) | Recurring engine, history, states | Q-4, Q-5 |
 | 6 ✔ | `budgets.alert_threshold_percent`, `budgets.archived_at`, `budgets (id, user_id)` unique; new `budget_alerts` table (unique `(budget_id, threshold_percent)`, composite FK to the budget's owner, cascade delete) (migration `…_budgets`) | Configurable warnings without duplicates; archive | — |
 | 5 ✔ | Covering index `transactions_user_date_covering_idx` replaces `(user_id, occurred_on DESC)` (migration `…_dashboard_covering_index`) | Index-only dashboard aggregations | — |

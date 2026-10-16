@@ -11,6 +11,8 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { BudgetProgress, BudgetStatusLabel } from "@/features/budgets/components/budget-progress";
 import { monthLabel } from "@/features/budgets/month";
 import { getCurrentMonthSummary } from "@/features/budgets/server/service";
+import { GoalCard } from "@/features/goals/components/goal-card";
+import { getGoalsSummary } from "@/features/goals/server/service";
 import { BarList } from "@/features/dashboard/components/bar-list";
 import { ChartCard, DataTable } from "@/features/dashboard/components/chart-card";
 import { CashFlowChart, type ChartPoint, TrendChart } from "@/features/dashboard/components/charts";
@@ -107,9 +109,10 @@ function PeriodSummary({ totals, multi }: { totals: PeriodTotals; multi: boolean
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const user = await requirePageUser();
   const filters = dashboardFiltersSchema.parse(await searchParams);
-  const [d, budgets] = await Promise.all([
+  const [d, budgets, goals] = await Promise.all([
     getDashboard(user, filters),
     getCurrentMonthSummary(user),
+    getGoalsSummary(user),
   ]);
   const { period, charts } = d;
   const range = rangeLabel(period.from, period.to);
@@ -425,6 +428,35 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                   </ul>
                 </Card>
               )}
+            </div>
+          )}
+        </section>
+
+        <section aria-labelledby="goals-heading" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="flex flex-col gap-1">
+              <h2 id="goals-heading" className="text-lg font-semibold">
+                Savings goals
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Money set aside so far — earmarked, not taken out of your balances.
+              </p>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/goals">
+                {goals.total > 0 ? `View all (${goals.total})` : "Add a goal"}
+              </Link>
+            </Button>
+          </div>
+          {goals.total === 0 ? (
+            <p className="rounded-xl border border-dashed bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              No savings goals yet. Set a target, like an emergency fund, and track your progress.
+            </p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {goals.goals.map((g) => (
+                <GoalCard key={g.id} goal={g} today={goals.today} />
+              ))}
             </div>
           )}
         </section>
