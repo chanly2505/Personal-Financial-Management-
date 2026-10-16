@@ -3,6 +3,7 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/chanly2505/Personal-Financial-Management-/main/scripts/start-mac.sh | bash
 #
+# To use a specific folder:  … | bash -s -- ~/Desktop/personal-finance
 # Or double-click "Start Personal Finance.command" in the project folder.
 # It finds the project, downloads the latest code, makes sure AUTH_URL is set,
 # starts PostgreSQL if Homebrew manages it, installs packages, applies database
@@ -31,6 +32,12 @@ is_checkout() {
 }
 
 CANDIDATES=()
+if [ -n "${1:-}" ]; then
+  target="${1/#\~/$HOME}"
+  [ -d "$target" ] || fail "Folder not found: $target"
+  is_project "$target" || fail "$target does not look like the Personal Finance project."
+  CANDIDATES+=("$(cd "$target" && pwd)")
+fi
 if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
   here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   is_project "$here" && CANDIDATES+=("$here")
@@ -47,21 +54,29 @@ for dir in "${CANDIDATES[@]+"${CANDIDATES[@]}"}"; do
   if is_checkout "$dir"; then PROJECT="$dir"; break; fi
   [ -z "$OLD_COPY" ] && OLD_COPY="$dir"
 done
+# A folder given on the command line wins, even if another checkout exists.
+if [ -n "${1:-}" ]; then PROJECT=""; OLD_COPY="${CANDIDATES[0]}"; is_checkout "$OLD_COPY" && PROJECT="$OLD_COPY"; fi
 
-if [ -z "$PROJECT" ]; then
+if [ -z "$PROJECT" ] && [ -n "$OLD_COPY" ]; then
+  # Connect the old copy to GitHub in place. Its current files are saved in a
+  # git stash first (recoverable); .env and node_modules are not touched.
+  PROJECT="$OLD_COPY"
+  say "Connecting $PROJECT to GitHub so it can update…"
+  cd "$PROJECT"
+  [ -d .git ] || git init -q
+  git remote remove origin 2>/dev/null || true
+  git remote add origin "$REPO_URL"
+  git fetch -q origin main || fail "Could not reach GitHub. Check your internet connection and run this again."
+  git reset -q origin/main
+  if [ -n "$(git status --porcelain)" ]; then
+    git stash push -q --include-untracked -m "old files saved when connecting to GitHub $(date '+%Y-%m-%d %H:%M')" || true
+    echo "Your old files are saved (git stash list shows them)."
+  fi
+  git checkout -q -B main origin/main
+elif [ -z "$PROJECT" ]; then
   PROJECT="$HOME/Desktop/Personal-Financial-Management-"
-  [ -e "$PROJECT" ] && PROJECT="$HOME/Desktop/Personal-Finance-App"
-  if [ -n "$OLD_COPY" ]; then
-    say "Found an old copy without updates at: $OLD_COPY"
-    echo "It is left as it is. Downloading an up-to-date copy to: $PROJECT"
-  else
-    say "Downloading the project to $PROJECT"
-  fi
+  say "Downloading the project to $PROJECT"
   git clone "$REPO_URL" "$PROJECT"
-  if [ -n "$OLD_COPY" ] && [ -f "$OLD_COPY/.env" ] && [ ! -f "$PROJECT/.env" ]; then
-    cp "$OLD_COPY/.env" "$PROJECT/.env"
-    echo "Copied your settings (.env) from the old copy."
-  fi
 fi
 cd "$PROJECT"
 say "Project: $PROJECT"

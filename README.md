@@ -140,6 +140,12 @@ Paste this one line into Terminal. It finds (or downloads) the project, gets the
 curl -fsSL https://raw.githubusercontent.com/chanly2505/Personal-Financial-Management-/main/scripts/start-mac.sh | bash
 ```
 
+If your project is in a specific folder (for example an older copy), name it at the end — that folder is updated in place, keeping your `.env`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chanly2505/Personal-Financial-Management-/main/scripts/start-mac.sh | bash -s -- ~/Desktop/personal-finance
+```
+
 Afterwards, double-click **Start Personal Finance.command** in the project folder to do the same. Keep the Terminal window open while you use the app; close it to stop. Local edits are never deleted — they are saved with `git stash`.
 
 ## After every `git pull`
