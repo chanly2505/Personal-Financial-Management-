@@ -10,6 +10,7 @@ import { SelectField } from "@/components/shared/select-field";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
+import { CURRENCY_CODES } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 import { KIND_LABELS, LEDGER_KINDS, SORT_LABELS, SORT_OPTIONS } from "../constants";
@@ -19,7 +20,7 @@ import { activeFilterCount, ledgerHref } from "../url";
 const ALL = "all";
 
 type Draft = Record<
-  "q" | "kind" | "accountId" | "categoryId" | "from" | "to" | "min" | "max" | "sort",
+  "q" | "kind" | "accountId" | "categoryId" | "currency" | "from" | "to" | "min" | "max" | "sort",
   string
 >;
 
@@ -29,6 +30,7 @@ function toDraft(filters: Filters): Draft {
     kind: filters.kind ?? ALL,
     accountId: filters.accountId ?? ALL,
     categoryId: filters.categoryId ?? ALL,
+    currency: filters.currency ?? ALL,
     from: filters.from ?? "",
     to: filters.to ?? "",
     min: filters.min ?? "",
@@ -69,6 +71,7 @@ export function LedgerFilters({
         kind: pick(draft.kind),
         accountId: pick(draft.accountId),
         categoryId: draft.kind === "TRANSFER" ? undefined : pick(draft.categoryId),
+        currency: pick(draft.currency),
         from: pick(draft.from),
         to: pick(draft.to),
         min: pick(draft.min),
@@ -161,6 +164,16 @@ export function LedgerFilters({
                 value: c.id,
                 label: `${c.name}${draft.kind === ALL ? (c.type === "INCOME" ? " · income" : " · expense") : ""}${c.isArchived ? " (archived)" : ""}`,
               })),
+            ]}
+          />
+        </FormField>
+        <FormField id="filter-currency" label="Currency">
+          <SelectField
+            value={draft.currency}
+            onValueChange={set("currency")}
+            options={[
+              { value: ALL, label: "All currencies" },
+              ...CURRENCY_CODES.map((c) => ({ value: c, label: c })),
             ]}
           />
         </FormField>

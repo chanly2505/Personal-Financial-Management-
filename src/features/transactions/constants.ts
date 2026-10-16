@@ -30,3 +30,11 @@ export const SORT_LABELS: Record<LedgerSort, string> = {
   amount_desc: "Largest amount",
   amount_asc: "Smallest amount",
 };
+
+/**
+ * CSV export limits (docs/REPORTS.md §Export). Exports are streamed in batches,
+ * so memory use stays flat; requests matching more rows than the limit are
+ * refused with a message to narrow the filters (never silently truncated).
+ */
+export const EXPORT_MAX_ROWS = 50_000;
+export const EXPORT_BATCH_SIZE = 1_000;

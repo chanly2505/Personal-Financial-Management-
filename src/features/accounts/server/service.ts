@@ -205,3 +205,15 @@ export async function findOwnAccount(user: Pick<CurrentUser, "id">, id: string) 
       }
     : null;
 }
+
+/** For reports: the account's balance at the end of `date` (opening balance + records up to it). */
+export async function balanceAtEndOf(
+  user: Pick<CurrentUser, "id">,
+  accountId: string,
+  date: IsoDate,
+): Promise<bigint> {
+  const balances = await repo.computeBalances(user.id, date, accountId);
+  const balance = balances.get(accountId);
+  if (balance === undefined) throw new NotFoundError("We couldn't find that account.");
+  return balance;
+}

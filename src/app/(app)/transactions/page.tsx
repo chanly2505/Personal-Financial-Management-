@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeftRight, Plus, SearchX } from "lucide-react";
+import { ArrowLeftRight, Download, Plus, SearchX } from "lucide-react";
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
@@ -13,10 +13,10 @@ import { LedgerFilters } from "@/features/transactions/components/ledger-filters
 import { LedgerList } from "@/features/transactions/components/ledger-list";
 import { LedgerPagination } from "@/features/transactions/components/ledger-pagination";
 import { NewTransactionShortcut } from "@/features/transactions/components/new-transaction-shortcut";
-import { PAGE_SIZE } from "@/features/transactions/constants";
+import { EXPORT_MAX_ROWS, PAGE_SIZE } from "@/features/transactions/constants";
 import { ledgerFiltersSchema } from "@/features/transactions/schemas";
 import { getLedgerPage } from "@/features/transactions/server/service";
-import { activeFilterCount, ledgerHref } from "@/features/transactions/url";
+import { activeFilterCount, exportHref, ledgerHref } from "@/features/transactions/url";
 import { todayInTimeZone } from "@/lib/dates";
 import { requirePageUser } from "@/server/auth/session";
 
@@ -145,6 +145,28 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
                 including upcoming ones. Transfers are not income or expenses.
               </p>
             </section>
+          )}
+
+          {ledger.total > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+              <p>
+                {ledger.total.toLocaleString("en-US")}{" "}
+                {ledger.total === 1 ? "record matches" : "records match"}
+              </p>
+              {ledger.total <= EXPORT_MAX_ROWS ? (
+                <Button asChild variant="outline" size="sm">
+                  <a href={exportHref(filters)} download>
+                    <Download aria-hidden="true" />
+                    Export CSV
+                  </a>
+                </Button>
+              ) : (
+                <p>
+                  Export is limited to {EXPORT_MAX_ROWS.toLocaleString("en-US")} records — narrow
+                  the filters to export.
+                </p>
+              )}
+            </div>
           )}
 
           {ledger.items.length === 0 ? (

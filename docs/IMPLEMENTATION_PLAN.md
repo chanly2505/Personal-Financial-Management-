@@ -4,9 +4,9 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0–8 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–9 are complete.
 
-**Present and verified (end of Phase 8)**
+**Present and verified (end of Phase 9)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
 - Prisma 7.10 schema with 9 tables and the initial migration (with hand-written CHECK constraints), applied to `finance_dev` and `finance_test`; idempotent local seed (`npm run db:seed`).
 - Validated environment (`src/server/env.ts`), error model (`src/server/errors.ts`, `action-result.ts`), privacy-safe logger, `/api/health` database probe.
@@ -18,8 +18,9 @@ The project lives in `/home/user/personal-finance`. Phases 0–8 are complete.
 - Budgets (Phase 6): monthly per-category, per-currency limits with live spent/remaining/usage from expense records, configurable warning threshold, archive/restore/delete, copy last month, month navigation, category spending breakdown, in-app warnings (header bell) without duplicates, dashboard budget section.
 - Recurring (Phase 7): weekly/monthly/yearly rules with a documented month-end/leap-year policy, active/paused/completed states, upcoming dates, execution history, failure states; idempotent scheduled engine (cron endpoint, CLI, in-process timer) — docs/OPERATIONS.md.
 - Savings goals (Phase 8): earmark goals (Q-7 A) with progress, monthly suggestion, set aside / take back (never below zero), earmark-exceeds-balance warning, archive, dashboard section.
+- Reports & export (Phase 9): income, expenses, by category, cash flow, account history, budget performance and period comparison with one shared filter set and daily/weekly/monthly/yearly grouping; streamed, injection-safe CSV export from Reports and Transactions — docs/REPORTS.md.
 - Firebase client SDK initialized (no Analytics).
-- `npm run check` passes (typecheck, lint, format check, 328 Vitest tests); 203 Playwright tests pass on desktop, tablet and mobile against a production build.
+- `npm run check` passes (typecheck, lint, format check, 444 Vitest tests); 239 Playwright tests pass on desktop, tablet and mobile against a production build.
 
 **Known issues still open**
 | Issue | Impact | Plan |
@@ -102,12 +103,9 @@ Delivered: migration `…_savings_goals` (names capped, notes, archive time, ide
 Decision: Q-7 A (earmarks) — recommended and built on the user's request.
 Verified: `npm run check` (380 tests, incl. `goal-progress` unit tests and `goals.test.ts`: balances unchanged, progress/achieved/over-target, monthly amount, withdrawal limit incl. concurrent withdrawals, contribution removal rule, validation, unique names, currency/account rules, archived accounts and goals, double submissions, earmark warning, isolation); `npm run build`; 221 Playwright tests on desktop, tablet, mobile incl. `e2e/goals.spec.ts`; screenshots.
 
-### Phase 9 — Reports
-Depends on: Phases 4, 6. 
-
-Tasks: date-range picker with presets; income vs. expenses by month per currency; by-category breakdowns; table views with the same numbers; link to filtered history and CSV export.
-
-Exit criteria: report totals equal history totals for identical filters (integration); timezone month boundaries; charts have accessible table alternatives; e2e on all three widths.
+### Phase 9 — Reports and data export ✔ (complete)
+Delivered: `features/reports` — periods (9 presets incl. custom, previous-period rules), grouping (auto/day/week/month/year with a row cap), SQL aggregations over the shared ledger relation and WHERE clause (series, category/account breakdowns, account flows), service assembling seven reports; `/reports` page with one URL-based filter bar (folds away on phones), tabs, totals bar with a link to the matching records, charts with table views; currency filter added to the ledger (Transactions filters and URL); CSV export (`/api/transactions/export`, `src/lib/csv.ts`) — BOM, RFC 4180, formula-injection guard, keyset-paginated streaming, 50,000-row limit — with buttons on Reports and Transactions. No schema change. Definitions and limits: docs/REPORTS.md; PRD §5.9 and §6.11 updated (export columns and limit replace the earlier draft, D-8).
+Verified: `npm run check` (444 tests, incl. `csv` and `report-period` unit tests, `reports.test.ts` and `export.test.ts`: boundary days, every filter, multiple currencies, reconciliation with Transactions totals, account opening/closing, reversals, budgets, comparison, CSV escaping and injection, batching with date ties, row limit, 3,500-row export, cross-user ids); `npm run build`; 239 Playwright tests on desktop, tablet, mobile incl. `e2e/reports.spec.ts` (downloads checked); screenshots.
 
 ### Phase 10 — Hardening and release readiness
 Depends on: all. Decision: **Q-14** (deployment target).

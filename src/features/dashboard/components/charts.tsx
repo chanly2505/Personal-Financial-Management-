@@ -86,12 +86,17 @@ export function CashFlowChart({
   points,
   summary,
   everyLabel = false,
+  series = "both",
 }: {
   points: ChartPoint[];
   summary: string;
   /** Show every x label (monthly buckets: at most ~12 short labels). */
   everyLabel?: boolean;
+  /** Draw both series, or only income / only expenses (reports). */
+  series?: "both" | "income" | "expense";
 }) {
+  const showIncome = series !== "expense";
+  const showExpense = series !== "income";
   const tooltip = ({ active, payload }: TooltipContentProps<ValueType, NameType>) => {
     const point = active ? (payload?.[0]?.payload as ChartPoint | undefined) : undefined;
     if (!point) return null;
@@ -99,20 +104,22 @@ export function CashFlowChart({
       <TooltipBox
         title={point.title}
         rows={[
-          { label: "Income", value: point.incomeText, color: INCOME },
-          { label: "Expenses", value: point.expenseText, color: EXPENSE },
+          ...(showIncome ? [{ label: "Income", value: point.incomeText, color: INCOME }] : []),
+          ...(showExpense ? [{ label: "Expenses", value: point.expenseText, color: EXPENSE }] : []),
         ]}
       />
     );
   };
   return (
     <figure className="flex flex-col gap-3">
-      <Legend
-        items={[
-          { label: "Income", color: INCOME },
-          { label: "Expenses", color: EXPENSE },
-        ]}
-      />
+      {series === "both" && (
+        <Legend
+          items={[
+            { label: "Income", color: INCOME },
+            { label: "Expenses", color: EXPENSE },
+          ]}
+        />
+      )}
       <div className="h-64 w-full" role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -138,22 +145,26 @@ export function CashFlowChart({
               tickFormatter={(v: number) => compact.format(v)}
             />
             <Tooltip content={tooltip} cursor={{ fill: "var(--muted)", opacity: 0.6 }} />
-            <Bar
-              dataKey="income"
-              name="Income"
-              fill={INCOME}
-              radius={[4, 4, 0, 0]}
-              maxBarSize={24}
-              isAnimationActive={false}
-            />
-            <Bar
-              dataKey="expense"
-              name="Expenses"
-              fill={EXPENSE}
-              radius={[4, 4, 0, 0]}
-              maxBarSize={24}
-              isAnimationActive={false}
-            />
+            {showIncome && (
+              <Bar
+                dataKey="income"
+                name="Income"
+                fill={INCOME}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={24}
+                isAnimationActive={false}
+              />
+            )}
+            {showExpense && (
+              <Bar
+                dataKey="expense"
+                name="Expenses"
+                fill={EXPENSE}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={24}
+                isAnimationActive={false}
+              />
+            )}
           </BarChart>
         </ResponsiveContainer>
       </div>

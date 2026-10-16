@@ -368,3 +368,15 @@ export async function getCurrentMonthSummary(user: User) {
       .slice(0, 3),
   };
 }
+
+/**
+ * For reports: every budget (active and archived) in the given months with
+ * its spent amount. Read-only — unlike the budgets page it never syncs alerts.
+ */
+export async function listBudgetsInMonths(
+  user: Pick<CurrentUser, "id">,
+  months: MonthKey[],
+): Promise<BudgetView[]> {
+  const rows = await Promise.all(months.map((m) => repo.listMonth(user.id, monthStart(m))));
+  return rows.flat().map(toView);
+}

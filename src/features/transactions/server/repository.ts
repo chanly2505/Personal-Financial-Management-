@@ -446,6 +446,8 @@ export interface LedgerQuery {
   /** Inclusive bounds in minor units, per currency (the same typed amount differs by currency). */
   min?: Record<CurrencyCode, bigint>;
   max?: Record<CurrencyCode, bigint>;
+  /** Only records whose account uses this currency. */
+  currency?: CurrencyCode;
   sort: LedgerSort;
 }
 
@@ -454,7 +456,8 @@ function likePattern(text: string): string {
   return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 }
 
-function ledgerCte(userId: string) {
+/** The ledger as one relation (income, expenses and transfers), scoped to `userId`. */
+export function ledgerCte(userId: string) {
   return Prisma.sql`
     WITH ledger AS (
       SELECT t.id, t.type::text AS kind, t.amount_minor, a.currency::text AS currency,
@@ -462,7 +465,8 @@ function ledgerCte(userId: string) {
              t.account_id, a.name AS account_name,
              t.category_id, c.name AS category_name, c.color AS category_color,
              c.is_archived AS category_archived,
-             NULL::uuid AS to_account_id, NULL::text AS to_account_name
+             NULL::uuid AS to_account_id, NULL::text AS to_account_name,
+             NULL::uuid AS reverses_id, NULL::uuid AS reversed_by_id
       FROM transactions t
       JOIN accounts a ON a.id = t.account_id AND a.user_id = t.user_id
       JOIN categories c ON c.id = t.category_id AND c.user_id = t.user_id
@@ -472,7 +476,10 @@ function ledgerCte(userId: string) {
              r.occurred_on, r.created_at, NULL, r.note,
              r.from_account_id, fa.name,
              NULL, NULL, NULL, NULL,
-             r.to_account_id, ta.name
+             r.to_account_id, ta.name,
+             r.reverses_transfer_id,
+             (SELECT x.id FROM transfers x
+              WHERE x.reverses_transfer_id = r.id AND x.user_id = r.user_id)
       FROM transfers r
       JOIN accounts fa ON fa.id = r.from_account_id AND fa.user_id = r.user_id
       JOIN accounts ta ON ta.id = r.to_account_id AND ta.user_id = r.user_id
@@ -486,8 +493,10 @@ function amountBound(op: ">=" | "<=", bounds: Record<CurrencyCode, bigint>) {
     OR (currency = 'KHR' AND amount_minor ${cmp} ${bounds.KHR}))`;
 }
 
-function ledgerWhere(query: LedgerQuery) {
-  const conditions: Prisma.Sql[] = [];
+/** WHERE clause for the ledger CTE (shared by the list, totals, reports and CSV export). */
+export function ledgerWhere(query: Omit<LedgerQuery, "sort">, extra: Prisma.Sql[] = []) {
+  const conditions: Prisma.Sql[] = [...extra];
+  if (query.currency) conditions.push(Prisma.sql`currency = ${query.currency}`);
   if (query.kind) conditions.push(Prisma.sql`kind = ${query.kind}`);
   if (query.accountId) {
     conditions.push(
@@ -530,7 +539,7 @@ export interface LedgerTotalsRow {
 /** Count and income/expense totals per currency over every matching record. */
 export async function summarizeLedger(
   userId: string,
-  query: LedgerQuery,
+  query: Omit<LedgerQuery, "sort">,
 ): Promise<LedgerTotalsRow[]> {
   const rows = await prisma.$queryRaw<
     { currency: CurrencyCode; count: number; income: bigint; expense: bigint }[]
@@ -608,5 +617,97 @@ export async function listLedger(
       r.to_account_id && r.to_account_name
         ? { id: r.to_account_id, name: r.to_account_name }
         : null,
+  }));
+}
+
+/* ------------------------------------------------------------------------- */
+/* CSV export                                                                 */
+/* ------------------------------------------------------------------------- */
+
+export interface ExportRow {
+  id: string;
+  kind: LedgerKind;
+  amountMinor: bigint;
+  currency: CurrencyCode;
+  occurredOn: IsoDate;
+  payee: string | null;
+  note: string | null;
+  accountName: string;
+  categoryName: string | null;
+  toAccountName: string | null;
+  reversesId: string | null;
+  reversedById: string | null;
+  createdAt: Date;
+}
+
+/** Position after the last exported row: the sort key (date, created_at, id). */
+export interface ExportCursor {
+  occurredOn: IsoDate;
+  createdAt: Date;
+  id: string;
+}
+
+/**
+ * One batch of matching records in date order, for streaming exports. Keyset
+ * pagination on (occurred_on, created_at, id) — unique and stable, so records
+ * added or deleted while an export runs never shift a batch boundary (no row
+ * is written twice).
+ */
+export async function exportLedgerBatch(
+  userId: string,
+  query: Omit<LedgerQuery, "sort">,
+  direction: "asc" | "desc",
+  after: ExportCursor | null,
+  limit: number,
+): Promise<ExportRow[]> {
+  const extra: Prisma.Sql[] = [];
+  if (after) {
+    const cmp = Prisma.raw(direction === "asc" ? ">" : "<");
+    extra.push(
+      Prisma.sql`(occurred_on, created_at, id) ${cmp} (${isoDateToDb(after.occurredOn)}::date, ${after.createdAt}::timestamptz, ${after.id}::uuid)`,
+    );
+  }
+  const order =
+    direction === "asc"
+      ? Prisma.sql`ORDER BY occurred_on ASC, created_at ASC, id ASC`
+      : Prisma.sql`ORDER BY occurred_on DESC, created_at DESC, id DESC`;
+  const rows = await prisma.$queryRaw<
+    {
+      id: string;
+      kind: LedgerKind;
+      amount_minor: bigint;
+      currency: CurrencyCode;
+      occurred_on: Date;
+      created_at: Date;
+      payee: string | null;
+      note: string | null;
+      account_name: string;
+      category_name: string | null;
+      to_account_name: string | null;
+      reverses_id: string | null;
+      reversed_by_id: string | null;
+    }[]
+  >`
+    ${ledgerCte(userId)}
+    SELECT id, kind, amount_minor, currency, occurred_on, created_at, payee, note,
+           account_name, category_name, to_account_name, reverses_id, reversed_by_id
+    FROM ledger
+    ${ledgerWhere(query, extra)}
+    ${order}
+    LIMIT ${limit}`;
+  return rows.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    amountMinor: r.amount_minor,
+    currency: r.currency,
+    occurredOn: dbDateToIso(r.occurred_on),
+    payee: r.payee,
+    note: r.note,
+    accountName: r.account_name,
+    categoryName: r.category_name,
+    toAccountName: r.to_account_name,
+    reversesId: r.reverses_id,
+    reversedById: r.reversed_by_id,
+    createdAt: r.created_at,
   }));
 }

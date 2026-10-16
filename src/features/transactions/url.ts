@@ -1,5 +1,16 @@
 /** Filter keys kept in the /transactions URL, in a stable order. */
-const KEYS = ["q", "kind", "accountId", "categoryId", "from", "to", "min", "max", "sort"] as const;
+const KEYS = [
+  "q",
+  "kind",
+  "accountId",
+  "categoryId",
+  "currency",
+  "from",
+  "to",
+  "min",
+  "max",
+  "sort",
+] as const;
 
 /** Any filter shape: parsed LedgerFilters or a draft from the filter form. */
 type FilterValues = { [K in (typeof KEYS)[number]]?: string | undefined } & { page?: number };
@@ -27,7 +38,17 @@ export function ledgerHref(
 
 /** Number of filters that narrow the list (sorting and paging don't count). */
 export function activeFilterCount(filters: FilterValues): number {
-  return (["q", "kind", "accountId", "categoryId", "from", "to", "min", "max"] as const).filter(
-    (key) => filters[key] !== undefined && filters[key] !== "",
-  ).length;
+  return (
+    ["q", "kind", "accountId", "categoryId", "currency", "from", "to", "min", "max"] as const
+  ).filter((key) => filters[key] !== undefined && filters[key] !== "").length;
+}
+
+/**
+ * The CSV export URL for the same filters (docs/REPORTS.md §Export). Sorting by
+ * amount is not applied to exports (they are always in date order).
+ */
+export function exportHref(filters: FilterValues): string {
+  const href = ledgerHref(filters);
+  const query = href.includes("?") ? href.slice(href.indexOf("?")) : "";
+  return `/api/transactions/export${query}`;
 }

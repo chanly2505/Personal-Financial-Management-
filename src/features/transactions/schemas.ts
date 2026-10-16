@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isIsoDate } from "@/lib/dates";
+import { CURRENCY_CODES } from "@/lib/money";
 
 import { ENTRY_TYPES, LEDGER_KINDS, NOTE_MAX, PAYEE_MAX, SORT_OPTIONS } from "./constants";
 
@@ -108,6 +109,7 @@ export const ledgerFiltersSchema = z.object({
   kind: optionalParam(z.enum(LEDGER_KINDS)),
   accountId: optionalParam(z.uuid()),
   categoryId: optionalParam(z.uuid()),
+  currency: optionalParam(z.enum(CURRENCY_CODES)),
   from: optionalParam(z.string().refine(isIsoDate)),
   to: optionalParam(z.string().refine(isIsoDate)),
   min: optionalParam(

@@ -347,6 +347,7 @@ export function toLedgerQuery(filters: LedgerFilters): repo.LedgerQuery {
     to,
     min: minText ? amountBounds(minText, "up") : undefined,
     max: maxText ? amountBounds(maxText, "down") : undefined,
+    currency: filters.currency,
     sort: filters.sort,
   };
 }
