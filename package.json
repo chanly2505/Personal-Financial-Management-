@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
+    "test:perf": "vitest run --config vitest.perf.config.mts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "release:check": "playwright test --config playwright.release.config.ts",

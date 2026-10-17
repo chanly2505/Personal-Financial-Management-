@@ -6,8 +6,9 @@ import { headers } from "next/headers";
 import { safeCallbackPath } from "@/lib/safe-redirect";
 import { action } from "@/server/action-result";
 import { getClientIp } from "@/server/auth/client-ip";
-import { signIn, signOut } from "@/server/auth/config";
+import { auth, signIn, signOut } from "@/server/auth/config";
 import { RateLimitedError, UnauthorizedError } from "@/server/errors";
+import { describeError, logger } from "@/server/logger";
 
 import {
   type ForgotPasswordInput,
@@ -19,6 +20,7 @@ import {
   resetPasswordSchema,
   signInSchema,
 } from "./schemas";
+import { deleteAuthSession } from "./server/repository";
 import { registerUser, requestPasswordReset, resetPassword } from "./server/service";
 
 /**
@@ -81,7 +83,17 @@ export async function resetPasswordAction(input: ResetPasswordInput) {
   return runResetPassword(input);
 }
 
-/** Form action: clear the session cookie and return to sign-in. */
+/**
+ * Form action: end this device's session on the server (a copied cookie stops
+ * working too), clear the cookie and return to sign-in.
+ */
 export async function signOutAction() {
+  const session = await auth();
+  if (session?.user?.id && session.user.sessionId) {
+    await deleteAuthSession(session.user.id, session.user.sessionId).catch((error: unknown) => {
+      // The cookie is still cleared; the row expires on its own.
+      logger.error("auth.sign_out_failed", describeError(error));
+    });
+  }
   await signOut({ redirectTo: "/sign-in" });
 }

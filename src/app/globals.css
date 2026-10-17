@@ -9,6 +9,7 @@
  * Text tokens are tuned for ≥ 4.5:1 contrast on --background and --card in both themes.
  */
 :root {
+  color-scheme: light;
   --radius: 0.625rem;
 
   /* Surfaces */
@@ -80,6 +81,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.16 0.012 262);
   --foreground: oklch(0.96 0.004 255);
   --card: oklch(0.205 0.014 262);

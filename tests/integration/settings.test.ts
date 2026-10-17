@@ -156,11 +156,12 @@ describe("persistence", () => {
       numberFormat: "DOT_COMMA",
       currencyDisplay: "CODE",
     });
-    const { findSessionUser } = await import("@/features/auth/server/repository");
+    const { createAuthSession } = await import("@/features/auth/server/repository");
     const { resolveSessionUser } = await import("@/server/auth/session");
-    const row = await findSessionUser(user.id);
+    const row = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    const { id: sessionId } = await createAuthSession(user.id, new Date(Date.now() + 60_000));
     const resolved = await resolveSessionUser({
-      user: { id: user.id, sessionVersion: row!.sessionVersion },
+      user: { id: user.id, sessionVersion: row.sessionVersion, sessionId },
     });
     expect(resolved?.formatPrefs).toEqual({
       dateFormat: "MMM_D_Y",

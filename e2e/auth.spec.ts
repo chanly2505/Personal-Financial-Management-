@@ -133,6 +133,37 @@ base.describe("registration and sign-in", () => {
 });
 
 test.describe("session invalidation", () => {
+  test("signing out ends the session on the server; other devices stay signed in", async ({
+    page,
+    user,
+    browser,
+  }) => {
+    const otherDevice = await browser.newContext();
+    const other = await otherDevice.newPage();
+    await other.goto("/sign-in");
+    await signIn(other, user);
+    await expect(other).toHaveURL(/\/dashboard$/);
+
+    // Someone copies this browser's cookie, then the user signs out here.
+    await page.goto("/dashboard");
+    const copied = await page.context().cookies();
+    await signOut(page);
+    await expect(page).toHaveURL(/\/sign-in/);
+
+    const thief = await browser.newContext();
+    await thief.addCookies(copied);
+    const stolen = await thief.newPage();
+    await stolen.goto("/dashboard");
+    await expect(stolen).toHaveURL(/\/sign-in/);
+    expect((await stolen.request.get("/api/me")).status()).toBe(401);
+    await thief.close();
+
+    // Signing out on one device does not sign out the others.
+    await other.goto("/transactions");
+    await expect(other).toHaveURL(/\/transactions$/);
+    await otherDevice.close();
+  });
+
   test("sign out everywhere ends sessions on other devices", async ({ page, user, browser }) => {
     const otherDevice = await browser.newContext();
     const other = await otherDevice.newPage();

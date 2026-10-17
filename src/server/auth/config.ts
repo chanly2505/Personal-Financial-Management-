@@ -3,6 +3,7 @@ import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 import { signInSchema } from "@/features/auth/schemas";
+import { createAuthSession } from "@/features/auth/server/repository";
 import { authenticate } from "@/features/auth/server/service";
 import { env } from "@/server/env";
 import { RateLimitedError } from "@/server/errors";
@@ -10,7 +11,7 @@ import { describeError, logger } from "@/server/logger";
 
 import { getClientIp } from "./client-ip";
 
-/** Session lifetime: 7 days, refreshed at most once a day while in use. */
+/** Session lifetime: 7 days from sign-in, absolute (auth_sessions.expires_at). */
 export const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 const SESSION_UPDATE_AGE_SECONDS = 24 * 60 * 60;
 
@@ -67,15 +68,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user?.id) {
+        const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
         token.sub = user.id;
         token.sv = user.sessionVersion ?? 0;
+        token.sid = (await createAuthSession(user.id, expiresAt)).id;
       }
       return token;
     },
     session({ session, token }) {
       if (token.sub) session.user.id = token.sub;
+      if (typeof token.sid === "string") session.user.sessionId = token.sid;
       session.user.sessionVersion = typeof token.sv === "number" ? token.sv : -1;
       return session;
     },

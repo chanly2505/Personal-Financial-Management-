@@ -132,6 +132,7 @@ Not exploitable (preceded by a user-scoped lookup under lock); the delete is now
 | R8 | Mac launcher: runs `origin/main` on each start (curl \| bash), `npm install` rather than `npm ci`, log file may contain reset links if console mail is enabled, frees port 3000 | P3 | Designed for one non-technical owner of the repository; trust = repository write access. | Keep the GitHub account secured (2FA). |
 | R9 | Recurring engine writes by rule id without user filter | P3 | System path; ids come from a user-scoped query, never from a client; composite FKs enforce ownership. | — |
 | R10 | No currency conversion exists | — | By design until Q-2 is decided; nothing is ever added across currencies. | Q-2 |
+| R11 | `braces@3.0.3` (via `eslint-config-next` → `fast-glob` → `micromatch`): stack-exhaustion advisory GHSA-vfj7-8cjw-p6xm, 7 high in full `npm audit` (found Phase 13) | P3 | Development-only lint tool; it only expands the project's own file patterns; not in the app or the production install. No fixed version exists (3.0.3 is the latest; npm's suggested fix is a downgrade to Next 14's config). | Upgrade when `braces` or `eslint-config-next` publishes a fix. |
 
 ## What was verified
 
@@ -144,8 +145,8 @@ Not exploitable (preceded by a user-scoped lookup under lock); the delete is now
 ## What was NOT verified
 
 - A real deployment on Vercel and Neon (including Neon's role behaviour and pooled connections), backups and restore.
-- Performance and load with large data sets (10,000+ records per user) and concurrent users.
-- Browsers other than Chromium (Safari, Firefox), real phones, and a manual screen-reader pass.
+- Load with many concurrent users (single-user performance with 10,000 records was measured in Phase 13).
+- Browsers other than Chromium (Safari, Firefox), real phones, and a manual screen-reader pass (docs/RELEASE_CHECKLIST.md M1–M3).
 - E-mail flows (no provider chosen), penetration testing by a third party, and dependency behaviour beyond `npm audit`.
 
 ## Test execution (final run, after all fixes)
@@ -163,3 +164,87 @@ Not exploitable (preceded by a user-scoped lookup under lock); the delete is now
 **Conditional go for personal and small private use** (your Mac, or a free Vercel + Neon deployment for you and your family), provided the deployment follows the updated `docs/DEPLOYMENT.md` (SQL-created database user, Production-only variables, `TRUSTED_IP_HEADER=x-real-ip`) and Prisma is upgraded per R1.
 
 **No-go for a public, open-registration service** until: e-mail verification and recovery exist (Q-12), `next-auth` is on a stable release, load testing and an external security test have been done, and a backup/restore procedure is in place. Passing automated tests is evidence, not proof, that the system is secure.
+
+## Phase 13 — hardening and security review
+
+An independent reviewer went through docs/SECURITY.md section by section against OWASP ASVS 4.0 level 2. Every finding below was checked against the code before it was fixed.
+
+### SR-1 · P2 · Signing out did not end the session on the server, and a copied cookie could be kept alive — fixed
+
+- **Sign-out:** signing out only cleared the cookie in the browser. A copy of it (a shared computer, a stolen cookie) stayed valid for 7 days.
+- **Refresh:** Auth.js re-signs JWT cookies with a fresh 7-day expiry whenever `/api/auth/session` is called (verified in `@auth/core/lib/actions/session.js`). Someone holding a copy could therefore keep it alive indefinitely.
+- **Fix:** new `auth_sessions` table (additive migration `20261017150000_auth_sessions`).
+  - Each sign-in creates a row, and the cookie carries its id (`sid`).
+  - Every request requires the row to exist, belong to the user and be unexpired. The expiry is absolute: 7 days from sign-in.
+  - Sign-out deletes that row, so other devices stay signed in.
+  - Expired rows are pruned by the scheduled jobs.
+  - Cookies issued before this change are refused, so everyone signs in once more.
+- **Regression tests:**
+  - `session.test.ts` "server-side sessions": sign-out of one device, absolute expiry, cross-user ids, pruning, cascade.
+  - e2e `auth.spec.ts` "signing out ends the session on the server": a copied cookie is refused after sign-out, while another device stays signed in.
+
+### SR-2 · P3 · Rate-limit keys were plain SHA-256 — fixed
+
+- **Problem:** `sha256("scope:ip")` can be reversed by hashing all 2³² IPv4 addresses, so a database dump would reveal addresses.
+- **Fix:** keys are now HMAC-SHA-256 with a key derived from `AUTH_SECRET`.
+- **Regression test:** `audit-regressions.test.ts` "F3".
+
+### SR-3 · P3 · The privacy notice overstated or missed facts — fixed
+
+- **Rate-limit retention:** the notice said one hour; it is about two days, because rows are pruned daily 24 h after their window ends.
+- **Cookies:** the short-lived Auth.js security cookies were missing.
+- **Logs:** hosting access logs (URLs can contain search filters) were not mentioned.
+- **Backups:** no retention period was stated (it is up to 12 months, per OPERATIONS.md).
+
+### SR-4 · P3 · Documentation drift — fixed
+
+- SECURITY.md §7 now says the health endpoint reports the deployed commit id.
+- §10 backups now match OPERATIONS.md (weekly dumps, 8 weekly plus 12 monthly; Neon point-in-time restore).
+- §2 now describes server-side sessions instead of "re-issued daily".
+
+### Also found in Phase 13 (accessibility)
+
+- **A-1 · P2 · Cards shared one HTML id — fixed.** Several dashboard and report cards got the same id from `React.useId()` in separately rendered server components, so their accessible names pointed at the first card's title. Cards are now named with `aria-label`. The audit sweep now fails on any duplicate id.
+- **A-3 · P3 · New dark mode could undo itself — fixed before release.**
+  - **Problem:** switching from Dark to "Same as this device" on a dark-preferring device saves a cookie, and the server re-render then rewrote the page classes and removed `dark`.
+  - **How found:** the full e2e run (tablet).
+  - **Fix:** the class is now set only by the theme script, never rendered by React.
+  - **Regression test:** `settings.spec.ts` theme test ("Dark → System on a dark device"), passed 30 times in repeated runs.
+- **A-2 · P3 · Logo outside landmarks — fixed.** On the sign-in, registration and privacy pages the logo link was outside any landmark; it is now in a `<header>`.
+
+### Reviewed and found OK
+
+- **Authorization:** every server action and route handler takes the user from the verified session (the theme action is deliberately public and only sets a validated cookie), every repository query is scoped by `user_id`, and nothing uses unsafe raw SQL.
+- **Input and output:** CSV and JSON exports are safe.
+- **CSRF and cron:** server actions use the Origin check; the cron secret is compared in constant time.
+- **Headers:** the nonce CSP also covers the new theme script.
+- **Secrets and logs:** env validation in place; the app's logs contain ids only.
+- **Data deletion:** account deletion cascades to every table, including sessions.
+
+### Performance (PRD §7)
+
+`npm run test:perf` ran on local PostgreSQL 16 with 10,000 records plus 1,500 transfers for one user, and 30,000 records in the database overall. Each page was measured 40 times after warm-up.
+
+| Page data | p50 | p95 |
+|---|---|---|
+| Dashboard, this month | 11.0 ms | 14.8 ms |
+| Dashboard, this year | 13.9 ms | 18.7 ms |
+| Transactions, first page / search / page 40 | 26–44 ms | 42–49 ms |
+| Accounts / budgets | 3–4 ms | 4–8 ms |
+| Reports: summary of last year / 3-year cash flow | 18–39 ms | 23–53 ms |
+| CSV export, 11,500 rows (1 MiB) | — | 282 ms in total |
+
+These times cover server data loading only, not React rendering or the network. On Neon, add the database round trips (same region). The plans show index scans on `transactions_user_date_covering_idx` and no sequential scans of transactions.
+
+### Test execution (Phase 13, final run)
+
+| Suite | Result |
+|---|---|
+| Type check, lint (0 warnings), format check | pass |
+| Vitest unit + integration | **513 passed** (41 files; 8 new regression tests) |
+| Performance benchmark (`npm run test:perf`) | 4 passed; every page < 500 ms p95 (table above) |
+| Production build | pass |
+| Playwright end-to-end (desktop, tablet, phone; light and dark accessibility sweeps, empty-account sweep, duplicate-id check) | **307 passed, 0 failed**, 11 skipped (tests that apply to one screen size only) |
+| Release checks against a local production build | 4 passed; no test accounts left |
+
+The release recommendation above still applies. The Phase 13 fixes remove SR-1 from the list of reasons for caution. The manual items in docs/RELEASE_CHECKLIST.md (screen reader, Safari and Firefox, real phone, live-site checks) are still to be done.

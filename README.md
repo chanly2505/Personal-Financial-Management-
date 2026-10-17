@@ -4,7 +4,7 @@ Track income, expenses, transfers, accounts, budgets, recurring items, savings g
 
 Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL (16 locally, 17 on Neon) and Prisma 7.
 
-**Status:** Phases 0–11 complete — every module is built, audited ([docs/QA_REPORT.md](docs/QA_REPORT.md)) and ready to deploy on **Vercel + Neon** ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Phase 12 (production deployment) is prepared; the deployed address is added here only after the release checks pass against it.
+**Status:** every module is built, audited and hardened (Phases 0–11 and 13: [docs/QA_REPORT.md](docs/QA_REPORT.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)) and ready to deploy on **Vercel + Neon** ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Phase 12 (production deployment) is prepared; the deployed address is added here only after the release checks pass against it.
 
 ## Contents
 
@@ -23,7 +23,8 @@ Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL (16 loc
 | [docs/I18N.md](docs/I18N.md) | Text catalog and how to add Khmer |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Step-by-step production setup on Vercel + Neon |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Production runbook: migrations, backups, recovery, rollback, outages, scheduler |
-| [docs/QA_REPORT.md](docs/QA_REPORT.md) | Phase 11 audit: findings, fixes, accepted risks, release recommendation |
+| [docs/QA_REPORT.md](docs/QA_REPORT.md) | Phase 11 audit and Phase 13 security review: findings, fixes, accepted risks, release recommendation |
+| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | What to verify before and after each release (automated and manual) |
 | [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Phases, exit criteria, known issues |
 | [CLAUDE.md](CLAUDE.md) | Commands and coding rules |
 
@@ -93,9 +94,10 @@ Migrations are hand-reviewed SQL in `prisma/migrations/` and are additive (expan
 ## Tests
 
 ```bash
-npm run check          # typecheck + lint + format check + unit & integration tests (505)
+npm run check          # typecheck + lint + format check + unit & integration tests (513)
 npm run test:unit      # unit tests only
 npm run test:e2e       # Playwright: desktop, tablet and phone against a local production build (incl. accessibility sweep)
+npm run test:perf      # performance benchmark: 10,000 records, p50/p95 per page (uses the test database)
 RELEASE_URL=https://your-site.vercel.app npm run release:check   # release checks against a deployed site
 ```
 

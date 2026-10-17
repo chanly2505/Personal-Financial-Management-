@@ -1,13 +1,14 @@
 import "server-only";
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 import { prisma } from "@/server/db";
 import { env } from "@/server/env";
 
 /**
  * Fixed-window rate limiting backed by PostgreSQL, so limits hold across
- * multiple server instances. Keys are SHA-256 hashes: raw emails and IP
- * addresses are never stored (docs/SECURITY.md §3).
+ * multiple server instances. Keys are HMAC-SHA-256 with a key derived from
+ * AUTH_SECRET: raw emails and IP addresses are never stored, and a database
+ * dump alone cannot be matched against guessed addresses (docs/SECURITY.md §3).
  */
 export interface RateLimitRule {
   /** Short scope name, e.g. "signin:email". */
@@ -42,8 +43,11 @@ export interface RateLimitResult {
   retryAfterSeconds: number;
 }
 
+// A separate key per purpose, so the session secret itself never hashes data.
+const KEY = createHmac("sha256", env.AUTH_SECRET).update("rate-limit-keys").digest();
+
 function keyFor(rule: RateLimitRule, subject: string): string {
-  return createHash("sha256").update(`${rule.scope}:${subject.toLowerCase()}`).digest("hex");
+  return createHmac("sha256", KEY).update(`${rule.scope}:${subject.toLowerCase()}`).digest("hex");
 }
 
 /**

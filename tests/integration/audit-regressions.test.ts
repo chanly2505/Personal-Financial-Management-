@@ -396,3 +396,20 @@ describe("QA-14 a password-reset link works only once, even when submitted twice
     expect(after).toBe(before + 1);
   });
 });
+
+describe("Phase 13 security review", () => {
+  it("F3: rate-limit keys are keyed hashes — a dump cannot be matched by hashing guesses", async () => {
+    const { createHash } = await import("node:crypto");
+    const { RATE_LIMITS, consumeRateLimit } = await import("@/server/auth/rate-limit");
+    const ip = "203.0.113.7";
+    await consumeRateLimit(RATE_LIMITS.signInPerIp, ip);
+    const keys = (await prisma.authRateLimit.findMany()).map((r) => r.key);
+    const plain = createHash("sha256")
+      .update(`${RATE_LIMITS.signInPerIp.scope}:${ip}`)
+      .digest("hex");
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatch(/^[0-9a-f]{64}$/);
+    expect(keys).not.toContain(plain);
+    expect(keys[0]).not.toContain(ip);
+  });
+});

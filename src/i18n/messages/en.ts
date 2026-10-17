@@ -66,6 +66,7 @@ export const en = {
     sections: {
       profile: "Profile",
       preferences: "Region and display",
+      appearance: "Appearance",
       notifications: "Notifications",
       security: "Security",
       data: "Your data",

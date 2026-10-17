@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { cookies } from "next/headers";
 import { Download, FileJson } from "lucide-react";
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { AppearanceForm } from "@/features/settings/components/appearance-form";
 import { ChangePasswordForm } from "@/features/settings/components/change-password-form";
 import { DeleteAccountDialog } from "@/features/settings/components/delete-account-dialog";
 import { NotificationsForm } from "@/features/settings/components/notifications-form";
@@ -16,6 +19,7 @@ import { EXPORT_MAX_ROWS } from "@/features/transactions/constants";
 import { timeZoneChoices, todayInTimeZone } from "@/lib/dates";
 import { formatInstant } from "@/lib/format/dates";
 import { formatInteger } from "@/lib/format/number";
+import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { requirePageUser } from "@/server/auth/session";
 import { t } from "@/i18n";
 
@@ -24,6 +28,7 @@ export const metadata: Metadata = { title: "Settings" };
 const SECTIONS = [
   { id: "profile", label: t("settings.sections.profile") },
   { id: "preferences", label: t("settings.sections.preferences") },
+  { id: "appearance", label: t("settings.sections.appearance") },
   { id: "notifications", label: t("settings.sections.notifications") },
   { id: "security", label: t("settings.sections.security") },
   { id: "data", label: t("settings.sections.data") },
@@ -63,7 +68,11 @@ function Section({
 
 export default async function SettingsPage() {
   const user = await requirePageUser();
-  const [settings, counts] = await Promise.all([getSettings(user.id), getRecordCounts(user.id)]);
+  const [settings, counts, cookieStore] = await Promise.all([
+    getSettings(user.id),
+    getRecordCounts(user.id),
+    cookies(),
+  ]);
   const timezones = [...timeZoneChoices()];
   if (!timezones.includes(settings.timezone)) timezones.unshift(settings.timezone);
   const when = (date: Date) => formatInstant(date, settings.timezone);
@@ -114,6 +123,14 @@ export default async function SettingsPage() {
       </Section>
 
       <Section
+        id="appearance"
+        title={t("settings.sections.appearance")}
+        description="Light or dark colours."
+      >
+        <AppearanceForm defaultValue={parseTheme(cookieStore.get(THEME_COOKIE)?.value)} />
+      </Section>
+
+      <Section
         id="notifications"
         title={t("settings.sections.notifications")}
         description="Choose which budget warnings you see in the app."
@@ -154,7 +171,15 @@ export default async function SettingsPage() {
       <Section
         id="data"
         title={t("settings.sections.data")}
-        description="Download a copy of your records at any time."
+        description={
+          <>
+            Download a copy of your records at any time. How your data is handled:{" "}
+            <Link href="/privacy" className="underline underline-offset-4 hover:text-foreground">
+              privacy notice
+            </Link>
+            .
+          </>
+        }
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col items-start gap-2 rounded-lg border p-4">

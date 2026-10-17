@@ -26,9 +26,28 @@ export function findUserCredentialsById(userId: string) {
   return prisma.user.findUnique({ where: { id: userId }, select: credentialSelect });
 }
 
-export function findSessionUser(userId: string) {
-  return prisma.user.findUnique({
-    where: { id: userId },
+/** Start a server-side session (one per sign-in) that ends at `expiresAt` at the latest. */
+export function createAuthSession(userId: string, expiresAt: Date) {
+  return prisma.authSession.create({ data: { userId, expiresAt }, select: { id: true } });
+}
+
+/** End one session — signing out on this device only. */
+export function deleteAuthSession(userId: string, sessionId: string) {
+  return prisma.authSession.deleteMany({ where: { id: sessionId, userId } });
+}
+
+/** Remove sessions past their absolute expiry (scheduled housekeeping). */
+export async function pruneExpiredAuthSessions(): Promise<number> {
+  const { count } = await prisma.authSession.deleteMany({
+    where: { expiresAt: { lt: new Date() } },
+  });
+  return count;
+}
+
+/** The user behind a session — only while that session exists and has not expired. */
+export function findSessionUser(userId: string, sessionId: string) {
+  return prisma.user.findFirst({
+    where: { id: userId, sessions: { some: { id: sessionId, expiresAt: { gt: new Date() } } } },
     select: {
       id: true,
       email: true,

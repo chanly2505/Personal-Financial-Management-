@@ -28,14 +28,15 @@ export interface CurrentUser {
 }
 
 interface SessionLike {
-  user?: { id?: string; sessionVersion?: number } | null;
+  user?: { id?: string; sessionVersion?: number; sessionId?: string } | null;
 }
 
 /**
- * Turn a decoded session into a verified user: the user must still exist and
- * the token's session version must match the database. A mismatch means the
- * user signed out everywhere or changed their password after this token was
- * issued. Exported for tests; application code uses getCurrentUser().
+ * Turn a decoded session into a verified user: the user must still exist, the
+ * server-side session row must exist and be unexpired (signing out deletes it;
+ * its expiry is absolute), and the token's session version must match the
+ * database. A version mismatch means the user signed out everywhere or changed
+ * their password after this token was issued. Exported for tests; application code uses getCurrentUser().
  */
 export async function resolveSessionUser(
   session: SessionLike | null | undefined,
@@ -43,9 +44,11 @@ export async function resolveSessionUser(
   const id = session?.user?.id;
   const version = session?.user?.sessionVersion;
   if (typeof id !== "string" || typeof version !== "number" || version < 0) return null;
+  const sessionId = session?.user?.sessionId;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  if (typeof sessionId !== "string" || !/^[0-9a-f-]{36}$/i.test(sessionId)) return null;
 
-  const user = await findSessionUser(id);
+  const user = await findSessionUser(id, sessionId);
   if (!user || user.sessionVersion !== version) return null;
   return {
     id: user.id,

@@ -41,7 +41,8 @@ erDiagram
 | `savings_goals` | Target amount, optional date and account. |
 | `savings_contributions` | Positive (set aside) or negative (withdraw) earmarks for a goal. |
 | `password_reset_tokens` | SHA-256 hash of a single-use reset token, expiry; cascade-deleted with the user. |
-| `auth_rate_limits` | Fixed-window counters keyed by SHA-256 of `scope:email-or-ip`; no personal data. |
+| `auth_rate_limits` | Fixed-window counters keyed by HMAC-SHA-256 (keyed from `AUTH_SECRET`) of `scope:email-or-ip`; no raw personal data. |
+| `auth_sessions` | One row per sign-in: user, absolute `expires_at`. The session cookie names its row; sign-out deletes it; expired rows are pruned by the scheduled jobs; cascade-deleted with the user. |
 
 Prisma model names: `User`, `FinancialAccount` (named to avoid clashing with Auth.js's conventional `Account` model), `Category`, `Transaction`, `Transfer`, `RecurringRule`, `Budget`, `SavingsGoal`, `SavingsContribution`. Tables and columns are `snake_case` via `@@map`/`@map`.
 
@@ -145,7 +146,7 @@ Including `type` in the category key guarantees an expense can only use an expen
 | `savings_contributions_amount_nonzero_chk` | amount ≠ 0 |
 | `users_session_version_nonnegative_chk` | session_version ≥ 0 |
 | `password_reset_tokens_hash_format_chk` | token_hash is 64 lowercase hex characters (a SHA-256, never a raw token) |
-| `auth_rate_limits_key_format_chk` | key is a SHA-256 hex digest (no raw email/IP) |
+| `auth_rate_limits_key_format_chk` | key is a 64-character hex digest (HMAC-SHA-256; no raw email/IP) |
 | `auth_rate_limits_count_positive_chk` | count > 0 |
 | `accounts_archived_consistent_chk` / `categories_archived_consistent_chk` | `is_archived` is true exactly when `archived_at` is set |
 | `accounts_opening_balance_range_chk` | opening balance within ±999,999,999,999,999 minor units |
@@ -220,6 +221,7 @@ npm run db:deploy                        # apply pending migrations (CI / produc
 | 7 | `recurring_rules.paused_at DATE` (nullable) | Skip occurrences missed while paused | Q-4, Q-5 |
 | 7 | `transactions.status` (`POSTED`, `PENDING`) | Only if recurring entries require confirmation | Q-4 |
 | 8 | None expected for the earmark model; a different model would change `savings_contributions` | — | Q-7 |
-| 11 | `EXPLAIN ANALYZE` review of indexes with seeded data (10k+ records per user) | Performance target (PRD §7) | — |
+| 13 ✔ | `EXPLAIN ANALYZE` review with 10,000 records per user (`npm run test:perf`): every query uses the existing indexes; no change needed | Performance target (PRD §7) | — |
+| 13 ✔ | New `auth_sessions` table (migration `…_auth_sessions`, additive) | Server-side sign-out and absolute session expiry (security review F1) | — |
 
 Any change here that touches money, dates or ownership must update PRD §6, this document, and the constraint tests in the same change.

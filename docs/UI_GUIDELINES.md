@@ -61,7 +61,7 @@ The `-muted` variant is the background for a badge or alert whose text uses the 
 
 Breakpoints are Tailwind's defaults: `sm` 640, `md` 768, `lg` 1024, `xl` 1280 px.
 
-Dark mode is class-based (`.dark` on `<html>`); the toggle ships in Phase 10 (until then the light theme is used).
+Dark mode is class-based (`.dark` on `<html>`). Settings → Appearance offers System / Light / Dark, stored per browser in the `theme` cookie (`src/lib/theme.ts`): the server renders only `data-theme`, and a nonce-protected script in `<head>` sets the `dark` class before first paint (and follows device changes for System). React never renders the class, so a re-render cannot undo it. `color-scheme` is set per theme so native controls and scrollbars match. Every page is swept by axe in dark mode (e2e/audit.spec.ts).
 
 ## 3. Typography
 

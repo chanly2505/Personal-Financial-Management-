@@ -107,6 +107,48 @@ test("the delete dialog lists what will go, offers a download and returns focus"
   await expect(trigger).toBeFocused();
 });
 
+test("the theme applies at once, persists, and follows the device in System mode", async ({
+  page,
+}) => {
+  const html = page.locator("html");
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/settings#appearance");
+  await expect(html).not.toHaveClass(/\bdark\b/);
+
+  await page.getByRole("radio", { name: /^Dark/ }).check();
+  await expect(html).toHaveClass(/\bdark\b/);
+  // Remembered on the next page load.
+  await page.goto("/dashboard");
+  await expect(html).toHaveClass(/\bdark\b/);
+  await expect(html).toHaveAttribute("data-theme", "dark");
+
+  // System follows the device, also when the device setting changes later.
+  await page.goto("/settings#appearance");
+  await page.getByRole("radio", { name: /^Same as this device/ }).check();
+  await expect(html).toHaveAttribute("data-theme", "system");
+  await expect(html).not.toHaveClass(/\bdark\b/);
+  // Let the save (and the page refresh it causes) finish: it must not undo what follows.
+  await page.waitForLoadState("networkidle");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(html).toHaveClass(/\bdark\b/);
+  await page.reload();
+  await expect(html).toHaveClass(/\bdark\b/);
+  await expect(page.getByRole("radio", { name: /^Same as this device/ })).toBeChecked();
+
+  // Dark → System on a dark device: stays dark once the save has finished.
+  await page.getByRole("radio", { name: /^Dark/ }).check();
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("radio", { name: /^Same as this device/ }).check();
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(500);
+  await expect(html).toHaveClass(/\bdark\b/);
+
+  await page.getByRole("radio", { name: /^Light/ }).check();
+  await expect(html).not.toHaveClass(/\bdark\b/);
+  await page.reload();
+  await expect(html).not.toHaveClass(/\bdark\b/);
+});
+
 test("keyboard users can skip the navigation", async ({ page }) => {
   await page.goto("/dashboard");
   await page.keyboard.press("Tab");

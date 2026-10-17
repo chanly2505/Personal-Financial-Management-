@@ -23,15 +23,15 @@ Explicitly **not** handled by the app because it never holds them: bank password
 
 | Concern | Implementation | Code |
 |---|---|---|
-| Provider | Auth.js v5 (`next-auth@5.0.0-beta.32`, pinned), Credentials provider, our `users` table. JWT session strategy (required by Credentials); no Auth.js database adapter, because there are no OAuth accounts or database sessions to store. One authentication implementation only. | `src/server/auth/config.ts` |
+| Provider | Auth.js v5 (`next-auth@5.0.0-beta.32`, pinned), Credentials provider, our `users` table. JWT session strategy (required by Credentials), backed by a small server-side session table (`auth_sessions`, Phase 13) so sign-out and expiry are enforced on the server; no Auth.js database adapter (no OAuth accounts). One authentication implementation only. | `src/server/auth/config.ts` |
 | Password storage | argon2id via `@node-rs/argon2` — 19 MiB memory, 2 iterations, 1 lane (OWASP minimum); per-hash salt in the PHC string. Hashes using older parameters are transparently upgraded at the next successful sign-in. Plaintext passwords are never stored, logged or returned. Auth.js deliberately leaves credential verification to the app; we use an established hashing library rather than custom crypto. | `src/server/auth/password.ts` |
 | Password policy | 10–128 characters, not only whitespace; no composition rules (NIST SP 800-63B). Policy is shown on registration and password change, never revealed on sign-in. | `src/features/auth/schemas.ts` |
 | Email | Trimmed and lower-cased before storage and lookup; a CHECK constraint enforces it in the database. | schemas + migration |
 | Enumeration resistance | Sign-in: identical "Email or password is incorrect." for wrong password and unknown email, plus a dummy argon2 verification for unknown emails so timing matches. Recovery: identical response whether or not the email exists. Registration of a taken email: generic "We couldn't create an account with these details…" — registration inherently reveals existence without email verification; this is rate limited and accepted until Q-12. | `src/features/auth/server/service.ts` |
-| Session cookie | Encrypted JWT (JWE, A256CBC-HS512 keyed from `AUTH_SECRET`); `HttpOnly`, `SameSite=Lax`, `Path=/`; `Secure` + `__Secure-` prefix whenever served over HTTPS (set `AUTH_URL` to the https origin in production). 7-day lifetime, re-issued at most daily while in use. The token holds only user id, name/email and `sv` (session version). | `src/server/auth/config.ts` |
-| Session verification | Every protected request runs `getCurrentUser()` → decodes the cookie → loads the user → compares `users.session_version` with the token's `sv`. Missing user or mismatch = signed out. Memoised per request. | `src/server/auth/session.ts` |
+| Session cookie | Encrypted JWT (JWE, A256CBC-HS512 keyed from `AUTH_SECRET`); `HttpOnly`, `SameSite=Lax`, `Path=/`; `Secure` + `__Secure-` prefix whenever served over HTTPS (set `AUTH_URL` to the https origin in production). 7-day absolute lifetime from sign-in, enforced by `auth_sessions.expires_at` (Auth.js re-signs the cookie with a fresh expiry when `/api/auth/session` is called; that cannot extend the server-side session). The token holds only user id, name/email, `sid` (session id) and `sv` (session version). | `src/server/auth/config.ts` |
+| Session verification | Every protected request runs `getCurrentUser()` → decodes the cookie → loads the user in one query that also requires the `auth_sessions` row named by `sid` to exist, belong to that user and be unexpired → compares `users.session_version` with the token's `sv`. Anything missing or mismatched = signed out. Tokens without `sid` (issued before Phase 13) are rejected. Memoised per request. | `src/server/auth/session.ts` |
 | Revocation | `session_version` is incremented by sign-out-everywhere, password change and password reset, invalidating every previously issued cookie immediately. Rotating `AUTH_SECRET` invalidates all sessions (incident response). Expired or tampered cookies fail decryption and are treated as signed out. | service + session |
-| Sign-out | Server action clears the cookie via Auth.js and redirects to sign-in. | `src/features/auth/actions.ts` |
+| Sign-out | Server action deletes this device's `auth_sessions` row (a copied cookie stops working; other devices stay signed in), clears the cookie via Auth.js and redirects to sign-in. Expired rows are pruned by the scheduled jobs. | `src/features/auth/actions.ts` |
 | Password change | Requires the current password (rate limited per user); revokes all sessions including the current one; the user signs in again. | `src/features/settings/actions.ts` |
 | Password recovery | Supported when an email transport is configured. 32-byte random token (base64url) emailed as a link; only its SHA-256 hash is stored; 30-minute expiry; single use (all of the user's tokens are deleted on use or re-request); success revokes all sessions. `MAIL_TRANSPORT=none` (default and production until Q-12) hides the feature and returns 404 for its pages. `console` (development only — refused in production by env validation) prints the link to the terminal. | `src/server/mail.ts`, service |
 | Account deletion | Requires the current password and typing `DELETE`; deletes the user and, via `ON DELETE CASCADE`, every row they own; signs out. | service + settings actions |
@@ -39,7 +39,7 @@ Explicitly **not** handled by the app because it never holds them: bank password
 
 ## 3. Abuse protection (implemented, Phase 2)
 
-Fixed-window counters in PostgreSQL (`auth_rate_limits`), updated with a single atomic upsert so limits hold across concurrent requests and multiple server instances. Keys are SHA-256 hashes of `scope:subject` — raw emails and IPs are never stored.
+Fixed-window counters in PostgreSQL (`auth_rate_limits`), updated with a single atomic upsert so limits hold across concurrent requests and multiple server instances. Keys are HMAC-SHA-256 of `scope:subject` with a key derived from `AUTH_SECRET` (Phase 13; previously plain SHA-256, which a dump could be matched against by hashing every IPv4 address) — raw emails and IPs are never stored. Rows are pruned 24 h after their window ends by the scheduled jobs.
 
 | Scope | Limit | Behaviour when exceeded |
 |---|---|---|
@@ -112,7 +112,7 @@ Fonts are self-hosted by `next/font` at build time, so no third-party origins ar
 
 | Endpoint | Exposure | Rule |
 |---|---|---|
-| `/api/health` | Public | Returns only `{status, database}` up/down; no versions, hostnames or error text; `Cache-Control: no-store`. |
+| `/api/health` | Public | Returns only `{status, database, version}`: up/down and the short commit id of the deployed build (the source is public); no hostnames or error text; `Cache-Control: no-store`. |
 | `/design-system` | Development; production only if `ENABLE_DESIGN_SYSTEM_PAGE=true` (used by e2e) | Renders static sample strings, no user data; must stay disabled in deployed environments. |
 | `/api/me` | Signed-in users | Returns only the caller's own profile; no id parameter exists. |
 | `/api/auth/*` | Public (Auth.js) | CSRF-protected by Auth.js; credentials callback is rate limited inside `authorize`. |
@@ -147,8 +147,8 @@ Fonts are self-hosted by `next/font` at build time, so no third-party origins ar
 
 - Transport: HTTPS only in production (HSTS).
 - At rest: rely on the database host's encryption at rest (deployment decision, PRD Q-14). No application-level field encryption in v1 — the threat it would address (database dump without app secrets) is covered by host controls and backups policy.
-- Backups: daily automated database backups with tested restore, retention 30 days (deployment decision).
-- Deletion: account deletion removes all user rows immediately; backups age out within the retention period (stated in the privacy notice).
+- Backups: Neon point-in-time restore (short window on the free plan) plus weekly logical dumps kept 8 weekly + 12 monthly, with a monthly restore test (docs/OPERATIONS.md §Backups).
+- Deletion: account deletion removes all user rows (and sessions) immediately; backup copies age out within 12 months (stated in the privacy notice, `/privacy`).
 
 ## 11. Dependencies and supply chain
 

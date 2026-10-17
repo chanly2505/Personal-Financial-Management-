@@ -22,14 +22,13 @@ export function ChartCard({
   children: React.ReactNode;
   className?: string;
 }) {
-  const id = React.useId();
+  // Named by its title directly: React.useId() is not unique across separately
+  // rendered server components, which gave several cards the same id.
   return (
-    <Card className={className} aria-labelledby={`${id}-title`} role="region">
+    <Card className={className} aria-label={title} role="region">
       <CardHeader className="flex flex-row items-start justify-between gap-3">
         <div className="flex flex-col gap-1.5">
-          <CardTitle id={`${id}-title`} className="text-base">
-            {title}
-          </CardTitle>
+          <CardTitle className="text-base">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
         {action}

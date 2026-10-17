@@ -4,7 +4,7 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0–11 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–11 and 13 are complete; Phase 12 (deployment) waits for the owner's Vercel and Neon accounts.
 
 **Present and verified (end of Phase 10)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
@@ -120,12 +120,29 @@ Target: Vercel (Hobby, `sin1`) + Neon PostgreSQL 17 (Singapore), chosen by the o
 
 **Remaining:** the owner creates the Neon and Vercel projects (docs/DEPLOYMENT.md), then the release checks run against the live address; only then is the deployment reported as done.
 
-### Phase 13 — Hardening and release readiness
-Depends on: all. Decision: **Q-14** (deployment target) — a free option is prepared: Vercel Hobby + Neon (docs/DEPLOYMENT.md, `vercel.json`, `vercel-build`, `prisma/sql/app-role-neon.sql`).
+### Phase 13 — Hardening and release readiness (done; manual checks listed)
+Depends on: all.
 
-Tasks: manual screen-reader pass (automated audit done in Phase 10); performance with 10,000+ seeded records (`EXPLAIN ANALYZE`, index review); full security review against SECURITY.md; dark-mode toggle; error/empty state review; deployment configuration (env, migrations on deploy, scheduler, backups); privacy notice.
+Delivered:
+- **Performance:** `npm run test:perf` seeds one user with 10,000 records and 1,500 transfers (plus 20,000 other users' records) and times every page's data loading. Dashboard p95 is 15–19 ms against a 500 ms target; the slowest page is 53 ms. `EXPLAIN ANALYZE` shows index scans only, so no index changes were needed.
+- **Dark mode:** Settings → Appearance (System / Light / Dark). The choice is kept in a per-browser cookie; a nonce-protected script applies it before first paint (and follows the device for "System"), and the browser bar colour follows the theme. The accessibility sweep runs in dark mode too.
+- **Privacy notice:** `/privacy`, linked from the sign-in pages and Settings.
+- **Accessibility:**
+  - Sweep for a brand-new (empty) account.
+  - Duplicate-id check (found and fixed cards sharing an id, so labels pointed at the wrong card).
+  - Landmarks on public pages.
+- **Security review** (independent, against SECURITY.md / ASVS L2):
+  - Sign-out now ends the session on the server and sessions have an absolute 7-day limit (new `auth_sessions` table).
+  - Rate-limit keys are keyed hashes.
+  - Privacy and security docs corrected.
+  - Details are in docs/QA_REPORT.md §Phase 13.
+- **Release checklist:** docs/RELEASE_CHECKLIST.md.
 
-Exit criteria: PRD §7 non-functional targets met and measured; no high/critical runtime audit findings; release checklist signed off.
+Not done here (needs a person or the live site):
+- screen-reader pass (VoiceOver);
+- Safari and Firefox;
+- a real phone;
+- deployment checks D1–D4.
 
 ## 4. Working method per phase
 

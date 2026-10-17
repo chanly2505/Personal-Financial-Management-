@@ -109,6 +109,7 @@ model User {
   savingsGoals        SavingsGoal[]
   contributions       SavingsContribution[]
   passwordResetTokens PasswordResetToken[]
+  sessions            AuthSession[]
 
   @@map("users")
 }
@@ -448,8 +449,26 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
-/// Fixed-window counters for authentication rate limiting. `key` is a SHA-256
-/// hash of "<scope>:<email or IP>" — raw emails and IPs are never stored.
+/// One row per sign-in. The session cookie carries this id; a request is
+/// accepted only while the row exists and has not expired. Signing out deletes
+/// the row (that device only), and `expiresAt` is an absolute limit that
+/// refreshing the cookie cannot extend (docs/SECURITY.md §2).
+model AuthSession {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+/// Fixed-window counters for authentication rate limiting. `key` is an
+/// HMAC-SHA-256 (keyed from AUTH_SECRET) of "<scope>:<email or IP>" — raw
+/// emails and IPs are never stored.
 model AuthRateLimit {
   key     String   @id
   count   Int
