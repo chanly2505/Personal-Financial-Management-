@@ -85,7 +85,9 @@ Symptoms: pages show "We couldn't load this page", `/api/health` returns **503**
 
 ### Release checks
 
-After each production deploy that changes behaviour: `RELEASE_URL=https://<address> RELEASE_CRON_SECRET=<secret> npm run release:check`. It verifies health and headers, that protected pages/APIs refuse anonymous access, registration and sign-in, accounts, income/expense, a transfer, balances, a budget, the dashboard, reports and CSV export, isolation between two users, phone layout and the scheduled job — using throwaway `release-check-…@example.test` accounts with made-up data that it deletes at the end (also when a check fails).
+After each production deploy that changes behaviour: `RELEASE_URL=https://<address> RELEASE_CRON_SECRET=<secret> npm run release:check`. It verifies health and headers, that protected pages/APIs refuse anonymous access, registration and sign-in, accounts, income/expense, a transfer, balances, a budget, the dashboard, reports and CSV export, isolation between two users, phone layout and the scheduled job — using throwaway `release-check-…@example.test` accounts with made-up data that it deletes at the end (also when a check fails). Each run creates two accounts; with the production limit of 5 sign-ups per IP per hour, run it at most twice an hour from one machine.
+
+The check calls the cron endpoint, which really runs the recurring job (posting anything due, exactly as the daily schedule would) — harmless, since runs are idempotent.
 
 ## Recurring transactions scheduler
 

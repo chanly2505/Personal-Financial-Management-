@@ -28,7 +28,7 @@ Defined once in `src/app/globals.css` (light `:root`, dark `.dark`), exposed to 
 | Success | `success` / `success-muted` | Saved, achieved, completed (non-monetary) |
 | Warning | `warning` / `warning-muted` | Approaching a limit, needs attention |
 | Danger | `destructive` / `destructive-muted` | Errors and destructive actions only — **not** for expenses |
-| Info | `info` / `info-muted` | Neutral notices, "Not available yet", approximations |
+| Info | `info` / `info-muted` | Neutral notices |
 | Finance | `income`, `expense`, `transfer` (+ `-muted`) | Amount direction text and badges |
 | Data | `chart-1` … `chart-6` | Categorical chart series in order; group extra series into "Other" (`chart-6`) |
 | Shell | `sidebar-*` | Sidebar surface, active item and focus |
@@ -134,7 +134,6 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 | Error | `ErrorState` via `(app)/error.tsx` (shell stays usable) and `global-error.tsx` (root failures): plain message, "Try again", optional reference digest; never stack traces. Inline form problems use `Alert variant="destructive"`. |
 | Not found | `app/not-found.tsx` (404 status), or `notFound()` from a page. Also used for records owned by other users. |
 | Success | `toast.success("Expense added")` from `sonner`; 4 s, top-centre, polite live region. |
-| Not yet built | `PlannedFeature` (via `ModulePlaceholder`): "Not available yet — planned for phase N". No fake data or controls. |
 | Destructive | `ConfirmDialog` naming the thing: "Delete 'Groceries – 12 Oct'? This cannot be undone." Destructive button on the right, focus starts on Cancel. Deleting a user account requires typing a confirmation phrase. |
 
 ## 9. Accessibility (WCAG 2.2 AA)
@@ -183,7 +182,6 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 | Loading | `Skeleton` | `ui/skeleton.tsx` |
 | Empty / error | `EmptyState`, `ErrorState` | `shared/` |
 | Money | `Money` (display), `MoneyInput` (amount entry with currency prefix; works inside `FormField`) | `shared/money.tsx`, `shared/money-input.tsx` |
-| Placeholders | `PlannedFeature`, `ModulePlaceholder` | `shared/`, `layout/` |
 | Page frame | `AppShell`, `AppSidebar`, `MobileNav`, `AppHeader`, `PageContainer`, `PageHeader` (with breadcrumbs), `Breadcrumb` | `layout/`, `ui/breadcrumb.tsx` |
 
 ### Conventions

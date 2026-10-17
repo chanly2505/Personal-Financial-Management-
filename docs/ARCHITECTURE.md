@@ -116,20 +116,21 @@ src/
     (app)/layout.tsx                 ✔ app shell; requirePageUser() — authoritative page guard
     (app)/loading.tsx, error.tsx     ✔ default skeleton and error boundary for every module
     (app)/dashboard|transactions|accounts|categories|budgets|recurring|goals|reports|settings/
-                                     ✔ placeholders (PlannedFeature) until each module's phase
+                                     ✔ every module built (Phases 3–10)
     (dev)/design-system/             ✔ component reference (dev; prod only with ENABLE_DESIGN_SYSTEM_PAGE)
     (auth)/sign-in, register, forgot-password, reset-password  ✔ public auth pages
     api/health/route.ts              ✔ database liveness probe
     api/auth/[...nextauth]/route.ts  ✔ Auth.js handlers
     api/me/route.ts                  ✔ caller's own profile (withUser)
-    api/export/transactions/route.ts CSV export                          [Phase 4]
-    api/cron/recurring/route.ts      scheduled execution (secret header) [Phase 7]
+    api/me/export/route.ts           ✔ caller's full data as JSON (Settings → Your data)
+    api/transactions/export/route.ts ✔ CSV export, streamed (docs/REPORTS.md)
+    api/cron/recurring/route.ts      ✔ scheduled jobs (Bearer CRON_SECRET)
   proxy.ts                           ✔ optimistic redirect + per-request CSP nonce
   components/ui/                     ✔ shadcn/ui primitives (UI_GUIDELINES §11)
   components/layout/                 ✔ app shell, sidebar, mobile nav, header, page header/container, navigation.ts
-  components/shared/                 ✔ FormField, SelectField, MoneyInput, EmptyState, ErrorState, ConfirmDialog, Money, PlannedFeature
+  components/shared/                 ✔ FormField, SelectField, MoneyInput, EmptyState, ErrorState, ConfirmDialog, Money
   features/accounts, features/categories     ✔ schemas, types, actions, components, server/{service,repository}
-  features/transactions/server              ✔ read-only account activity (create/edit in Phase 4)
+  features/transactions/server              ✔ ledger, entries, transfers, CSV export
   features/categories/default-categories.ts  ✔ defaults shared by registration and the local seed
   features/<module>/...              see §3
   server/db.ts, env.ts               ✔ Prisma client, validated environment

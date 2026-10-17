@@ -35,7 +35,9 @@ On the Neon project **Dashboard**, click **Connect**:
 | Setting in Vercel | Role | "Connection pooling" | Looks like |
 |---|---|---|---|
 | `MIGRATION_DATABASE_URL` | `neondb_owner` | **Off** | `postgresql://neondb_owner:…@ep-…ap-southeast-1.aws.neon.tech/neondb?sslmode=require` |
-| `DATABASE_URL` | Neon only lists console roles, so copy the `neondb_owner` string with pooling **on** (the host contains `-pooler`) and replace `neondb_owner:<its password>` with `finance_app:<your password from step 2>` | **On** | `postgresql://finance_app:…@ep-…-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require` |
+| `DATABASE_URL` | Neon only lists console roles, so copy the `neondb_owner` string with pooling **on** (the host contains `-pooler`) and replace `neondb_owner:<its password>` with `finance_app:<your password from step 2>`, and the ending `?sslmode=require…` with `?sslmode=verify-full` | **On** | `postgresql://finance_app:…@ep-…-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=verify-full` |
+
+`verify-full` is what the app's database driver does anyway for `require` (full certificate check); writing it explicitly avoids a warning in the logs on every start. Leave `MIGRATION_DATABASE_URL` exactly as Neon shows it — the migration tool reads it differently.
 
 Keep them private: they contain passwords. Never put them in the code or in a GitHub issue.
 
@@ -72,7 +74,7 @@ Sign-in works on Vercel without `AUTH_URL` (Auth.js detects the Vercel address).
 
 1. Open `https://<your-address>/api/health` → it should show `"status":"ok","database":"ok"` and a `version` that matches the latest commit on GitHub.
 2. **Pin the address:** Vercel → Settings → Environment Variables → add `AUTH_URL` = `https://<your-address>` (Production) → **Deployments → Redeploy**. Sign-in already works without it; pinning it makes every sign-in link use your real address.
-3. **Send the address to Claude** (or run it yourself on your Mac): `RELEASE_URL=https://<your-address> RELEASE_CRON_SECRET=<your CRON_SECRET> npm run release:check`. It signs up a throwaway `release-check-…@example.test` account, checks registration, sign-in, protected pages, accounts, income/expense, transfers, balances, budgets, dashboard, reports and CSV export, isolation between users, phone layout and the scheduled job — then deletes the test accounts.
+3. **Send the address to Claude** (or run it yourself on your Mac): `RELEASE_URL=https://<your-address> RELEASE_CRON_SECRET=<your CRON_SECRET> npm run release:check`. It signs up a throwaway `release-check-…@example.test` account, checks registration, sign-in, protected pages, accounts, income/expense, transfers, balances, budgets, dashboard, reports and CSV export, isolation between users, phone layout and the scheduled job — then deletes the two test accounts (also when a check fails). Run it at most twice an hour: production allows 5 sign-ups per IP per hour.
 4. The next day, Vercel → your project → **Settings → Cron Jobs** shows the recurring job's last run (it calls `/api/cron/recurring` daily at 17:05 UTC = 00:05 in Phnom Penh).
 
 The data on Vercel is separate from your Mac. To start fresh online, just register there.

@@ -26,26 +26,13 @@ const MODULES = [
   { path: "/settings", title: "Settings" },
 ];
 
-test.describe("module placeholders", () => {
-  for (const { path, title } of MODULES.filter(
-    (m) =>
-      ![
-        "/settings",
-        "/accounts",
-        "/categories",
-        "/transactions",
-        "/dashboard",
-        "/budgets",
-        "/recurring",
-        "/goals",
-        "/reports",
-      ].includes(m.path),
-  )) {
-    test(`${path} renders inside the shell and is clearly not available yet`, async ({ page }) => {
+test.describe("every module is built", () => {
+  for (const { path, title } of MODULES) {
+    test(`${path} renders inside the shell with its title and no placeholder`, async ({ page }) => {
       await page.goto(path);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
       await expect(page).toHaveTitle(`${title} · Personal Finance`);
-      await expect(page.getByText("Not available yet")).toBeVisible();
+      await expect(page.getByText("Not available yet")).toHaveCount(0);
       await expect(page.getByRole("navigation", { name: "Main" }).first()).toBeAttached();
       await expectNoHorizontalOverflow(page);
     });

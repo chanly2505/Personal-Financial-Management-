@@ -25,8 +25,7 @@ export default defineConfig({
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
       : {},
   },
-  projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["Pixel 7"] }, dependencies: ["desktop"] },
-  ],
+  // Desktop browser; the phone layout is checked inside the main flow with a
+  // Pixel 7 context, so one run needs only two sign-ups.
+  projects: [{ name: "desktop", use: { ...devices["Desktop Chrome"] } }],
 });

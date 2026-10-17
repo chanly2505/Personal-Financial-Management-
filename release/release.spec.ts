@@ -1,13 +1,15 @@
 import { readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 
-import { type Page, expect, test } from "@playwright/test";
+import { type Page, devices, expect, test } from "@playwright/test";
 
 /**
- * Release verification for a deployed environment (PHASE 12). Each project
- * registers its own throwaway account ("release-check-…@example.test"), uses
- * non-sensitive sample data, and deletes the account at the end — so nothing
- * stays behind. Expected figures are computed by hand in the comments.
+ * Release verification for a deployed environment (PHASE 12). One run
+ * registers two throwaway accounts ("release-check-…@example.test"), uses
+ * non-sensitive sample data, and deletes both at the end — also when a check
+ * fails — so nothing stays behind. Expected figures are computed by hand in the
+ * comments. Production allows 5 sign-ups per IP per hour: run it at most twice
+ * an hour from one machine.
  */
 
 const stamp = `${Date.now()}-${randomBytes(3).toString("hex")}`;
@@ -93,7 +95,6 @@ async function noSidewaysScroll(page: Page) {
 test.describe.configure({ mode: "serial" });
 
 test("platform: health, HTTPS and security headers", async ({ request, baseURL }, info) => {
-  test.skip(info.project.name !== "desktop", "once per run");
   const health = await request.get("/api/health");
   expect(health.status()).toBe(200);
   const body = await health.json();
@@ -108,8 +109,7 @@ test("platform: health, HTTPS and security headers", async ({ request, baseURL }
   }
 });
 
-test("protected routes and APIs refuse anonymous visitors", async ({ page, request }, info) => {
-  test.skip(info.project.name !== "desktop", "once per run");
+test("protected routes and APIs refuse anonymous visitors", async ({ page, request }) => {
   for (const path of ["/dashboard", "/transactions", "/reports", "/settings"]) {
     await page.goto(path);
     await expect(page).toHaveURL(/\/sign-in/);
@@ -126,8 +126,7 @@ test("protected routes and APIs refuse anonymous visitors", async ({ page, reque
   ).not.toBe(200);
 });
 
-test("core money flows, reports, export and isolation", async ({ page, browser }, info) => {
-  test.skip(info.project.name !== "desktop", "full flow on desktop; phone checks below");
+test("core money flows, phone layout, reports, export and isolation", async ({ page, browser }) => {
   const email = await register(page, "desktop");
   await withCleanup(page, async () => {
     // Sign out and back in.
@@ -205,31 +204,33 @@ test("core money flows, reports, export and isolation", async ({ page, browser }
       ).toBeVisible();
     });
     await other.close();
+
+    // Phone layout with the same account and data (a phone-sized, touch browser).
+    const phone = await browser.newContext({ ...devices["Pixel 7"] });
+    const phonePage = await phone.newPage();
+    await phonePage.goto("/sign-in");
+    await phonePage.getByLabel("Email").fill(email);
+    await phonePage.getByLabel("Password", { exact: true }).fill(password);
+    await phonePage.getByRole("button", { name: "Sign in" }).click();
+    await expect(phonePage).toHaveURL(/\/dashboard$/);
+    for (const path of [
+      "/dashboard",
+      "/transactions",
+      "/accounts",
+      "/budgets",
+      "/reports",
+      "/settings",
+    ]) {
+      await phonePage.goto(path);
+      await expect(phonePage.getByRole("heading", { level: 1 })).toBeVisible();
+      await noSidewaysScroll(phonePage);
+    }
+    await expect(phonePage.getByRole("navigation", { name: "Main" }).last()).toBeVisible();
+    await phone.close();
   }); // the test account and every record in it are deleted here
 });
 
-test("phone layout", async ({ page }, info) => {
-  test.skip(info.project.name !== "mobile", "phone only");
-  await register(page, "mobile");
-  await addAccount(page, "ABA Bank", "10");
-  for (const path of [
-    "/dashboard",
-    "/transactions",
-    "/accounts",
-    "/budgets",
-    "/reports",
-    "/settings",
-  ]) {
-    await page.goto(path);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await noSidewaysScroll(page);
-  }
-  await expect(page.getByRole("navigation", { name: "Main" }).last()).toBeVisible();
-  await deleteOwnAccount(page);
-});
-
-test("scheduled job endpoint runs with the secret", async ({ request }, info) => {
-  test.skip(info.project.name !== "desktop", "once per run");
+test("scheduled job endpoint runs with the secret", async ({ request }) => {
   const secret = process.env.RELEASE_CRON_SECRET;
   test.skip(
     !secret,
