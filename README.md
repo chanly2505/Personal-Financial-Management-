@@ -2,11 +2,13 @@
 
 Track income, expenses, transfers, accounts, budgets, recurring items, savings goals and reports in USD and KHR.
 
-Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL 16 and Prisma 7.
+Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL (16 locally, 17 on Neon) and Prisma 7.
 
-**Status:** Phase 11 complete (QA and security audit — see [docs/QA_REPORT.md](docs/QA_REPORT.md)) — authentication, profile settings, **accounts**, **categories**, **transactions** (income, expenses, same-currency transfers with reversal; searchable ledger), the **dashboard** (period filter, per-currency income/expenses/net/savings rate, balances, charts with table views), **budgets** (monthly category limits, live usage, in-app warnings) **recurring** income and expenses (scheduled posting — see [docs/OPERATIONS.md](docs/OPERATIONS.md)) **savings goals** (earmarked progress toward targets) **reports** with CSV export (see [docs/REPORTS.md](docs/REPORTS.md)) and full **settings** (date/number format, currency display, budget-warning preferences, data download, account deletion). Every module is now built; Phase 12 (hardening and release readiness) is next — see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Status:** Phases 0–11 complete — every module is built, audited ([docs/QA_REPORT.md](docs/QA_REPORT.md)) and ready to deploy on **Vercel + Neon** ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Phase 12 (production deployment) is prepared; the deployed address is added here only after the release checks pass against it.
 
-**Put it online for free:** see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Vercel + Neon, no credit card).
+## Contents
+
+[Documentation](#documentation) · [Local installation](#local-installation) · [Environment variables](#environment-variables) · [Database setup and migrations](#database-setup-and-migrations) · [Tests](#tests) · [Build](#build) · [Deployment](#deployment) · [Backup and recovery](#backup-and-recovery) · [Known limitations](#known-limitations) · [Troubleshooting](#troubleshooting) · [Easiest way on a Mac](#easiest-way-on-a-mac)
 
 ## Documentation
 
@@ -16,160 +18,149 @@ Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL 16 and 
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, layers, modules, directory layout, ADRs |
 | [docs/DATABASE.md](docs/DATABASE.md) | Entities, money and dates, constraints, migrations |
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, auth, authorization, headers, logging |
-| [docs/UI_GUIDELINES.md](docs/UI_GUIDELINES.md) | Design tokens, layouts, component catalogue, accessibility |
-| [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Phase order, tasks, exit criteria, known issues |
-| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Recurring scheduler configuration and recovery runbook |
+| [docs/UI_GUIDELINES.md](docs/UI_GUIDELINES.md) | Design tokens, layouts, components, accessibility |
+| [docs/REPORTS.md](docs/REPORTS.md) | Report definitions and CSV export format and limits |
+| [docs/I18N.md](docs/I18N.md) | Text catalog and how to add Khmer |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Step-by-step production setup on Vercel + Neon |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Production runbook: migrations, backups, recovery, rollback, outages, scheduler |
+| [docs/QA_REPORT.md](docs/QA_REPORT.md) | Phase 11 audit: findings, fixes, accepted risks, release recommendation |
+| [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Phases, exit criteria, known issues |
 | [CLAUDE.md](CLAUDE.md) | Commands and coding rules |
 
-## Setup
+## Local installation
 
-Requirements: **Node.js 22.12+**, **PostgreSQL 16**.
+Requirements: **Node.js 22.12+**, **PostgreSQL 16+**. (On a Mac, the one-line launcher below does all of this for you.)
 
-### 1. Create the databases and roles
+```bash
+git clone https://github.com/chanly2505/Personal-Financial-Management-.git personal-finance
+cd personal-finance
+cp .env.example .env
+openssl rand -base64 32        # paste into AUTH_SECRET in .env
+npm install                    # also generates the Prisma client
+npm run db:migrate             # create the tables in the dev database
+npm run db:seed                # optional demo user and data
+npm run dev                    # http://localhost:3000
+curl localhost:3000/api/health # {"status":"ok","database":"ok","version":"local"}
+```
 
-Local development only — use strong, unique credentials anywhere else.
+Open `/register` to create an account, or sign in as the seeded demo user. `/design-system` shows every UI component (development only).
+
+## Environment variables
+
+`.env.example` documents every variable; the app validates them at start-up (`src/server/env.ts`) and names any that are missing or invalid. `.env` is git-ignored — never commit real values.
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `DATABASE_URL` | yes | Runtime connection — the least-privilege app role (`finance_app`); pooled on Neon |
+| `MIGRATION_DATABASE_URL` | for migrations | Schema owner, used only by `prisma migrate` (direct, non-pooled on Neon) |
+| `AUTH_SECRET` | yes | 32+ random bytes; encrypts session cookies; unique per environment |
+| `AUTH_URL` | locally with `npm start`; recommended in production | The address users open (`https://…`). On Vercel the host is trusted automatically |
+| `TRUSTED_IP_HEADER` | production | Header carrying the client IP for rate limits (`x-real-ip` on Vercel) |
+| `CRON_SECRET` | if the cron endpoint is used | 32+ characters; protects `/api/cron/recurring` |
+| `RECURRING_SCHEDULER` | no | `in-process` runs recurring posting inside the server (single machine, e.g. a Mac); default `off` |
+| `REGISTRATION_LIMIT_WITHOUT_IP` | no | Shared sign-up limit per hour while the client IP is unknown (default 30) |
+| `MAIL_TRANSPORT`, `APP_URL` | no | Password recovery e-mail; `none` until a provider is chosen (Q-12) |
+| `NEXT_PUBLIC_FIREBASE_*` | no | Public Firebase web config (no Analytics); built into browser code |
+| `ENABLE_DESIGN_SYSTEM_PAGE` | no | Exposes `/design-system` in production builds (tests only) |
+| `TEST_DATABASE_URL`, `E2E_DATABASE_URL` | tests | Databases for integration and end-to-end tests (names must end in `_test` / `_e2e`) |
+| `SEED_DEMO_PASSWORD` | no | Password for the seeded demo user |
+
+## Database setup and migrations
+
+Create the local databases and the least-privilege role (local only — use strong credentials anywhere else):
 
 ```bash
 # As the postgres superuser (e.g. prefix with: sudo -u postgres)
 createuser -P --createdb finance        # schema owner; password: finance
 createdb -O finance finance_dev
-createdb -O finance finance_test        # integration tests — name must end in _test
-createdb -O finance finance_e2e         # Playwright — name must end in _e2e
-
-# Least-privilege runtime role for the app (can read/write rows, cannot change the schema)
+createdb -O finance finance_test
+createdb -O finance finance_e2e
 psql -d finance_dev -v app_role=finance_app -v app_password='change-me' \
      -v owner_role=finance -f prisma/sql/app-role.sql
 ```
 
-The app connects as `finance_app`; migrations run as `finance`. See [docs/SECURITY.md §8](docs/SECURITY.md#least-privilege-database-access-implemented-phase-2). To skip the separate role locally, point `DATABASE_URL` at the owner role and leave `MIGRATION_DATABASE_URL` unset.
-
-### 2. Configure the environment
-
-```bash
-cp .env.example .env
-openssl rand -base64 32                 # paste into AUTH_SECRET in .env
-```
-
-Then set the `finance_app` password in `DATABASE_URL`. Keep `AUTH_URL` equal to the address you open in the browser (default `http://localhost:3000`); if it is missing when running `npm run build && npm start`, accounts are created but signing in fails (the server logs `"errorType":"UntrustedHost"`). `.env` is git-ignored; never commit real credentials. The app validates its environment at startup and names any missing or invalid variable.
-
-Optional, to try password recovery locally (links are printed to the terminal, nothing is emailed):
-
-```bash
-cat > .env.development <<'ENV'
-MAIL_TRANSPORT="console"
-APP_URL="http://localhost:3000"
-ENV
-```
-
-`.env.development` is read by `npm run dev` only, so production builds are unaffected.
-
-### 3. Install, migrate, seed
-
-```bash
-npm install          # also generates the Prisma client (postinstall)
-npm run db:migrate   # apply migrations to the dev database (as the owner role)
-npm run db:seed      # optional demo user and data (see below)
-```
-
-### 4. Run
-
-```bash
-npm run dev          # http://localhost:3000
-curl localhost:3000/api/health   # {"status":"ok","database":"ok"}
-```
-
-Open `/register` to create an account, or sign in as the seeded demo user. `/design-system` shows every UI component (development only).
-
-## Authentication
-
-- **Email + password** with Auth.js (Credentials provider, encrypted JWT session cookie, 7-day lifetime). Passwords are hashed with argon2id.
-- **Protected pages:** everything under the app shell requires a session; signed-out visitors are sent to `/sign-in` and returned afterwards.
-- **Settings → Password / Sessions:** changing the password or choosing "Sign out everywhere" ends every session on every device immediately.
-- **Password recovery** is available when `MAIL_TRANSPORT` is configured. Production has no email provider yet (docs/PRD.md Q-12), so recovery is hidden there.
-- **Rate limits** protect sign-in, registration and recovery. In production set `TRUSTED_IP_HEADER` to the header your host uses for the client IP, and `AUTH_URL` to the https origin (enables Secure cookies).
-
-Details, limits and test coverage: [docs/SECURITY.md](docs/SECURITY.md).
-
-### Production checklist
-
-| Variable | Value |
-|---|---|
-| `AUTH_SECRET` | 32+ random bytes, unique per environment |
-| `AUTH_URL` | `https://your-domain` |
-| `DATABASE_URL` | the least-privilege app role |
-| `MIGRATION_DATABASE_URL` | the owner role, used only by `npm run db:deploy` |
-| `TRUSTED_IP_HEADER` | your platform's client-IP header |
-| `MAIL_TRANSPORT` | `none` until an email provider is added |
-| `CRON_SECRET` / `RECURRING_SCHEDULER` | Recurring scheduler — see [docs/OPERATIONS.md](docs/OPERATIONS.md). Off by default |
-| `NEXT_PUBLIC_FIREBASE_*` | Optional. Firebase web app config (public identifiers; no Analytics). Set before `npm run build` — the values are built into the browser code |
-
-## Database commands
-
 | Command | What it does |
 |---|---|
-| `npm run db:migrate -- --name <change>` | Create and apply a migration in development (`prisma migrate dev`) |
-| `npm run db:deploy` | Apply pending migrations (CI / production) |
-| `npm run db:generate` | Regenerate the Prisma client after schema edits |
-| `npm run db:seed` | Load demo data |
-| `npm run db:reset` | Drop and re-create the dev database from migrations (destructive); then run `npm run db:seed` |
-| `npm run db:studio` | Browse the dev database |
+| `npm run db:migrate -- --name <change>` | Create and apply a migration in development |
+| `npm run db:deploy` | Apply pending migrations (production uses this, automatically on Vercel via `vercel-build`) |
+| `npm run db:status` | Show applied/pending migrations |
+| `npm run setup` | `npm install` + generate client + apply migrations (run after every `git pull`) |
+| `npm run db:seed` | Demo data (refuses to run against production or non-dev databases) |
+| `npm run db:reset` | Drop and re-create the **dev** database (destructive; never on production) |
 
-Schema rules, constraints and the migration workflow for hand-written SQL are in [docs/DATABASE.md](docs/DATABASE.md).
+Migrations are hand-reviewed SQL in `prisma/migrations/` and are additive (expand-only), so the previous app version keeps working on the new schema — see [docs/DATABASE.md](docs/DATABASE.md).
 
-## Seed data
-
-`npm run db:seed` (`prisma/seed.ts`) creates a demo user `demo@example.test` with three accounts (USD cash, USD bank, KHR cash), the default categories, a few income and expense entries around today, an ATM transfer, a monthly budget and a savings goal.
-
-The demo password is taken from `SEED_DEMO_PASSWORD` in `.env` (min 10 characters). If it is not set, the seed generates a random password and prints it once. No credentials are stored in the repository.
-
-- **Idempotent:** it deletes and recreates only the demo user; other data is untouched.
-- **Guarded:** refuses to run with `NODE_ENV=production` or against a database whose name does not end in `_dev`, `_development` or `_local`.
-
-## Quality checks
+## Tests
 
 ```bash
-npm run check        # typecheck + lint + format check + unit & integration tests
-npm run build        # production build
-npm run test:e2e     # Playwright: desktop, tablet and mobile against a production build
-npm run format       # apply Prettier formatting
+npm run check          # typecheck + lint + format check + unit & integration tests (505)
+npm run test:unit      # unit tests only
+npm run test:e2e       # Playwright: desktop, tablet and phone against a local production build (incl. accessibility sweep)
+RELEASE_URL=https://your-site.vercel.app npm run release:check   # release checks against a deployed site
 ```
 
-Integration tests run against `TEST_DATABASE_URL`, migrate it automatically and truncate it between tests. End-to-end tests build the app and run it against `E2E_DATABASE_URL`, which is migrated and cleaned of test users before each run. If Chromium is already installed (CI images, cloud sandboxes), set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` instead of running `npx playwright install`.
+Integration tests run against `TEST_DATABASE_URL`; end-to-end tests build the app and run it against `E2E_DATABASE_URL`. Release checks use a throwaway account with made-up data and delete it afterwards (add `RELEASE_CRON_SECRET=…` to also check the scheduled job). If Chromium is preinstalled, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+
+## Build
+
+```bash
+npm run build && npm start     # production build and server (set AUTH_URL to the address you open)
+```
+
+## Deployment
+
+Production runs on **Vercel** (Hobby, region Singapore `sin1`) with **Neon** PostgreSQL (Singapore) — free tiers, HTTPS by default. Full click-by-click guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). In short:
+
+1. Neon project in Singapore; create the limited `finance_app` role with `prisma/sql/app-role-neon.sql`.
+2. Vercel project from this GitHub repository; set `DATABASE_URL` (app role, pooled), `MIGRATION_DATABASE_URL` (owner, direct), `AUTH_SECRET`, `CRON_SECRET`, `TRUSTED_IP_HEADER=x-real-ip` — **Production environment only**.
+3. Deploy. `vercel-build` applies migrations, then builds; a failed migration fails the deploy and the previous version stays live.
+4. Verify: `/api/health`, then `npm run release:check` against the address.
+5. Every push to `main` deploys again; the recurring job runs daily from `vercel.json`.
+
+## Backup and recovery
+
+Summary (full runbook in [docs/OPERATIONS.md](docs/OPERATIONS.md)):
+
+- **Point-in-time restore** — Neon keeps a restore window (hours on the free plan; longer on paid plans). Restore into a *new branch*, check it, then switch `DATABASE_URL` — never overwrite production blindly.
+- **Logical backups** — weekly: `BACKUP_DATABASE_URL=<owner direct URL> scripts/backup-db.sh` (read-only `pg_dump`; file written owner-only outside the repo).
+- **Recovery test** — monthly: `scripts/verify-backup.sh <file.dump>` restores into a temporary local database, checks counts and integrity, and drops it.
+- **Users' own copies** — Settings → Your data (CSV and full JSON).
+- **App rollback** — Vercel → Deployments → previous deployment → *Instant Rollback* (safe because migrations are additive).
+
+## Known limitations
+
+- Single currency per account; no currency conversion anywhere (Q-2). Cross-currency transfers not supported.
+- No e-mail: password reset and e-mail changes are unavailable until a provider is chosen (Q-12).
+- Recurring transactions post once a day on Vercel Hobby (hourly needs a paid plan or another scheduler).
+- English only (structure ready for Khmer, docs/I18N.md). No CSV import.
+- Free tiers: Neon 0.5 GB and sleeps when idle (first request after a pause is slower); Vercel Hobby is for personal, non-commercial use; short log retention.
+- Accepted risks from the audit (Prisma CLI upgrade due on/after 29 Oct 2026, `next-auth` beta, etc.): [docs/QA_REPORT.md](docs/QA_REPORT.md#accepted-risks-and-known-limitations-not-fixed).
+
+## Troubleshooting
+
+**Local**
+
+- **Can't sign in / "Something went wrong" after signing in** — the database is missing migrations: `npm run setup`, restart.
+- **Accounts are created but sign-in returns to the sign-in page** (`npm start`) — set `AUTH_URL` to the address you open and rebuild (`"errorType":"UntrustedHost"` in the log).
+- **`Invalid environment configuration`** — a variable is missing or malformed; the message names it.
+- **`Can't reach database server`** — start PostgreSQL (`brew services start postgresql`, or `service postgresql start` in containers).
+- **`permission denied for schema public`** during migrations — set `MIGRATION_DATABASE_URL` to the owner role.
+- **`npm install` fails with `edgesOut`** — npm 10 bug; run `npx npm@11 install`.
+
+**Production** (details in [docs/OPERATIONS.md](docs/OPERATIONS.md))
+
+- **`/api/health` returns 503 `unreachable`** — database outage or wrong `DATABASE_URL`: check Neon's status and the project's compute; see "Database outage".
+- **Deploy failed at `prisma migrate deploy`** — the previous version is still live; see "Failed migration".
+- **Everyone gets "Too many attempts"** — `TRUSTED_IP_HEADER` missing (the log shows `security.ip_rate_limits_disabled`).
+- **Recurring items not posting** — Vercel → Settings → Cron Jobs: last run and status; `CRON_SECRET` set in Production; Recurring page shows paused rules and reasons.
+- **Signed out unexpectedly** — sessions last 7 days and end on password change or "Sign out everywhere".
 
 ## Easiest way on a Mac
 
-Paste this one line into Terminal. It finds (or downloads) the project, gets the latest version, sets `AUTH_URL`, starts PostgreSQL if Homebrew manages it, installs packages, applies database migrations, starts the app and opens it in your browser:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/chanly2505/Personal-Financial-Management-/main/scripts/start-mac.sh | bash
-```
-
-If your project is in a specific folder (for example an older copy), name it at the end — that folder is updated in place, keeping your `.env`:
+Paste this into Terminal. It finds (or downloads) the project, updates it, starts PostgreSQL if Homebrew manages it, installs packages, applies migrations, starts the app on this Mac only, and opens it:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/chanly2505/Personal-Financial-Management-/main/scripts/start-mac.sh | bash -s -- ~/Desktop/personal-finance
 ```
 
-Afterwards, double-click **Start Personal Finance.command** in the project folder to do the same. Keep the Terminal window open while you use the app; close it to stop. Local edits are never deleted — they are saved with `git stash`.
-
-## After every `git pull`
-
-New phases add packages and database migrations. Before starting the app:
-
-```bash
-npm run setup        # npm install + prisma generate + prisma migrate deploy
-npm run db:status    # optional: confirms the database is up to date
-```
-
-Then rebuild if you run the production server (`npm run build && npm start`).
-
-## Troubleshooting
-
-- **Can't sign in / "Something went wrong" right after signing in** — usually the database is missing the latest migrations: run `npm run setup` (or `npm run db:deploy`) and restart. The server log names the missing table. With `npm start`, also check `AUTH_URL` (below).
-- **Accounts are created but signing in sends you back to the sign-in page** — `AUTH_URL` is missing in production mode; set it to the address you open (e.g. `http://localhost:3000`) and rebuild. The log shows `"errorType":"UntrustedHost"`.
-
-- **`Invalid environment configuration`** — a variable in `.env` is missing or malformed; the message names it.
-- **`Can't reach database server`** — start PostgreSQL (`service postgresql start` in containers).
-- **`permission denied for schema public`** during `db:migrate` — set `MIGRATION_DATABASE_URL` to the owner role; the app role cannot change the schema by design.
-- **Signed out unexpectedly** — sessions end after 7 days of inactivity, after a password change, or after "Sign out everywhere".
-- **`npm install` fails with `Cannot read properties of null (reading 'edgesOut')`** — npm 10 bug; run `npx npm@11 install`.
+Afterwards double-click **Start Personal Finance.command** in the project folder. Keep the Terminal window open while you use the app. Local edits are never deleted — they are saved with `git stash`.

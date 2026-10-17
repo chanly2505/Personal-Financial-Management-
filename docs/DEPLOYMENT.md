@@ -70,22 +70,26 @@ Sign-in works on Vercel without `AUTH_URL` (Auth.js detects the Vercel address).
 
 ## 6. Check that it works
 
-1. Open `https://<your-address>/api/health` → it should show `"database":"ok"`.
-2. Open the site → **Create account** → add an account and a transaction → open **Dashboard** and **Reports**.
-3. The next day, Vercel → your project → **Settings → Cron Jobs** shows the recurring job's last run (it calls `/api/cron/recurring` daily at 17:05 UTC = 00:05 in Phnom Penh).
+1. Open `https://<your-address>/api/health` → it should show `"status":"ok","database":"ok"` and a `version` that matches the latest commit on GitHub.
+2. **Pin the address:** Vercel → Settings → Environment Variables → add `AUTH_URL` = `https://<your-address>` (Production) → **Deployments → Redeploy**. Sign-in already works without it; pinning it makes every sign-in link use your real address.
+3. **Send the address to Claude** (or run it yourself on your Mac): `RELEASE_URL=https://<your-address> RELEASE_CRON_SECRET=<your CRON_SECRET> npm run release:check`. It signs up a throwaway `release-check-…@example.test` account, checks registration, sign-in, protected pages, accounts, income/expense, transfers, balances, budgets, dashboard, reports and CSV export, isolation between users, phone layout and the scheduled job — then deletes the test accounts.
+4. The next day, Vercel → your project → **Settings → Cron Jobs** shows the recurring job's last run (it calls `/api/cron/recurring` daily at 17:05 UTC = 00:05 in Phnom Penh).
 
-The data on Vercel is separate from your Mac. To start fresh online, just register there. (Copying your Mac data is possible later with the CSV export, once import exists, or with a database dump.)
+The data on Vercel is separate from your Mac. To start fresh online, just register there.
 
-## 7. Updating
+## 7. After the first deploy
 
-Nothing to do: every push to `main` redeploys. Database changes are applied automatically during the production build (`vercel-build`). If a build fails, Vercel keeps the previous version online; the build log is under **Deployments**.
+- **Uptime alert (optional, free):** create a monitor at <https://uptimerobot.com> for `https://<your-address>/api/health` every 5 minutes; you get an e-mail if it fails.
+- **First backup:** on your Mac, `brew install libpq && brew link --force libpq`, then `BACKUP_DATABASE_URL="<neondb_owner direct URL>" scripts/backup-db.sh` and `scripts/verify-backup.sh <the file it printed>`. Repeat weekly — see [OPERATIONS.md §Backups](OPERATIONS.md#backups).
+- **Updating:** nothing to do — every push to `main` redeploys and applies database changes (`vercel-build`). If a build fails, the previous version stays online; the build log is under **Deployments**. To undo a bad release: **Deployments → last good one → ⋯ → Instant Rollback** ([OPERATIONS.md](OPERATIONS.md#rolling-back-an-application-deployment)).
 
 ## Notes and limits
 
 - **Owner password on Vercel:** `MIGRATION_DATABASE_URL` is needed by the build to create and update tables, but Vercel also makes it visible to the running app (the app itself never reads it). Mark it **Sensitive** in Vercel. For a stricter setup, run `npx prisma migrate deploy` yourself before each release with that URL set only on your Mac, and remove it from Vercel.
+- **Direct database access:** authorization (who may see which records) is enforced by the app; anyone holding a database password could read every user's rows. So the passwords live only in Vercel's Production variables (and the owner's on your Mac for backups), connections require TLS, and the app's own role cannot change the schema or create roles. Neon's IP allow-list (paid plans) can additionally restrict who may connect.
 - **Rate limits:** keep `TRUSTED_IP_HEADER=x-real-ip`. Without it, per-IP sign-in and registration limits are off (the app logs `security.ip_rate_limits_disabled` at start-up).
 
 - **Password reset e-mails** are off until an e-mail provider is chosen (PRD Q-12). Users can still change their password in Settings while signed in.
 - **Recurring transactions post once a day** on the free plan. A rule that is due is posted by the next daily run; the Recurring page shows "Due — posts on the next scheduled run" until then. For hourly runs, upgrade Vercel or call `/api/cron/recurring` hourly from any scheduler with `Authorization: Bearer <CRON_SECRET>` (docs/OPERATIONS.md).
-- **Backups:** Neon's free plan keeps a short restore window. Export CSV from Transactions regularly if the data matters to you.
+- **Backups:** Neon's free plan keeps only a short restore window, so keep the weekly `scripts/backup-db.sh` dumps (see step 7 and OPERATIONS.md).
 - **Preview deployments** (other branches) do not run migrations. Leave the environment variables on *Production* only unless you set up a separate preview database.

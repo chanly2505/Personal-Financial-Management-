@@ -2,6 +2,91 @@
 
 How to run the background work the app depends on, and how to recover when something goes wrong.
 
+## Production runbook
+
+Production = **Vercel** (Hobby, functions in Singapore `sin1`) + **Neon** PostgreSQL 17 (Singapore, same region to keep each query a few milliseconds). Set-up steps: [DEPLOYMENT.md](DEPLOYMENT.md).
+
+### Environments
+
+| Environment | Where | Database | Secrets |
+|---|---|---|---|
+| Development | your computer (`npm run dev`, or the Mac launcher) | local PostgreSQL `finance_dev` | `.env` (git-ignored) |
+| Tests | local / CI | `finance_test`, `finance_e2e` (truncated by the tests) | test-only values in the test setup |
+| Preview | Vercel preview deployments (other branches) | none by default — previews fail to start without variables; give them their own Neon branch if you want previews | never the production values |
+| Production | Vercel, branch `main` | Neon `main` branch, database `neondb` | Vercel → Settings → Environment Variables, **Production** only, marked Sensitive |
+
+Credentials: the app uses `finance_app` (rows only, no schema changes, no role creation); the owner `neondb_owner` is used only for migrations and backups. Rotate a credential by resetting it in Neon (or `ALTER ROLE … PASSWORD`), updating Vercel, and redeploying. Rotating `AUTH_SECRET` signs everyone out (intended after a suspected leak).
+
+### Production migrations
+
+- Migrations are committed SQL in `prisma/migrations/` and are **additive** (new tables, columns with defaults, constraints, data normalizations) so that the previous app version keeps working on the new schema.
+- On every production deploy Vercel runs `vercel-build`: `prisma migrate deploy` (as the owner) → `next build`. Pending migrations are applied in order and recorded in `_prisma_migrations`; already-applied ones are skipped.
+- To apply by hand (e.g. if you removed the owner URL from Vercel): on your computer, `MIGRATION_DATABASE_URL="<owner direct URL>" npx prisma migrate deploy`, then `npx prisma migrate status`.
+- **Never** run `prisma migrate reset`, `prisma db push` or hand-written `DROP`/`TRUNCATE` against production. A destructive schema change (drop/rename) needs, in this order: explicit approval, a fresh backup verified with `scripts/verify-backup.sh`, an expand-and-contract plan across two releases, and a written rollback.
+
+### Backups
+
+| Kind | How | When | Retention |
+|---|---|---|---|
+| Point-in-time history | Neon keeps WAL history; restore to any moment inside the window (hours on Free, days on paid plans — check Project settings → Storage/History) | automatic | per plan |
+| Logical dump | `BACKUP_DATABASE_URL="<owner direct URL>" scripts/backup-db.sh` → `~/Documents/personal-finance-backups/personal-finance-<UTC time>.dump` (pg_dump custom format, owner-only file permissions, read-only on the database) | weekly, and before any risky change | keep 8 weekly + 12 monthly; store a copy off the laptop (encrypted drive or cloud folder) |
+| Users' own copies | Settings → Your data (CSV, full JSON) | any time | — |
+
+`pg_dump` must be at least the server's major version (Neon 17): `brew install libpq && brew link --force libpq`.
+
+### Recovery test
+
+Monthly (and after changing backup tooling): `scripts/verify-backup.sh <latest .dump>`. It restores into a temporary **local** database, prints row counts and the number of applied migrations, checks that every transaction still has its own account, and drops the temporary database. Record the date and result. A backup that has never been restored is not a backup.
+
+### Restoring production data
+
+Only when data was lost or corrupted (not for routine fixes):
+
+1. Stop writes: in Vercel, temporarily remove `DATABASE_URL` from Production and redeploy, or pause the project, so users see an error instead of writing to bad data.
+2. **Point-in-time:** Neon → Branches → *Create branch* from `main` at a time before the incident (or use Neon's restore feature). This leaves `main` untouched.
+   **From a dump:** create an empty Neon branch, then `pg_restore --no-owner --no-privileges --dbname="<branch owner URL>" <file.dump>`, and re-run `prisma/sql/app-role-neon.sql` on it.
+3. Check the branch: `MIGRATION_DATABASE_URL=<branch owner URL> npx prisma migrate status`, spot-check balances with a test account.
+4. Point `DATABASE_URL`/`MIGRATION_DATABASE_URL` in Vercel at the restored branch (or make it the primary branch in Neon), redeploy, run the release checks.
+5. Keep the old branch until the restore is confirmed; then delete it (explicit decision — deleting is irreversible).
+
+### Rolling back an application deployment
+
+A failed build never goes live — the previous deployment keeps serving. For a bad deployment that is live:
+
+1. Vercel → Deployments → the last good deployment → **⋯ → Instant Rollback** (seconds; no rebuild). Or revert the commit on `main` and let Vercel deploy it (fix forward).
+2. Migrations are not undone by a rollback. Because they are additive, the older code still works on the newer schema. If a migration ever is not backward-compatible, the release must say so and the rollback plan must include the schema step.
+3. After rolling back, the next push to `main` deploys again — fix the problem before pushing.
+
+### Failed migration
+
+Symptom: the Vercel build log stops at `prisma migrate deploy` with an error; the deployment is marked failed; **the previous version stays live** and the database is unchanged except possibly by the failing migration.
+
+1. Read the error in the build log. Run `MIGRATION_DATABASE_URL=<owner direct URL> npx prisma migrate status` from your computer: it names the failed migration.
+2. If the migration failed before changing anything (e.g. a constraint that existing rows violate): fix the migration *or the data* in a **new** commit (data fixes go in their own migration), then mark the failed attempt as rolled back: `npx prisma migrate resolve --rolled-back <migration_name>` and redeploy.
+3. If it partially applied: inspect what exists (`\d table` in `psql` as the owner), write a corrective migration, mark the failed one `--rolled-back` (or `--applied` if you completed it by hand exactly as written), and redeploy. Take a dump first.
+4. Never edit a migration that has already been applied in production, and never delete rows from `_prisma_migrations` by hand.
+
+### Database outage
+
+Symptoms: pages show "We couldn't load this page", `/api/health` returns **503** `{"database":"unreachable"}`, logs show `PrismaClientInitializationError` / connection errors.
+
+1. Check [Neon status](https://neonstatus.com) and the project in the Neon console (compute suspended? quota exceeded? password changed?).
+2. Free Neon computes sleep when idle and wake on the next connection (a slower first request is normal, not an outage).
+3. No data is lost by an outage: writes fail with an error the user sees; nothing is half-written (every multi-row change is one transaction). Recurring posting resumes on the next scheduled run and catches up dates that fell due (max 50 per rule per run).
+4. If the outage is long and data is at risk, follow "Restoring production data".
+5. Afterwards: `/api/health` → 200, run `npm run release:check`.
+
+### Monitoring and error reporting
+
+- **Health:** `GET /api/health` → 200 `{"status":"ok","database":"ok","version":"<commit>"}`. Point a free uptime monitor (e.g. UptimeRobot, 5-minute interval) at it to get an e-mail when it fails; checking every few minutes keeps a free Neon compute awake, so use ≥ 5 minutes.
+- **Errors:** the app writes one-line JSON logs (event name, ids, error class — never passwords, tokens, amounts or record text) to Vercel → Project → **Logs** (short retention on Hobby). Filter by `"level":"error"`. Key events: `route.failed`, `action.failed`, `recurring.run_failed`, `recurring.rule_failed`, `auth.rate_limited`, `security.ip_rate_limits_disabled`, `export.failed`.
+- **Scheduled job:** Vercel → Settings → Cron Jobs shows each run; the endpoint returns counts only.
+- No third-party analytics or error-tracking SDK is included (product decision); a log drain or error service can be added later without code changes to the logger format.
+
+### Release checks
+
+After each production deploy that changes behaviour: `RELEASE_URL=https://<address> RELEASE_CRON_SECRET=<secret> npm run release:check`. It verifies health and headers, that protected pages/APIs refuse anonymous access, registration and sign-in, accounts, income/expense, a transfer, balances, a budget, the dashboard, reports and CSV export, isolation between two users, phone layout and the scheduled job — using throwaway `release-check-…@example.test` accounts with made-up data that it deletes at the end (also when a check fails).
+
 ## Recurring transactions scheduler
 
 Every scheduled run (`runScheduledJobs`, `src/server/scheduled-jobs.ts`) posts due recurring transactions and then removes expired sign-in rate-limit windows (housekeeping; a failure there never affects postings).

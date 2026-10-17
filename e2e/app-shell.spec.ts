@@ -112,5 +112,5 @@ test("unknown URLs show the not-found page with a 404 status", async ({ page }) 
 test("health endpoint confirms database connectivity", async ({ request }) => {
   const response = await request.get("/api/health");
   expect(response.status()).toBe(200);
-  expect(await response.json()).toEqual({ status: "ok", database: "ok" });
+  expect(await response.json()).toEqual({ status: "ok", database: "ok", version: "local" });
 });

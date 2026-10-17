@@ -115,7 +115,10 @@ Verified: `npm run check` (480 tests, incl. `format`, settings schema and money-
 ### Phase 11 — Full system QA and security audit ✔ (complete)
 Independent audit of the whole repository with reproduced findings — report: [docs/QA_REPORT.md](QA_REPORT.md). 2 P1, 8 P2, 9 P3 found and fixed (timezones the database can't read, archived account edits, goal currency race, future transfer reversals, recurring edits dropping catch-up dates, registration limits, deployment-guide hardening, launcher bound to localhost, and minor items); 0 P0. Added `audit-regressions.test.ts` (16) and an independent `reconciliation.test.ts` (8). Accepted risks R1–R10 listed in the report (Prisma CLI upgrade due on/after 29 Oct 2026).
 
-### Phase 12 — Hardening and release readiness
+### Phase 12 — Production deployment (prepared; deployment pending)
+Target: Vercel (Hobby, `sin1`) + Neon PostgreSQL 17 (Singapore), chosen by the owner. Prepared and verified locally: pre-deployment inspection (build, types, lint, 505 tests, 266 e2e, env vars documented, no secrets in history, Auth.js trusts the Vercel host, generic production errors), `/api/health` reports the deployed commit, release-check suite `npm run release:check` (validated against a local production build: 5/5 applicable checks pass, throwaway accounts always deleted), backup and recovery-test scripts (`scripts/backup-db.sh`, `scripts/verify-backup.sh`, validated locally), production runbook in docs/OPERATIONS.md (environments, migrations, backups, recovery, restore, rollback, failed migration, outage, monitoring), README rewritten. **Remaining:** the owner creates the Neon and Vercel projects (docs/DEPLOYMENT.md), then the release checks run against the live address; only then is the deployment reported as done.
+
+### Phase 13 — Hardening and release readiness
 Depends on: all. Decision: **Q-14** (deployment target) — a free option is prepared: Vercel Hobby + Neon (docs/DEPLOYMENT.md, `vercel.json`, `vercel-build`, `prisma/sql/app-role-neon.sql`).
 
 Tasks: manual screen-reader pass (automated audit done in Phase 10); performance with 10,000+ seeded records (`EXPLAIN ANALYZE`, index review); full security review against SECURITY.md; dark-mode toggle; error/empty state review; deployment configuration (env, migrations on deploy, scheduler, backups); privacy notice.

@@ -14,6 +14,7 @@
     "test:integration": "vitest run --project integration",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "release:check": "playwright test --config playwright.release.config.ts",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
     "setup": "npm install && prisma generate && prisma migrate deploy",
     "db:generate": "prisma generate",
