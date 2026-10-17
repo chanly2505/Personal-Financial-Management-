@@ -371,3 +371,29 @@ export function alertsForBudgets(userId: string, budgetIds: string[]) {
     select: { budgetId: true, thresholdPercent: true },
   });
 }
+
+/** The user's budget notification preference (Settings). */
+export async function findAlertMode(userId: string): Promise<"ALL" | "LIMIT_ONLY" | "OFF"> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { budgetAlertMode: true },
+  });
+  return user?.budgetAlertMode ?? "ALL";
+}
+
+/** Every budget of the user that is not archived (to re-sync after a preference change). */
+export async function activeBudgetIds(userId: string): Promise<string[]> {
+  const rows = await prisma.budget.findMany({
+    where: { userId, archivedAt: null },
+    select: { id: true },
+  });
+  return rows.map((r) => r.id);
+}
+
+export async function findDefaultThreshold(userId: string): Promise<number> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { defaultAlertThreshold: true },
+  });
+  return user?.defaultAlertThreshold ?? 80;
+}

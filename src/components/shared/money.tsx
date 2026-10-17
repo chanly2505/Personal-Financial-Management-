@@ -1,4 +1,8 @@
+"use client";
+
 import { formatMoney, type CurrencyCode } from "@/lib/money";
+
+import { useFormatPrefs } from "./format-provider";
 import { cn } from "@/lib/utils";
 
 type MoneyTone = "neutral" | "income" | "expense" | "transfer";
@@ -26,6 +30,7 @@ const toneClass: Record<MoneyTone, string> = {
 
 /** The only way monetary values are rendered. Exact formatting, tabular digits. */
 export function Money({ minor, currency, tone = "neutral", className }: MoneyProps) {
+  const prefs = useFormatPrefs();
   let value = minor;
   let signDisplay: "auto" | "always" = "auto";
   if (tone === "income") signDisplay = "always";
@@ -38,7 +43,7 @@ export function Money({ minor, currency, tone = "neutral", className }: MoneyPro
       data-slot="money"
       className={cn("amount", negativeBalance ? "text-expense" : toneClass[tone], className)}
     >
-      {formatMoney(value, currency, { signDisplay })}
+      {formatMoney(value, currency, { signDisplay, prefs })}
     </span>
   );
 }

@@ -6,7 +6,7 @@ import {
   registerSchema,
   signInSchema,
 } from "@/features/auth/schemas";
-import { profileSchema } from "@/features/settings/schemas";
+import { notificationsSchema, preferencesSchema, profileSchema } from "@/features/settings/schemas";
 
 describe("auth schemas", () => {
   it("normalises email to trimmed lower case", () => {
@@ -82,24 +82,55 @@ describe("auth schemas", () => {
   });
 });
 
-describe("profile schema", () => {
-  const base = {
-    name: "",
+describe("settings schemas", () => {
+  const prefs = {
     baseCurrency: "USD",
     timezone: "Asia/Phnom_Penh",
-    exchangeRateKhrPerUsd: "4100",
+    dateFormat: "D_MMM_Y",
+    numberFormat: "COMMA_DOT",
+    currencyDisplay: "SYMBOL",
   };
 
-  it.each(["4100", "4100.5", "4100.1234", "0.5"])("accepts rate %s", (rate) => {
-    expect(profileSchema.safeParse({ ...base, exchangeRateKhrPerUsd: rate }).success).toBe(true);
+  it("accepts a name up to 60 characters and an empty name", () => {
+    expect(profileSchema.safeParse({ name: "" }).success).toBe(true);
+    expect(profileSchema.safeParse({ name: "x".repeat(60) }).success).toBe(true);
+    expect(profileSchema.safeParse({ name: "x".repeat(61) }).success).toBe(false);
   });
 
-  it.each(["0", "-1", "4100.12345", "1e4", "abc", "100001"])("rejects rate %s", (rate) => {
-    expect(profileSchema.safeParse({ ...base, exchangeRateKhrPerUsd: rate }).success).toBe(false);
+  it("strips anything that is not a profile field (e.g. email or password)", () => {
+    expect(profileSchema.parse({ name: "A", email: "x@y.z", passwordHash: "h" })).toEqual({
+      name: "A",
+    });
   });
 
-  it("rejects unknown timezones and currencies", () => {
-    expect(profileSchema.safeParse({ ...base, timezone: "Mars/Base" }).success).toBe(false);
-    expect(profileSchema.safeParse({ ...base, baseCurrency: "EUR" }).success).toBe(false);
+  it("accepts every supported display preference", () => {
+    for (const dateFormat of ["D_MMM_Y", "MMM_D_Y", "DD_MM_Y", "ISO"]) {
+      expect(preferencesSchema.safeParse({ ...prefs, dateFormat }).success).toBe(true);
+    }
+    for (const numberFormat of ["COMMA_DOT", "DOT_COMMA", "SPACE_COMMA"]) {
+      expect(preferencesSchema.safeParse({ ...prefs, numberFormat }).success).toBe(true);
+    }
+    expect(preferencesSchema.safeParse({ ...prefs, currencyDisplay: "CODE" }).success).toBe(true);
+  });
+
+  it("rejects unknown timezones, currencies and formats", () => {
+    expect(preferencesSchema.safeParse({ ...prefs, timezone: "Mars/Base" }).success).toBe(false);
+    expect(preferencesSchema.safeParse({ ...prefs, baseCurrency: "EUR" }).success).toBe(false);
+    expect(preferencesSchema.safeParse({ ...prefs, dateFormat: "YYYY" }).success).toBe(false);
+    expect(preferencesSchema.safeParse({ ...prefs, numberFormat: "x" }).success).toBe(false);
+  });
+
+  it.each([
+    ["ALL", "80", true],
+    ["LIMIT_ONLY", "100", true],
+    ["OFF", "1", true],
+    ["SOMETIMES", "80", false],
+    ["ALL", "0", false],
+    ["ALL", "101", false],
+    ["ALL", "80.5", false],
+  ])("notifications %s at %s%% → %s", (budgetAlertMode, defaultAlertThreshold, ok) => {
+    expect(notificationsSchema.safeParse({ budgetAlertMode, defaultAlertThreshold }).success).toBe(
+      ok,
+    );
   });
 });

@@ -4,6 +4,7 @@ import { SearchX } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { t } from "@/i18n";
 
 export const metadata: Metadata = { title: "Page not found" };
 
@@ -16,11 +17,12 @@ export default function NotFound() {
     <main className="mx-auto flex w-full max-w-content flex-1 flex-col justify-center px-4 py-16 sm:px-6">
       <EmptyState
         icon={SearchX}
-        title="We couldn't find that page"
+        headingLevel={1}
+        title={t("common.pageNotFound")}
         description="The link may be broken, or the page may have been removed."
         action={
           <Button asChild>
-            <Link href="/dashboard">Go to dashboard</Link>
+            <Link href="/dashboard">{t("common.goToDashboard")}</Link>
           </Button>
         }
       />

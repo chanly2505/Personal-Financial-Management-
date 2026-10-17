@@ -7,7 +7,7 @@ import { GoalForm } from "@/features/goals/components/goal-form";
 import { getGoalFormData } from "@/features/goals/server/form-data";
 import { requirePageUser } from "@/server/auth/session";
 
-export const metadata: Metadata = { title: "Add goal" };
+export const metadata: Metadata = { title: "Add savings goal" };
 
 export default async function NewGoalPage() {
   const user = await requirePageUser();

@@ -2,6 +2,7 @@ import * as React from "react";
 import { AlertTriangle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 
 interface ErrorStateProps {
   title?: string;
@@ -13,8 +14,8 @@ interface ErrorStateProps {
 
 /** Friendly failure message. Never shows stack traces or technical details. */
 export function ErrorState({
-  title = "Something went wrong",
-  description = "We couldn't load this right now. Please try again in a moment.",
+  title = t("common.somethingWentWrong"),
+  description = t("common.couldNotLoad"),
   action,
   className,
 }: ErrorStateProps) {

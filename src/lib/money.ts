@@ -11,6 +11,10 @@
  *   KHR: 0  (riel has no subunit in everyday use)
  */
 
+import { activeFormatPrefs } from "./format/active";
+import { withSeparators } from "./format/number";
+import type { CurrencyDisplay, FormatPrefs } from "./format/preferences";
+
 export const CURRENCY_CODES = ["USD", "KHR"] as const;
 export type CurrencyCode = (typeof CURRENCY_CODES)[number];
 
@@ -51,7 +55,25 @@ export interface ParseMoneyOptions {
 const AMOUNT_PATTERN = /^(?<int>\d{1,3}(?:,\d{3})+|\d+)(?:\.(?<frac>\d+))?$/;
 
 /**
- * Parse user input such as "1,234.50" into minor units for `currency`.
+ * Accept the unambiguous comma-decimal spellings used with the "1.234,56" and
+ * "1 234,56" number formats, rewriting them to "1234.56". A comma followed by
+ * exactly three digits ("1,234") is always a thousands separator, as before, so
+ * no input that was valid changes meaning; anything else is left for the
+ * pattern below to accept or reject.
+ */
+function normalizeSeparators(text: string): string {
+  const t = text.replace(/[\u00A0\u202F]/g, " ");
+  const spaced = /^(\d{1,3}(?: \d{3})+)(?:,(\d{1,2}))?$/.exec(t);
+  if (spaced) return spaced[1]!.replaceAll(" ", "") + (spaced[2] ? `.${spaced[2]}` : "");
+  const dotted = /^(\d{1,3}(?:\.\d{3})+),(\d{1,2})$/.exec(t);
+  if (dotted) return `${dotted[1]!.replaceAll(".", "")}.${dotted[2]}`;
+  const comma = /^(\d+),(\d{1,2})$/.exec(t);
+  if (comma) return `${comma[1]}.${comma[2]}`;
+  return t;
+}
+
+/**
+ * Parse user input such as "1,234.50" (or "1.234,50", "1 234,50") into minor units for `currency`.
  * Rejects scientific notation, more decimals than the currency allows,
  * empty input, and anything outside ±MAX_AMOUNT_MINOR.
  */
@@ -71,7 +93,7 @@ export function parseMoney(
     text = text.slice(1).trim();
   }
 
-  const match = AMOUNT_PATTERN.exec(text);
+  const match = AMOUNT_PATTERN.exec(normalizeSeparators(text));
   if (!match?.groups) return { ok: false, error: "Enter a valid number, like 1,250.50." };
 
   const intPart = (match.groups.int ?? "").replaceAll(",", "");
@@ -111,22 +133,26 @@ export function minorToDecimalString(minor: bigint, currency: CurrencyCode): str
 }
 
 export interface FormatMoneyOptions {
-  locale?: string;
   /** "always" shows "+" for positive amounts (useful for income rows). */
   signDisplay?: "auto" | "always" | "exceptZero" | "never";
+  /**
+   * Display preferences (separators, symbol or code). Defaults to the current
+   * user's on the server; client components pass them from useFormatPrefs().
+   */
+  prefs?: FormatPrefs;
 }
 
 const formatterCache = new Map<string, Intl.NumberFormat>();
 
-function getFormatter(currency: CurrencyCode, locale: string, signDisplay: string) {
-  const key = `${currency}|${locale}|${signDisplay}`;
+function getFormatter(currency: CurrencyCode, display: CurrencyDisplay, signDisplay: string) {
+  const key = `${currency}|${display}|${signDisplay}`;
   let formatter = formatterCache.get(key);
   if (!formatter) {
     const { exponent } = CURRENCIES[currency];
-    formatter = new Intl.NumberFormat(locale, {
+    formatter = new Intl.NumberFormat("en-US", {
       style: "currency",
       currency,
-      currencyDisplay: "narrowSymbol",
+      currencyDisplay: display === "CODE" ? "code" : "narrowSymbol",
       minimumFractionDigits: exponent,
       maximumFractionDigits: exponent,
       signDisplay: signDisplay as Intl.NumberFormatOptions["signDisplay"],
@@ -137,16 +163,19 @@ function getFormatter(currency: CurrencyCode, locale: string, signDisplay: strin
 }
 
 /**
- * Display string, e.g. (123456n, "USD") -> "$1,234.56", (410000n, "KHR") -> "៛410,000".
- * Intl receives an exact decimal string, never a float.
+ * Display string, e.g. (123456n, "USD") -> "$1,234.56", (410000n, "KHR") ->
+ * "៛410,000"; with the user's preferences "USD 1.234,56" etc. Each currency
+ * keeps its own number of decimals (USD 2, KHR 0). Intl receives an exact
+ * decimal string, never a float.
  */
 export function formatMoney(
   minor: bigint,
   currency: CurrencyCode,
-  { locale = "en-US", signDisplay = "auto" }: FormatMoneyOptions = {},
+  { signDisplay = "auto", prefs = activeFormatPrefs() }: FormatMoneyOptions = {},
 ): string {
   const decimal = minorToDecimalString(minor, currency) as Intl.StringNumericLiteral;
-  return getFormatter(currency, locale, signDisplay).format(decimal);
+  const parts = getFormatter(currency, prefs.currencyDisplay, signDisplay).formatToParts(decimal);
+  return withSeparators(parts, prefs);
 }
 
 /** Exact sum of minor-unit amounts. */

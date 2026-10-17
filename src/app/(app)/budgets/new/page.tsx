@@ -52,7 +52,12 @@ export default async function NewBudgetPage({ searchParams }: PageProps<"/budget
               currencies={data.currencies}
               minMonth={data.minMonth}
               maxMonth={data.maxMonth}
-              defaults={{ categoryId, currency: currency as "USD" | "KHR", month }}
+              defaults={{
+                categoryId,
+                currency: currency as "USD" | "KHR",
+                month,
+                alertThresholdPercent: String(data.defaultThreshold),
+              }}
             />
           </CardContent>
         </Card>

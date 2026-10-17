@@ -34,7 +34,7 @@ vi.mock("@/server/auth/config", () => ({
   handlers: {},
 }));
 
-const { updateProfileAction, deleteAccountAction, changePasswordAction } =
+const { updateProfileAction, updatePreferencesAction, deleteAccountAction, changePasswordAction } =
   await import("@/features/settings/actions");
 const { GET: getMe } = await import("@/app/api/me/route");
 
@@ -50,11 +50,13 @@ async function actAs(user: { id: string; email: string } | null) {
     : null;
 }
 
-const validProfile = {
-  name: "Updated",
+const validProfile = { name: "Updated" };
+const validPreferences = {
   baseCurrency: "KHR" as const,
   timezone: "Asia/Bangkok",
-  exchangeRateKhrPerUsd: "4050",
+  dateFormat: "ISO" as const,
+  numberFormat: "DOT_COMMA" as const,
+  currencyDisplay: "CODE" as const,
 };
 
 beforeEach(async () => {
@@ -112,6 +114,13 @@ describe("user A cannot read or modify user B's data", () => {
       userId: bob.id,
     });
     expect(result).toEqual({ ok: true, data: undefined });
+    expect(
+      await updatePreferencesAction({
+        ...validPreferences,
+        // @ts-expect-error — not part of the schema; must be stripped, never trusted
+        userId: bob.id,
+      }),
+    ).toEqual({ ok: true, data: undefined });
 
     const [a, b] = await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { id: alice.id } }),
@@ -181,17 +190,18 @@ describe("validation on the server", () => {
   it("re-validates profile input even from an authenticated user", async () => {
     const alice = await registerTestUser();
     await actAs(alice);
-    const result = await updateProfileAction({
-      ...validProfile,
+    const result = await updatePreferencesAction({
+      ...validPreferences,
       timezone: "Mars/Olympus",
-      exchangeRateKhrPerUsd: "-5",
+      // @ts-expect-error — not an allowed value
+      dateFormat: "YYYYMMDD",
     });
     expect(result).toMatchObject({
       ok: false,
       code: "VALIDATION",
       fieldErrors: {
         timezone: "Choose a valid timezone.",
-        exchangeRateKhrPerUsd: expect.any(String),
+        dateFormat: expect.any(String),
       },
     });
   });

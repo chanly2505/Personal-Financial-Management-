@@ -4,6 +4,7 @@ import type { AccountMenuUser } from "./account-menu";
 import { AppHeader } from "./app-header";
 import { AppSidebar } from "./app-sidebar";
 import { MobileNav } from "./mobile-nav";
+import { t } from "@/i18n";
 
 /**
  * Application frame. The (app) layout passes the verified user; the
@@ -29,7 +30,7 @@ export function AppShell({
         href="#main-content"
         className="sr-only z-50 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
       >
-        Skip to content
+        {t("common.skipToContent")}
       </a>
       <AppSidebar />
       <div className="flex min-h-dvh flex-col md:pl-rail lg:pl-sidebar">

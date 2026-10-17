@@ -200,7 +200,7 @@ base.describe("user data isolation", () => {
 
     await alicePage.goto("/settings");
     await alicePage.getByLabel("Name").fill("Alice Renamed");
-    await alicePage.getByRole("button", { name: "Save changes" }).click();
+    await alicePage.getByRole("button", { name: "Save profile" }).click();
     await expect(alicePage.getByText("Profile saved")).toBeVisible();
 
     await bobPage.goto("/settings");

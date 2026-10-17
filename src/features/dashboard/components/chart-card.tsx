@@ -41,7 +41,14 @@ export function ChartCard({
             <summary className="w-fit cursor-pointer rounded-md text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50">
               Show as table
             </summary>
-            <div className="mt-3 max-h-80 overflow-auto rounded-lg border">{table}</div>
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label={`${title} as a table`}
+              className="mt-3 max-h-80 overflow-auto rounded-lg border outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              {table}
+            </div>
           </details>
         )}
       </CardContent>

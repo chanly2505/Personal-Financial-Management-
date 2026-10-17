@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { t } from "@/i18n";
 
 export interface AccountMenuUser {
   name: string | null;
@@ -35,11 +36,10 @@ export function AccountMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full" aria-label="Account menu">
-          <span
-            aria-hidden="true"
-            className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground"
-          >
+        <Button variant="ghost" size="icon" className="rounded-full">
+          {/* Name = "Account menu, AE": the visible initials are part of it (WCAG 2.5.3). */}
+          <span className="sr-only">{t("common.accountMenu")}, </span>
+          <span className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
             {initials(user)}
           </span>
         </Button>

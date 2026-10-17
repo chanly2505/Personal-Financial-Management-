@@ -10,7 +10,11 @@ import { signOutEverywhereAction } from "../actions";
 export function SignOutEverywhere() {
   return (
     <ConfirmDialog
-      trigger={<Button variant="outline">Sign out everywhere</Button>}
+      trigger={
+        <Button variant="outline" className="self-start">
+          Sign out everywhere
+        </Button>
+      }
       title="Sign out on all devices?"
       description="Every browser and device signed in to your account — including this one — will need to sign in again."
       confirmLabel="Sign out everywhere"

@@ -24,6 +24,34 @@ enum Currency {
   KHR
 }
 
+/// How dates are shown (docs/PRD.md §6.13). Display only; stored dates never change.
+enum DateFormat {
+  D_MMM_Y /// 17 Oct 2026
+  MMM_D_Y /// Oct 17, 2026
+  DD_MM_Y /// 17/10/2026
+  ISO /// 2026-10-17
+}
+
+/// Digit grouping and decimal separator for amounts and numbers. Display only.
+enum NumberFormat {
+  COMMA_DOT /// 1,234.56
+  DOT_COMMA /// 1.234,56
+  SPACE_COMMA /// 1 234,56
+}
+
+/// Currency shown as a symbol ($12.50, ៛4,100) or an ISO code (USD 12.50).
+enum CurrencyDisplay {
+  SYMBOL
+  CODE
+}
+
+/// Which in-app budget warnings are created (docs/PRD.md §6.7).
+enum BudgetAlertMode {
+  ALL /// at each budget's threshold and at 100 %
+  LIMIT_ONLY /// only when a budget reaches 100 %
+  OFF
+}
+
 enum AccountType {
   CASH
   BANK
@@ -47,21 +75,28 @@ enum RecurrenceFrequency {
 }
 
 model User {
-  id                    String   @id @default(uuid(7)) @db.Uuid
-  email                 String   @unique /// Always stored lower-cased and trimmed.
+  id                    String          @id @default(uuid(7)) @db.Uuid
+  email                 String          @unique /// Always stored lower-cased and trimmed.
   name                  String?
-  passwordHash          String   @map("password_hash")
+  passwordHash          String          @map("password_hash")
   /// Bumped on password change / "sign out everywhere" to invalidate issued sessions.
-  sessionVersion        Int      @default(0) @map("session_version")
+  sessionVersion        Int             @default(0) @map("session_version")
   /// Set whenever the password is changed or reset.
-  passwordChangedAt     DateTime @default(now()) @map("password_changed_at") @db.Timestamptz(3)
-  baseCurrency          Currency @default(USD) @map("base_currency")
+  passwordChangedAt     DateTime        @default(now()) @map("password_changed_at") @db.Timestamptz(3)
+  baseCurrency          Currency        @default(USD) @map("base_currency")
   /// IANA timezone used to decide what "today" and "this month" mean for the user.
-  timezone              String   @default("Asia/Phnom_Penh")
-  /// User-maintained rate used only for approximate cross-currency totals (display).
-  exchangeRateKhrPerUsd Decimal  @default(4100) @map("exchange_rate_khr_per_usd") @db.Decimal(12, 4)
-  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  timezone              String          @default("Asia/Phnom_Penh")
+  /// Reserved for a future, explicitly approved conversion policy (PRD Q-2). Not used
+  /// anywhere today and not editable: no figure is ever converted.
+  exchangeRateKhrPerUsd Decimal         @default(4100) @map("exchange_rate_khr_per_usd") @db.Decimal(12, 4)
+  dateFormat            DateFormat      @default(D_MMM_Y) @map("date_format")
+  numberFormat          NumberFormat    @default(COMMA_DOT) @map("number_format")
+  currencyDisplay       CurrencyDisplay @default(SYMBOL) @map("currency_display")
+  budgetAlertMode       BudgetAlertMode @default(ALL) @map("budget_alert_mode")
+  /// Warning threshold suggested for new budgets (each budget keeps its own).
+  defaultAlertThreshold Int             @default(80) @map("default_alert_threshold") @db.SmallInt
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   accounts            FinancialAccount[]
   categories          Category[]

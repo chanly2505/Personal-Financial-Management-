@@ -4,9 +4,9 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0–9 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–10 are complete.
 
-**Present and verified (end of Phase 9)**
+**Present and verified (end of Phase 10)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
 - Prisma 7.10 schema with 9 tables and the initial migration (with hand-written CHECK constraints), applied to `finance_dev` and `finance_test`; idempotent local seed (`npm run db:seed`).
 - Validated environment (`src/server/env.ts`), error model (`src/server/errors.ts`, `action-result.ts`), privacy-safe logger, `/api/health` database probe.
@@ -19,6 +19,7 @@ The project lives in `/home/user/personal-finance`. Phases 0–9 are complete.
 - Recurring (Phase 7): weekly/monthly/yearly rules with a documented month-end/leap-year policy, active/paused/completed states, upcoming dates, execution history, failure states; idempotent scheduled engine (cron endpoint, CLI, in-process timer) — docs/OPERATIONS.md.
 - Savings goals (Phase 8): earmark goals (Q-7 A) with progress, monthly suggestion, set aside / take back (never below zero), earmark-exceeds-balance warning, archive, dashboard section.
 - Reports & export (Phase 9): income, expenses, by category, cash flow, account history, budget performance and period comparison with one shared filter set and daily/weekly/monthly/yearly grouping; streamed, injection-safe CSV export from Reports and Transactions — docs/REPORTS.md.
+- Settings and UX polish (Phase 10): display preferences (date format, number format, symbols or codes) applied on every page without touching data; default currency; timezone; budget-warning preferences; JSON export of all data; deletion summary; text catalog ready for Khmer; every page audited with axe-core on three widths.
 - Firebase client SDK initialized (no Analytics).
 - `npm run check` passes (typecheck, lint, format check, 444 Vitest tests); 239 Playwright tests pass on desktop, tablet and mobile against a production build.
 
@@ -107,10 +108,14 @@ Verified: `npm run check` (380 tests, incl. `goal-progress` unit tests and `goal
 Delivered: `features/reports` — periods (9 presets incl. custom, previous-period rules), grouping (auto/day/week/month/year with a row cap), SQL aggregations over the shared ledger relation and WHERE clause (series, category/account breakdowns, account flows), service assembling seven reports; `/reports` page with one URL-based filter bar (folds away on phones), tabs, totals bar with a link to the matching records, charts with table views; currency filter added to the ledger (Transactions filters and URL); CSV export (`/api/transactions/export`, `src/lib/csv.ts`) — BOM, RFC 4180, formula-injection guard, keyset-paginated streaming, 50,000-row limit — with buttons on Reports and Transactions. No schema change. Definitions and limits: docs/REPORTS.md; PRD §5.9 and §6.11 updated (export columns and limit replace the earlier draft, D-8).
 Verified: `npm run check` (444 tests, incl. `csv` and `report-period` unit tests, `reports.test.ts` and `export.test.ts`: boundary days, every filter, multiple currencies, reconciliation with Transactions totals, account opening/closing, reversals, budgets, comparison, CSV escaping and injection, batching with date ties, row limit, 3,500-row export, cross-user ids); `npm run build`; 239 Playwright tests on desktop, tablet, mobile incl. `e2e/reports.spec.ts` (downloads checked); screenshots.
 
-### Phase 10 — Hardening and release readiness
+### Phase 10 — Settings and UX polish ✔ (complete)
+Delivered: migration `…_user_preferences` (date/number format, currency display, budget-warning mode, default warning level + CHECK); `src/lib/format` (date, number and money formatting by preference; per-request preferences on the server via React `cache`, `FormatProvider`/`useFormatPrefs` on the client; `<Money>` reads them); comma-decimal amount input accepted where unambiguous; Settings rebuilt as six sections — Profile (email shown, not editable without verification), Region and display (live preview), Notifications (all / only at the limit / off, re-synced at once; default warning level used by Add budget), Security, Your data (CSV + streamed JSON `/api/me/export`), Delete account (counts, download offer, password + DELETE); default currency pre-selects new accounts; unused exchange-rate field removed (Q-2); `src/i18n` catalog + typed `t()` for shell and shared text (docs/I18N.md); UX/a11y audit — `e2e/audit.spec.ts` (every page × 3 widths: one h1, consistent titles, no sideways scroll, zero axe WCAG 2.2 A/AA violations), fixes: account button name (label in name), keyboard-scrollable tables, not-found h1, alert dialogs scroll on small screens, consistent add/edit titles, record names as tab titles, button sizing; the Add category dialog no longer keeps the previous name and errors when reopened. Hardened e2e select helpers against a lost click during the opening animation.
+Verified: `npm run check` (480 tests, incl. `format`, settings schema and money-input unit tests; `settings.test.ts`: persistence, isolation, preferences never alter stored data or balances, warning modes, default level, JSON export contents/secrets/streaming, full account deletion across every table); `npm run build`; full Playwright suite on desktop, tablet, mobile incl. `e2e/settings.spec.ts` and `e2e/audit.spec.ts`; screenshots.
+
+### Phase 11 — Hardening and release readiness
 Depends on: all. Decision: **Q-14** (deployment target) — a free option is prepared: Vercel Hobby + Neon (docs/DEPLOYMENT.md, `vercel.json`, `vercel-build`, `prisma/sql/app-role-neon.sql`).
 
-Tasks: accessibility audit (keyboard, screen reader, contrast) and fixes; performance with 10,000+ seeded records (`EXPLAIN ANALYZE`, index review); full security review against SECURITY.md; dark-mode toggle; error/empty state review; deployment configuration (env, migrations on deploy, scheduler, backups); privacy notice.
+Tasks: manual screen-reader pass (automated audit done in Phase 10); performance with 10,000+ seeded records (`EXPLAIN ANALYZE`, index review); full security review against SECURITY.md; dark-mode toggle; error/empty state review; deployment configuration (env, migrations on deploy, scheduler, backups); privacy notice.
 
 Exit criteria: PRD §7 non-functional targets met and measured; no high/critical runtime audit findings; release checklist signed off.
 

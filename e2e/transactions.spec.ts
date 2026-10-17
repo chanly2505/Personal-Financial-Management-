@@ -17,7 +17,13 @@ async function addAccount(page: Page, preset: string, opening: string) {
 
 async function choose(page: Page, label: string, option: string | RegExp) {
   await page.getByRole("combobox", { name: label }).click();
-  await page.getByRole("option", { name: option }).click();
+  // Retry until the list has closed: a click during the opening animation can be
+  // lost, and the next key press must go to the form, not the list.
+  const choice = page.getByRole("option", { name: option });
+  await expect(async () => {
+    if (await choice.isVisible()) await choice.click();
+    await expect(page.getByRole("listbox")).toBeHidden({ timeout: 1_000 });
+  }).toPass();
 }
 
 async function balanceOn(page: Page, accountId: string) {

@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 
 import { findSessionUser } from "@/features/auth/server/repository";
+import type { FormatPrefs } from "@/lib/format/preferences";
 import type { CurrencyCode } from "@/lib/money";
 import { safeCallbackPath } from "@/lib/safe-redirect";
 import { UnauthorizedError } from "@/server/errors";
+import { setRequestFormatPrefs } from "@/server/format-context";
 
 import { auth } from "./config";
 
@@ -21,6 +23,8 @@ export interface CurrentUser {
   name: string | null;
   timezone: string;
   baseCurrency: CurrencyCode;
+  /** Display preferences. Always set for session users; test doubles may omit it. */
+  formatPrefs?: FormatPrefs;
 }
 
 interface SessionLike {
@@ -49,12 +53,20 @@ export async function resolveSessionUser(
     name: user.name,
     timezone: user.timezone,
     baseCurrency: user.baseCurrency,
+    formatPrefs: {
+      dateFormat: user.dateFormat,
+      numberFormat: user.numberFormat,
+      currencyDisplay: user.currencyDisplay,
+    },
   };
 }
 
 /** Verified current user or null. Memoised per request. */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
-  return resolveSessionUser(await auth());
+  const user = await resolveSessionUser(await auth());
+  // Every amount and date this request renders on the server uses these.
+  if (user?.formatPrefs) setRequestFormatPrefs(user.formatPrefs);
+  return user;
 });
 
 /** For server actions, route handlers and services: throws UnauthorizedError. */

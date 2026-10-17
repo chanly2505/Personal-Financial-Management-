@@ -47,7 +47,11 @@ type Props = {
   minMonth: string;
   maxMonth: string;
 } & (
-  | { mode: "create"; defaults: Pick<Values, "categoryId" | "currency" | "month"> }
+  | {
+      mode: "create";
+      defaults: Pick<Values, "categoryId" | "currency" | "month"> &
+        Partial<Pick<Values, "alertThresholdPercent">>;
+    }
   | {
       mode: "edit";
       budgetId: string;

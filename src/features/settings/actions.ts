@@ -13,8 +13,15 @@ import { changePassword, deleteAccount, signOutEverywhere } from "@/features/aut
 import { authedAction } from "@/server/auth/action";
 import { signOut } from "@/server/auth/config";
 
-import { type ProfileInput, profileSchema } from "./schemas";
-import { updateProfile } from "./server/service";
+import {
+  type NotificationsInput,
+  type PreferencesInput,
+  type ProfileInput,
+  notificationsSchema,
+  preferencesSchema,
+  profileSchema,
+} from "./schemas";
+import { updateNotifications, updatePreferences, updateProfile } from "./server/service";
 
 /**
  * Account settings. Every action is wrapped in authedAction: the user comes
@@ -28,6 +35,25 @@ const runUpdateProfile = authedAction(profileSchema, async (values, user) => {
 
 export async function updateProfileAction(input: ProfileInput) {
   return runUpdateProfile(input);
+}
+
+const runUpdatePreferences = authedAction(preferencesSchema, async (values, user) => {
+  await updatePreferences(user.id, values);
+  // Every page shows amounts and dates: re-render them all with the new format.
+  revalidatePath("/", "layout");
+});
+
+export async function updatePreferencesAction(input: PreferencesInput) {
+  return runUpdatePreferences(input);
+}
+
+const runUpdateNotifications = authedAction(notificationsSchema, async (values, user) => {
+  await updateNotifications(user.id, values);
+  revalidatePath("/", "layout");
+});
+
+export async function updateNotificationsAction(input: NotificationsInput) {
+  return runUpdateNotifications(input);
 }
 
 const runChangePassword = authedAction(changePasswordSchema, async (input, user) => {

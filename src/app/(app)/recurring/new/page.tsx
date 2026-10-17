@@ -11,7 +11,7 @@ import { RecurringForm } from "@/features/recurring/components/recurring-form";
 import { getTransactionFormData } from "@/features/transactions/server/form-data";
 import { requirePageUser } from "@/server/auth/session";
 
-export const metadata: Metadata = { title: "Add recurring" };
+export const metadata: Metadata = { title: "Add recurring transaction" };
 
 export default async function NewRecurringPage() {
   const user = await requirePageUser();

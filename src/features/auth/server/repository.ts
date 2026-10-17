@@ -36,6 +36,9 @@ export function findSessionUser(userId: string) {
       sessionVersion: true,
       timezone: true,
       baseCurrency: true,
+      dateFormat: true,
+      numberFormat: true,
+      currencyDisplay: true,
     },
   });
 }

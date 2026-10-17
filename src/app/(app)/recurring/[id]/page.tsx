@@ -18,10 +18,21 @@ import {
 import { occurrencesBetween } from "@/features/recurring/schedule";
 import { getRecurring } from "@/features/recurring/server/service";
 import { addDays, formatCalendarDate, todayInTimeZone } from "@/lib/dates";
-import { requirePageUser } from "@/server/auth/session";
+import { getCurrentUser, requirePageUser } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 
-export const metadata: Metadata = { title: "Recurring rule" };
+/** The tab title is the record's name, like the page heading (falls back when not found). */
+export async function generateMetadata({
+  params,
+}: PageProps<"/recurring/[id]">): Promise<Metadata> {
+  const [user, { id }] = await Promise.all([getCurrentUser(), params]);
+  const rule = user
+    ? await getRecurring(user, id)
+        .then((r) => r.rule)
+        .catch(() => null)
+    : null;
+  return { title: rule?.name ?? "Recurring transaction" };
+}
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (

@@ -13,6 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { t } from "@/i18n";
 
 interface ConfirmDialogProps {
   /** Element that opens the dialog, e.g. a "Delete" button. Omit when controlled. */
@@ -41,8 +42,8 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Delete",
-  cancelLabel = "Cancel",
+  confirmLabel = t("common.delete"),
+  cancelLabel = t("common.cancel"),
   destructive = true,
   onConfirm,
 }: ConfirmDialogProps) {

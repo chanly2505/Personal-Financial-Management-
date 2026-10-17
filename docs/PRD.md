@@ -183,7 +183,7 @@ balance(account, asOf) = opening_balance
 
 - Each account, budget and savings goal has exactly one currency. An income/expense uses its account's currency. Account currency is immutable.
 - **No conversion is ever stored or used in an authoritative figure.** Balances, budgets, goals, reports and exports are computed per currency.
-- Approximate combined totals **[Q-2]** (proposed): shown on the dashboard only, converted to the user's base currency using a single KHR-per-USD rate the user maintains in Settings (default 4,100), prefixed "≈" and labelled "approx.". No rate history is kept: changing the rate changes the approximate figure everywhere, including past periods. This is documented in the UI tooltip.
+- Approximate combined totals **[Q-2]** (proposed, not built): would need an approved exchange-rate source and rounding policy. Until then no total is ever converted and Settings has no rate field (§6.13).
 - Budgets count only expenses from accounts in the budget's currency **[Q-8]** (proposed). A user who spends from both USD and KHR accounts in one category sets two budgets.
 - Savings goal contributions are in the goal's currency.
 - CSV export includes the currency on every row; amounts are never converted.
@@ -297,6 +297,25 @@ balance(account, asOf) = opening_balance
 | Recent transactions | The 8 newest records (including transfers) dated in the period. |
 
 Amounts in different currencies are never added together. Charts show one currency at a time (switchable).
+
+### 6.13 Settings and display preferences (Phase 10)
+
+| Setting | Effect | Never does |
+|---|---|---|
+| Name | Shown in the account menu. Optional, ≤ 60 characters. | — |
+| Email | Shown, not editable. Changing the sign-in email needs a verification e-mail to the new address, which needs an e-mail provider (Q-12). | Change without verification. |
+| Password | Changed only with the current password; every session then ends. Sign out everywhere available. | — |
+| Default currency | Pre-selected when adding accounts, budgets and goals; first chart currency on the dashboard. | Convert or relabel any existing amount or account. |
+| Timezone | Decides "today", "this month" and date presets everywhere. | Move stored calendar dates (records keep the date they were entered with). |
+| Date format | `17 Oct 2026` (default), `Oct 17, 2026`, `17/10/2026`, `2026-10-17`. | Change stored dates or the CSV/JSON export format. |
+| Number format | `1,234.56` (default), `1.234,56`, `1 234,56`. Each currency keeps its own decimals (USD 2, KHR 0). Amount fields also accept `12,50`, `1.234,56` and `1 234,56`; `1,234` always means one thousand two hundred thirty-four. | Change stored amounts or export format. |
+| Show currencies as | Symbols (`$12.50`, `៛41,000`) or codes (`USD 12.50`, `KHR 41,000`). Screens that mix currencies also label totals with the code. | — |
+| Budget warnings | All (threshold + 100 %), only at the limit, or off. Saving re-syncs the bell immediately (unwanted warnings are resolved, wanted ones appear). In-app only. | Send e-mail or push notifications. |
+| Warning level for new budgets | Suggested threshold (1–100 %) in the Add budget form; each budget keeps its own. | Change existing budgets. |
+| Your data | CSV of transactions (§6.11) and a JSON file with every record (accounts, categories, transactions, transfers, budgets, recurring items, goals and contributions; exact decimal strings plus currency). No password hash, session data, tokens or internal keys. | — |
+| Delete account | Shows counts of what will be deleted and offers the JSON download; requires the password and typing DELETE. One cascading delete removes every row the user owns; sessions end because the user no longer exists. | Leave orphaned records or touch other users. |
+
+**Currency conversion:** none, anywhere. The earlier "Riel per US dollar" setting was removed from Settings because no figure used it; the column is kept, unused, until Q-2 (an explicit rate and rounding policy) is approved.
 
 ## 7. Non-functional requirements
 

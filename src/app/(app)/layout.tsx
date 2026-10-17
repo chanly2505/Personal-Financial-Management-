@@ -1,10 +1,12 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { FormatProvider } from "@/components/shared/format-provider";
 import { signOutAction } from "@/features/auth/actions";
 import { toAlertMenuItems } from "@/features/budgets/alert-items";
 import { AlertsMenu } from "@/features/budgets/components/alerts-menu";
 import { ALERT_MENU_LIMIT } from "@/features/budgets/constants";
 import { getAlertsSummaryOrNull } from "@/features/budgets/server/service";
 import { todayInTimeZone } from "@/lib/dates";
+import { DEFAULT_FORMAT_PREFS } from "@/lib/format/preferences";
 import { requirePageUser } from "@/server/auth/session";
 
 /**
@@ -18,19 +20,21 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   // null if unavailable: the bell is hidden rather than breaking every page.
   const alerts = await getAlertsSummaryOrNull(user, ALERT_MENU_LIMIT);
   return (
-    <AppShell
-      user={{ name: user.name, email: user.email }}
-      signOutAction={signOutAction}
-      notifications={
-        alerts && (
-          <AlertsMenu
-            unread={alerts.unread}
-            items={toAlertMenuItems(alerts.alerts, user.timezone, todayInTimeZone(user.timezone))}
-          />
-        )
-      }
-    >
-      {children}
-    </AppShell>
+    <FormatProvider prefs={user.formatPrefs ?? DEFAULT_FORMAT_PREFS}>
+      <AppShell
+        user={{ name: user.name, email: user.email }}
+        signOutAction={signOutAction}
+        notifications={
+          alerts && (
+            <AlertsMenu
+              unread={alerts.unread}
+              items={toAlertMenuItems(alerts.alerts, user.timezone, todayInTimeZone(user.timezone))}
+            />
+          )
+        }
+      >
+        {children}
+      </AppShell>
+    </FormatProvider>
   );
 }

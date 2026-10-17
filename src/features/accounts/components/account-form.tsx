@@ -37,7 +37,7 @@ function validateOpeningBalance(value: string, currency: CurrencyCode): true | s
 
 export function AccountForm(
   props:
-    | { mode: "create" }
+    | { mode: "create"; defaultCurrency?: CurrencyCode }
     | {
         mode: "edit";
         accountId: string;
@@ -57,7 +57,7 @@ export function AccountForm(
     resolver: zodResolver(createAccountSchema),
     defaultValues: editing
       ? props.defaultValues
-      : { name: "", type: "BANK", currency: "USD", openingBalance: "" },
+      : { name: "", type: "BANK", currency: props.defaultCurrency ?? "USD", openingBalance: "" },
     mode: "onTouched",
   });
   const { errors, isSubmitting } = form.formState;

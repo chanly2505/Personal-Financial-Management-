@@ -11,7 +11,7 @@ import { minorToDecimalString } from "@/lib/money";
 import { requirePageUser } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 
-export const metadata: Metadata = { title: "Edit recurring" };
+export const metadata: Metadata = { title: "Edit recurring transaction" };
 
 export default async function EditRecurringPage({ params }: PageProps<"/recurring/[id]/edit">) {
   const user = await requirePageUser();

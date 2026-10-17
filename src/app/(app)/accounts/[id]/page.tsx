@@ -19,10 +19,15 @@ import { getLedgerPage } from "@/features/transactions/server/service";
 import { ledgerHref } from "@/features/transactions/url";
 import { formatCalendarDate, todayInTimeZone } from "@/lib/dates";
 import { CURRENCIES } from "@/lib/money";
-import { requirePageUser } from "@/server/auth/session";
+import { getCurrentUser, requirePageUser } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 
-export const metadata: Metadata = { title: "Account" };
+/** The tab title is the record's name, like the page heading (falls back when not found). */
+export async function generateMetadata({ params }: PageProps<"/accounts/[id]">): Promise<Metadata> {
+  const [user, { id }] = await Promise.all([getCurrentUser(), params]);
+  const account = user ? await getAccount(user, id).catch(() => null) : null;
+  return { title: account?.name ?? "Account" };
+}
 
 const RECENT = 10;
 

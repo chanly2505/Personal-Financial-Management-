@@ -19,6 +19,7 @@ import { getLedgerPage } from "@/features/transactions/server/service";
 import { activeFilterCount, exportHref, ledgerHref } from "@/features/transactions/url";
 import { todayInTimeZone } from "@/lib/dates";
 import { requirePageUser } from "@/server/auth/session";
+import { formatInteger } from "@/lib/format/number";
 
 export const metadata: Metadata = { title: "Transactions" };
 
@@ -150,7 +151,7 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
           {ledger.total > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
               <p>
-                {ledger.total.toLocaleString("en-US")}{" "}
+                {formatInteger(ledger.total)}{" "}
                 {ledger.total === 1 ? "record matches" : "records match"}
               </p>
               {ledger.total <= EXPORT_MAX_ROWS ? (
@@ -162,8 +163,8 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
                 </Button>
               ) : (
                 <p>
-                  Export is limited to {EXPORT_MAX_ROWS.toLocaleString("en-US")} records — narrow
-                  the filters to export.
+                  Export is limited to {formatInteger(EXPORT_MAX_ROWS)} records — narrow the filters
+                  to export.
                 </p>
               )}
             </div>

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 import { BrandMark } from "./brand-mark";
 import { NAV_ITEMS, isActivePath } from "./navigation";
+import { t } from "@/i18n";
 
 /**
  * Tablet (md): icon rail with tooltips. Desktop (lg+): full sidebar with labels.
@@ -29,7 +30,7 @@ export function AppSidebar() {
         </Link>
       </div>
 
-      <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-2">
+      <nav aria-label={t("common.mainNavigation")} className="flex-1 overflow-y-auto px-3 py-2">
         <ul className="flex flex-col gap-1">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const active = isActivePath(pathname, href);

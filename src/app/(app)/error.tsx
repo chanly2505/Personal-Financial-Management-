@@ -6,6 +6,7 @@ import { RotateCcw } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
 import { ErrorState } from "@/components/shared/error-state";
 import { Button } from "@/components/ui/button";
+import { t } from "@/i18n";
 
 /**
  * Error boundary for every page inside the app shell. The shell (navigation)
@@ -29,13 +30,13 @@ export default function AppError({
       <ErrorState
         description={
           error.digest
-            ? `We couldn't load this page. Please try again. (Reference: ${error.digest})`
-            : "We couldn't load this page. Please try again."
+            ? t("common.couldNotLoadPageRef", { reference: error.digest })
+            : t("common.couldNotLoadPage")
         }
         action={
           <Button variant="outline" onClick={reset}>
             <RotateCcw aria-hidden="true" />
-            Try again
+            {t("common.tryAgain")}
           </Button>
         }
       />

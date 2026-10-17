@@ -1,4 +1,6 @@
 import { type IsoDate, addMonthsClamped, endOfMonth, startOfMonth } from "@/lib/dates";
+import { formatMonthYear } from "@/lib/format/dates";
+import type { FormatPrefs } from "@/lib/format/preferences";
 
 import { MONTH_PATTERN } from "./constants";
 
@@ -25,9 +27,7 @@ export function shiftMonth(month: MonthKey, by: number): MonthKey {
   return monthKeyOf(addMonthsClamped(startOfMonth(monthStart(month)), by));
 }
 
-const label = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-
-/** "October 2026" */
-export function monthLabel(month: MonthKey): string {
-  return label.format(new Date(`${monthStart(month)}T00:00:00Z`));
+/** "October 2026" (or "2026-10" with the ISO date format). */
+export function monthLabel(month: MonthKey, prefs?: FormatPrefs): string {
+  return formatMonthYear(monthStart(month), "long", prefs);
 }

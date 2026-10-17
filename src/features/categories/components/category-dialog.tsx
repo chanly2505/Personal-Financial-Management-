@@ -76,15 +76,22 @@ export function CategoryDialog({
   const editing = Boolean(category);
   const typeLocked = editing && (category?.usageCount ?? 0) > 0;
   const [formError, setFormError] = useState<string | null>(null);
+  const initial: CreateCategoryInput = {
+    name: category?.name ?? "",
+    type: category?.type ?? defaultType,
+    color: category?.color ?? "chart-1",
+  };
   const form = useForm<CreateCategoryInput>({
     resolver: zodResolver(createCategorySchema),
-    values: {
-      name: category?.name ?? "",
-      type: category?.type ?? defaultType,
-      color: category?.color ?? "chart-1",
-    },
+    values: initial,
     mode: "onTouched",
   });
+  /** Every opening starts fresh: no text or errors left over from the last time. */
+  function close() {
+    setFormError(null);
+    form.reset(initial);
+    onOpenChange(false);
+  }
   const { errors, isSubmitting } = form.formState;
 
   async function onSubmit(values: CreateCategoryInput) {
@@ -97,7 +104,7 @@ export function CategoryDialog({
       return;
     }
     toast.success(editing ? "Category updated" : "Category added");
-    onOpenChange(false);
+    close();
     router.refresh();
   }
 
@@ -106,8 +113,8 @@ export function CategoryDialog({
       open={open}
       onOpenChange={(next) => {
         if (isSubmitting) return;
-        if (!next) setFormError(null);
-        onOpenChange(next);
+        if (next) onOpenChange(true);
+        else close();
       }}
     >
       <DialogContent>

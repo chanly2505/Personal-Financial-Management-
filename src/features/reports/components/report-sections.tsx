@@ -24,6 +24,7 @@ import type {
   CurrencyReport,
   ReportTotals,
 } from "../types";
+import { formatInteger, formatPercent } from "@/lib/format/number";
 
 /**
  * Report bodies (docs/REPORTS.md). Server components: every figure arrives
@@ -59,8 +60,15 @@ export function ReportTable({
   const cell = (align: Align = "right") =>
     cn("px-3 py-2", align === "right" ? "text-right tabular-nums" : "text-left");
   return (
+    // Focusable so keyboard users can scroll it (WCAG 2.1.1); named by its caption.
     <div
-      className={cn("overflow-x-auto rounded-lg border", tall && "max-h-[36rem] overflow-y-auto")}
+      tabIndex={0}
+      role="region"
+      aria-label={caption}
+      className={cn(
+        "overflow-x-auto rounded-lg border outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        tall && "max-h-[36rem] overflow-y-auto",
+      )}
     >
       <table className="w-full min-w-max text-sm">
         <caption className="sr-only">{caption}</caption>
@@ -189,7 +197,7 @@ export function TotalsSummary({ totals }: { totals: ReportTotals[] }) {
           </div>
           <div className="flex flex-col gap-0.5">
             <dt className="text-xs text-muted-foreground">Records</dt>
-            <dd className="font-medium tabular-nums">{t.count.toLocaleString("en-US")}</dd>
+            <dd className="font-medium tabular-nums">{formatInteger(t.count)}</dd>
           </div>
         </dl>
       ))}
@@ -229,7 +237,7 @@ function BreakdownCard({
                 `${l.name}${l.isArchived ? " (archived)" : ""}`,
                 l.count,
                 money(l.amountMinor, currency),
-                `${l.sharePercent.toFixed(1)}%`,
+                `${formatPercent(l.sharePercent)}`,
               ]),
               ["Total", lines.reduce((s, l) => s + l.count, 0), money(total, currency), "100%"],
             ]}
@@ -246,7 +254,7 @@ function BreakdownCard({
             hint: l.isArchived ? "Archived" : undefined,
             swatch: l.color,
             value: toChartNumber(l.amountMinor, currency),
-            valueText: `${money(l.amountMinor, currency)} · ${l.sharePercent.toFixed(1)}%`,
+            valueText: `${money(l.amountMinor, currency)} · ${formatPercent(l.sharePercent)}`,
           }))}
         />
       ) : (
@@ -363,13 +371,13 @@ export function CategoryReport({ report, range }: { report: CurrencyReport; rang
             {l.name}
             {l.isArchived && <span className="text-xs text-muted-foreground">(archived)</span>}
           </span>,
-          l.count.toLocaleString("en-US"),
+          formatInteger(l.count),
           money(l.amountMinor, c),
-          `${l.sharePercent.toFixed(1)}%`,
+          `${formatPercent(l.sharePercent)}`,
         ])}
         footer={[
           "Total",
-          lines.reduce((s, l) => s + l.count, 0).toLocaleString("en-US"),
+          formatInteger(lines.reduce((s, l) => s + l.count, 0)),
           money(total, c),
           "100%",
         ]}
@@ -441,7 +449,7 @@ export function CashFlowReport({
             money(p.expenseMinor, c),
             signedMoney(p.netMinor, c),
             signedMoney(runningNet[i] ?? 0n, c),
-            p.transferCount.toLocaleString("en-US"),
+            formatInteger(p.transferCount),
           ];
         })}
         footer={[
@@ -450,7 +458,7 @@ export function CashFlowReport({
           money(report.totals.expenseMinor, c),
           signedMoney(report.totals.netMinor, c),
           "",
-          report.series.reduce((s, p) => s + p.transferCount, 0).toLocaleString("en-US"),
+          formatInteger(report.series.reduce((s, p) => s + p.transferCount, 0)),
         ]}
       />
     </section>
@@ -558,9 +566,8 @@ export function AccountHistoryReport({
       )}
       {history.truncated && (
         <p className="text-sm text-muted-foreground">
-          Showing the first {history.rows.length.toLocaleString("en-US")} of{" "}
-          {history.count.toLocaleString("en-US")} records. Totals above cover all of them; export
-          CSV for the full list.
+          Showing the first {formatInteger(history.rows.length)} of {formatInteger(history.count)}{" "}
+          records. Totals above cover all of them; export CSV for the full list.
         </p>
       )}
     </section>
@@ -642,7 +649,7 @@ function changePercent(current: bigint, previous: bigint): string {
   const scaled = ((current - previous) * 2000n) / (previous < 0n ? -previous : previous);
   const tenths = scaled >= 0n ? (scaled + 1n) / 2n : (scaled - 1n) / 2n;
   const value = Number(tenths) / 10;
-  return `${value > 0 ? "+" : "−"}${Math.abs(value).toFixed(1)}%`;
+  return `${value > 0 ? "+" : "−"}${formatPercent(Math.abs(value))}`;
 }
 
 function ChangeCell({
@@ -720,8 +727,8 @@ export function ComparisonReport({
                 ]),
                 [
                   "Records",
-                  cc.current.count.toLocaleString("en-US"),
-                  cc.previous.count.toLocaleString("en-US"),
+                  formatInteger(cc.current.count),
+                  formatInteger(cc.previous.count),
                   `${cc.current.count - cc.previous.count >= 0 ? "+" : "−"}${Math.abs(cc.current.count - cc.previous.count)}`,
                   changePercent(BigInt(cc.current.count), BigInt(cc.previous.count)),
                 ],

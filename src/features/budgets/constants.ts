@@ -12,3 +12,10 @@ export const MIN_MONTH = "2000-01";
 
 /** Unread alerts listed in the header menu. */
 export const ALERT_MENU_LIMIT = 8;
+
+/**
+ * Which in-app warnings a user receives (Settings → Budget notifications).
+ * In-app only: no e-mail or push notifications exist (docs/PRD.md §6.7).
+ */
+export const BUDGET_ALERT_MODES = ["ALL", "LIMIT_ONLY", "OFF"] as const;
+export type BudgetAlertMode = (typeof BUDGET_ALERT_MODES)[number];

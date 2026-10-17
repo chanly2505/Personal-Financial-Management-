@@ -1,43 +1,28 @@
-import { type IsoDate, isoDateToDb } from "@/lib/dates";
+import type { IsoDate } from "@/lib/dates";
+import { formatDate, formatDayMonth, formatMonthShort, formatMonthYear } from "@/lib/format/dates";
 
 import type { Granularity } from "./constants";
 
-const dayMonth = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-const monthOnly = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
-const monthYear = new Intl.DateTimeFormat("en-GB", {
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-const full = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+/** Report labels in the user's date format (server components; request preferences apply). */
 
 /** Short axis label for a bucket start. */
 export function bucketLabel(start: IsoDate, granularity: Granularity, spansYears: boolean): string {
-  const date = isoDateToDb(start);
   if (granularity === "year") return start.slice(0, 4);
-  if (granularity === "month") return (spansYears ? monthYear : monthOnly).format(date);
-  return dayMonth.format(date);
+  if (granularity === "month") {
+    return spansYears ? formatMonthYear(start, "short") : formatMonthShort(start);
+  }
+  return formatDayMonth(start);
 }
 
 /** Long label for tables and tooltips. */
 export function bucketTitle(start: IsoDate, granularity: Granularity): string {
-  const date = isoDateToDb(start);
   switch (granularity) {
     case "day":
-      return full.format(date);
+      return formatDate(start);
     case "week":
-      return `Week of ${full.format(date)}`;
+      return `Week of ${formatDate(start)}`;
     case "month":
-      return monthYear.format(date);
+      return formatMonthYear(start, "short");
     case "year":
       return start.slice(0, 4);
   }

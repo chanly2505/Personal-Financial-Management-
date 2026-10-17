@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { markAlertsReadAction } from "../actions";
+import { t } from "@/i18n";
 
 export interface AlertMenuItem {
   id: string;
@@ -97,7 +98,7 @@ export function AlertsMenu({ unread, items }: { unread: number; items: AlertMenu
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className={cn("text-sm", !item.isRead && "font-semibold")}>
                       {item.title}
-                      {!item.isRead && <span className="sr-only"> (unread)</span>}
+                      {!item.isRead && <span className="sr-only"> {t("common.unread")}</span>}
                     </span>
                     <span className="text-xs text-muted-foreground">{item.detail}</span>
                     <span className="text-xs text-muted-foreground">{item.when}</span>

@@ -31,6 +31,7 @@ import { reportExportHref, reportHref, reportLedgerHref } from "@/features/repor
 import { EXPORT_MAX_ROWS } from "@/features/transactions/constants";
 import { cn } from "@/lib/utils";
 import { requirePageUser } from "@/server/auth/session";
+import { formatInteger } from "@/lib/format/number";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -87,8 +88,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/reports"
       </Button>
     ) : (
       <p className="max-w-xs text-sm text-muted-foreground">
-        Export is limited to {EXPORT_MAX_ROWS.toLocaleString("en-US")} records — choose a shorter
-        period.
+        Export is limited to {formatInteger(EXPORT_MAX_ROWS)} records — choose a shorter period.
       </p>
     );
 
@@ -222,8 +222,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/reports"
                 href={reportLedgerHref(period, filters)}
                 className="underline underline-offset-4 hover:text-foreground"
               >
-                View the {recordCount.toLocaleString("en-US")}{" "}
-                {recordCount === 1 ? "record" : "records"}
+                View the {formatInteger(recordCount)} {recordCount === 1 ? "record" : "records"}
               </Link>
             )}
           </p>

@@ -101,7 +101,8 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 ## 5. Amounts and status
 
 - Always render with `<Money minor currency tone>` (`src/components/shared/money.tsx`), which uses `formatMoney` from `src/lib/money.ts`. Tones: `income` (+, green), `expense` (−, red), `transfer` (unsigned, neutral), `neutral` (balances; negatives turn red). Never format with `toFixed` or string concatenation.
-- USD: `$1,234.56`. KHR: `៛410,000` (no decimals). Show the currency code when a screen mixes currencies and the symbol might be ambiguous.
+- USD: `$1,234.56`. KHR: `៛410,000` (no decimals) — in the user's number format and symbol/code choice (PRD §6.13). Show the currency code when a screen mixes currencies and the symbol might be ambiguous.
+- Formatting goes through `src/lib/format` / `formatMoney`: server components get the request's preferences automatically; **client components** must pass `prefs` from `useFormatPrefs()` (or use `<Money>`), or the server-rendered and browser text would differ. Counts use `formatInteger`, percentages `formatPercent` — never `toLocaleString`/`toFixed` in UI code.
 - Direction: income `+$12.00` in `text-income`; expense `-$12.00` in `text-expense`. The sign carries the meaning; colour only reinforces it. Transfers use `text-transfer` with a "Transfer" badge and no sign.
 - Balances: plain `text-foreground`; negative balances show the minus sign and `text-expense`.
 - Approximate converted totals are prefixed "≈" and labelled "approx." with the rate in a tooltip.
@@ -109,7 +110,7 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 
 ## 6. Dates
 
-- Display: `15 Oct 2026` in lists; `Today`, `Yesterday` for the two most recent days; month headings `October 2026`.
+- Display: the user's date format (default `15 Oct 2026`) via `formatDate`/`formatCalendarDate`; `Today`, `Yesterday` for the two most recent days; month headings `October 2026` (`2026-10` with the ISO format). Never create `Intl.DateTimeFormat` in feature code.
 - Inputs use `DateInput` (`src/components/ui/date-input.tsx`), a styled native `<input type="date">`: every platform's own accessible, localised picker, no dependency, and its value is already an ISO calendar date. Default to today in the user's timezone. The input displays dates in the browser's locale format; stored and submitted values are always `YYYY-MM-DD`.
 - Never show times for financial events — they are calendar dates.
 
@@ -129,7 +130,7 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 | State | Pattern |
 |---|---|
 | Loading | `loading.tsx` with `Skeleton` shapes matching the final layout (the `(app)` group has a default). No spinners for page loads; `Button loading` for in-place actions. |
-| Empty | `EmptyState`: one-line title, one sentence of help, one primary action ("Add your first account"). No illustrations. |
+| Empty | `EmptyState`: one-line title, one sentence of help, one primary action ("Add your first account"). No illustrations. `headingLevel={1}` when it is the whole page (not found). |
 | Error | `ErrorState` via `(app)/error.tsx` (shell stays usable) and `global-error.tsx` (root failures): plain message, "Try again", optional reference digest; never stack traces. Inline form problems use `Alert variant="destructive"`. |
 | Not found | `app/not-found.tsx` (404 status), or `notFound()` from a page. Also used for records owned by other users. |
 | Success | `toast.success("Expense added")` from `sonner`; 4 s, top-centre, polite live region. |
@@ -144,6 +145,10 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 - Icons are `aria-hidden` when decorative; icon-only buttons have `aria-label`.
 - Charts have a text alternative: a visually-hidden or toggleable data table with the same numbers.
 - Respect `prefers-reduced-motion` (handled globally in `globals.css`).
+- Label in name (2.5.3): a control's visible text is part of its accessible name (e.g. the account button is "Account menu, AE" via visually-hidden text, not an `aria-label` that omits "AE").
+- Scrollable regions (tables in a fixed-height box) are focusable (`tabIndex={0}`), named (`role="region"` + `aria-label`) and show the focus ring, so keyboard users can scroll them.
+- Page titles: `<title>` = the page's `h1` ("Add savings goal", or the record's name on detail pages) + " · Personal Finance".
+- `e2e/audit.spec.ts` checks every page on desktop, tablet and phone: one `h1`, the title rule, no sideways scrolling, and zero axe-core violations for WCAG 2.0/2.1/2.2 A and AA rules. A new page must be added there.
 
 ## 10. Charts
 
@@ -192,5 +197,7 @@ Scale (Tailwind defaults): `text-xs` 12px · `text-sm` 14px · `text-base` 16px 
 - Option groups (radio cards, colour swatches) use real `<input type="radio">` stretched transparently over the visual (`absolute inset-0 opacity-0`) so they are keyboard-, screen-reader- and touch-friendly.
 
 ## 12. Copy
+
+- Shared and shell text lives in the message catalog (`src/i18n`, docs/I18N.md); use `t("…")` for new shared text.
 
 Sentence case everywhere ("Add expense", not "Add Expense"). Short, friendly, specific. Use "you/your". Numbers formatted, never raw. Avoid exclamation marks except for genuine achievements ("Goal reached!").

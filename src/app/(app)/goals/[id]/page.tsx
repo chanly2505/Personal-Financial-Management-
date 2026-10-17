@@ -11,10 +11,19 @@ import { getGoal } from "@/features/goals/server/service";
 import { formatCalendarDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import { requirePageUser } from "@/server/auth/session";
+import { getCurrentUser, requirePageUser } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 
-export const metadata: Metadata = { title: "Savings goal" };
+/** The tab title is the record's name, like the page heading (falls back when not found). */
+export async function generateMetadata({ params }: PageProps<"/goals/[id]">): Promise<Metadata> {
+  const [user, { id }] = await Promise.all([getCurrentUser(), params]);
+  const goal = user
+    ? await getGoal(user, id)
+        .then((r) => r.goal)
+        .catch(() => null)
+    : null;
+  return { title: goal?.name ?? "Savings goal" };
+}
 
 export default async function GoalDetailPage({ params }: PageProps<"/goals/[id]">) {
   const user = await requirePageUser();

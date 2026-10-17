@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { NAV_ITEMS, isActivePath } from "./navigation";
+import { t } from "@/i18n";
 
 const primary = NAV_ITEMS.filter((i) => i.primaryOnMobile);
 const secondary = NAV_ITEMS.filter((i) => !i.primaryOnMobile);
@@ -31,7 +32,7 @@ export function MobileNav() {
 
   return (
     <nav
-      aria-label="Main"
+      aria-label={t("common.mainNavigation")}
       className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <ul className="flex h-bottom-nav">
@@ -64,8 +65,10 @@ export function MobileNav() {
             </SheetTrigger>
             <SheetContent side="bottom">
               <SheetHeader>
-                <SheetTitle>More</SheetTitle>
-                <SheetDescription className="sr-only">Other sections of the app</SheetDescription>
+                <SheetTitle>{t("common.more")}</SheetTitle>
+                <SheetDescription className="sr-only">
+                  {t("common.moreDescription")}
+                </SheetDescription>
               </SheetHeader>
               <ul className="grid gap-1 px-2 pb-4">
                 {secondary.map(({ href, label, icon: Icon }) => {

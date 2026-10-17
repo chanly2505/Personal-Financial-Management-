@@ -118,7 +118,8 @@ Including `type` in the category key guarantees an expense can only use an expen
 | Constraint | Rule |
 |---|---|
 | `users_email_lowercase_chk` | email is stored lower-cased and trimmed |
-| `users_exchange_rate_positive_chk` | rate > 0 |
+| `users_exchange_rate_positive_chk` | rate > 0 (column reserved for Q-2; not used or editable) |
+| `users_default_alert_threshold_range_chk` | default warning level for new budgets between 1 and 100 % |
 | `*_name_not_blank_chk` | names are not blank (accounts, categories, goals) |
 | `transactions_amount_positive_chk` | amount > 0 |
 | `transactions_recurrence_pair_chk` | rule id and recurrence date are both set or both NULL |
@@ -212,11 +213,12 @@ npm run db:deploy                        # apply pending migrations (CI / produc
 | 7 ✔ | `recurring_rules`: `name`, `status` (ACTIVE/PAUSED/COMPLETED, replaces `is_active`), `pause_reason`, `paused_at`, `payee`; new `recurring_runs` table; consistency CHECKs (migration `…_recurring`) | Recurring engine, history, states | Q-4, Q-5 |
 | 6 ✔ | `budgets.alert_threshold_percent`, `budgets.archived_at`, `budgets (id, user_id)` unique; new `budget_alerts` table (unique `(budget_id, threshold_percent)`, composite FK to the budget's owner, cascade delete) (migration `…_budgets`) | Configurable warnings without duplicates; archive | — |
 | 5 ✔ | Covering index `transactions_user_date_covering_idx` replaces `(user_id, occurred_on DESC)` (migration `…_dashboard_covering_index`) | Index-only dashboard aggregations | — |
+| 10 ✔ | `users`: `date_format`, `number_format`, `currency_display`, `budget_alert_mode` (enums), `default_alert_threshold` + CHECK (migration `…_user_preferences`); `_prisma_migrations` revoked from the runtime role (migration `…_restrict_migration_history`) | Display and notification preferences (PRD §6.13); least privilege on hosted databases | — |
 | later | `categories.kind` enum (`STANDARD`, `ADJUSTMENT`, `REFUND`) or `exclude_from_reports BOOLEAN` | Balance adjustments / refunds treatment | Q-3, Q-9 |
 | later | Drop `transfers_same_amount_chk` | Cross-currency transfers | — |
 | 7 | `recurring_rules.paused_at DATE` (nullable) | Skip occurrences missed while paused | Q-4, Q-5 |
 | 7 | `transactions.status` (`POSTED`, `PENDING`) | Only if recurring entries require confirmation | Q-4 |
 | 8 | None expected for the earmark model; a different model would change `savings_contributions` | — | Q-7 |
-| 10 | `EXPLAIN ANALYZE` review of indexes with seeded data (10k+ records per user) | Performance target (PRD §7) | — |
+| 11 | `EXPLAIN ANALYZE` review of indexes with seeded data (10k+ records per user) | Performance target (PRD §7) | — |
 
 Any change here that touches money, dates or ownership must update PRD §6, this document, and the constraint tests in the same change.

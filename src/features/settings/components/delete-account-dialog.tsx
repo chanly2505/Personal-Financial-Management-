@@ -28,8 +28,18 @@ import { applyActionErrors } from "@/lib/form-errors";
 
 import { deleteAccountAction } from "../actions";
 
-/** Permanent account deletion: requires the password and typing DELETE. */
-export function DeleteAccountDialog() {
+export interface DeletionSummary {
+  label: string;
+  count: number;
+}
+
+/**
+ * Permanent account deletion: shows exactly what will be removed, offers a
+ * download first, and requires the password and typing DELETE. Everything the
+ * user owns is deleted in one database statement (cascading), and every
+ * session ends because the user no longer exists.
+ */
+export function DeleteAccountDialog({ summary }: { summary: DeletionSummary[] }) {
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const form = useForm<DeleteAccountInput>({
@@ -67,10 +77,28 @@ export function DeleteAccountDialog() {
         <DialogHeader>
           <DialogTitle>Delete your account?</DialogTitle>
           <DialogDescription>
-            This permanently deletes your account and all of your accounts, transactions, budgets
-            and goals. It cannot be undone.
+            This permanently deletes your sign-in and everything below. It cannot be undone.
           </DialogDescription>
         </DialogHeader>
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
+          {summary.map((item) => (
+            <li key={item.label} className="flex justify-between gap-2">
+              <span className="text-muted-foreground">{item.label}</span>
+              <span className="font-medium tabular-nums">{item.count}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-sm">
+          Want a copy first?{" "}
+          <a
+            href="/api/me/export"
+            download
+            className="font-medium underline underline-offset-4 hover:text-primary"
+          >
+            Download all your data
+          </a>
+          .
+        </p>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="grid gap-4">
           <FormField id="delete-password" label="Your password" error={errors.password?.message}>
             <PasswordInput autoComplete="current-password" {...form.register("password")} />

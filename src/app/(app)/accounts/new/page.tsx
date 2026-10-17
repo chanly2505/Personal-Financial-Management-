@@ -9,7 +9,7 @@ import { requirePageUser } from "@/server/auth/session";
 export const metadata: Metadata = { title: "Add account" };
 
 export default async function NewAccountPage() {
-  await requirePageUser();
+  const user = await requirePageUser();
   return (
     <PageContainer width="content">
       <PageHeader
@@ -19,7 +19,7 @@ export default async function NewAccountPage() {
       />
       <Card>
         <CardContent>
-          <AccountForm mode="create" />
+          <AccountForm mode="create" defaultCurrency={user.baseCurrency} />
         </CardContent>
       </Card>
     </PageContainer>

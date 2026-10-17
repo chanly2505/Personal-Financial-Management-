@@ -1,12 +1,13 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { Skeleton } from "@/components/ui/skeleton";
+import { t } from "@/i18n";
 
 /** Route-level loading state: skeleton shaped like a page header and card grid. */
 export default function Loading() {
   return (
     <PageContainer>
       <div role="status" aria-live="polite" className="flex flex-col gap-6">
-        <span className="sr-only">Loading…</span>
+        <span className="sr-only">{t("common.loading")}</span>
         <div className="flex flex-col gap-2">
           <Skeleton className="h-7 w-48" />
           <Skeleton className="h-4 w-full max-w-md" />

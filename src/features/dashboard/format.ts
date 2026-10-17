@@ -1,47 +1,37 @@
-import { type IsoDate, isoDateToDb } from "@/lib/dates";
+import type { IsoDate } from "@/lib/dates";
+import {
+  formatDate,
+  formatDateRange,
+  formatDayMonth,
+  formatMonthShort,
+  formatMonthYear,
+} from "@/lib/format/dates";
 import { CURRENCIES, type CurrencyCode } from "@/lib/money";
 
 import type { Bucket } from "./constants";
 
-const dayMonth = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-const monthYear = new Intl.DateTimeFormat("en-GB", {
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-const monthOnly = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
-const full = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+/**
+ * Chart and range labels in the user's date format (src/lib/format/dates.ts).
+ * Called from server components, so the current request's preferences apply.
+ */
 
 /** Short axis label for a bucket start. */
 export function bucketLabel(start: IsoDate, bucket: Bucket, spansYears = false): string {
-  const date = isoDateToDb(start);
-  if (bucket === "month") return (spansYears ? monthYear : monthOnly).format(date);
-  return dayMonth.format(date);
+  if (bucket === "month")
+    return spansYears ? formatMonthYear(start, "short") : formatMonthShort(start);
+  return formatDayMonth(start);
 }
 
 /** Long label for tooltips and tables. */
 export function bucketTitle(start: IsoDate, bucket: Bucket): string {
-  const date = isoDateToDb(start);
-  if (bucket === "day") return full.format(date);
-  if (bucket === "week") return `Week of ${full.format(date)}`;
-  return monthYear.format(date);
+  if (bucket === "day") return formatDate(start);
+  if (bucket === "week") return `Week of ${formatDate(start)}`;
+  return formatMonthYear(start, "short");
 }
 
-/** "1 Mar – 31 Mar 2026" */
+/** "1 Mar – 31 Mar 2026" (or the user's format). */
 export function rangeLabel(from: IsoDate, to: IsoDate): string {
-  if (from === to) return full.format(isoDateToDb(from));
-  const sameYear = from.slice(0, 4) === to.slice(0, 4);
-  const start = sameYear ? dayMonth.format(isoDateToDb(from)) : full.format(isoDateToDb(from));
-  return `${start} – ${full.format(isoDateToDb(to))}`;
+  return formatDateRange(from, to);
 }
 
 /** Minor units → a plain number of major units, for chart geometry only (never for totals). */

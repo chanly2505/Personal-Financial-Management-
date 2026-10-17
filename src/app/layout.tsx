@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/config";
 
 import "./globals.css";
+import { DEFAULT_LOCALE } from "@/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,7 +40,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // per response, and statically prerendered HTML could not carry it.
   await connection();
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html
+      lang={DEFAULT_LOCALE}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
       <body className="flex min-h-full flex-col font-sans">
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />

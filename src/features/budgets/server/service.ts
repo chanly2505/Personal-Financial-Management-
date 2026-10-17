@@ -7,7 +7,7 @@ import type { CurrentUser } from "@/server/auth/session";
 import { NotFoundError, ValidationError } from "@/server/errors";
 import { describeError, logger } from "@/server/logger";
 
-import { MIN_MONTH } from "../constants";
+import { type BudgetAlertMode, MIN_MONTH } from "../constants";
 import { type MonthKey, monthEnd, monthKeyOf, monthStart, shiftMonth } from "../month";
 import type {
   BudgetAlertView,
@@ -79,12 +79,14 @@ function toView(row: repo.BudgetRow): BudgetView {
   };
 }
 
-/** Thresholds a budget has currently reached (empty for archived budgets). */
-function reachedThresholds(row: repo.BudgetRow): number[] {
-  if (row.archivedAt) return [];
-  return alertThresholds(row.alertThresholdPercent).filter((t) =>
-    hasReached(row.spentMinor, row.limitMinor, t),
-  );
+/**
+ * Thresholds a budget has currently reached and that the user wants warnings
+ * for (empty for archived budgets and when notifications are off).
+ */
+function reachedThresholds(row: repo.BudgetRow, mode: BudgetAlertMode): number[] {
+  if (row.archivedAt || mode === "OFF") return [];
+  const wanted = mode === "LIMIT_ONLY" ? [100] : alertThresholds(row.alertThresholdPercent);
+  return wanted.filter((t) => hasReached(row.spentMinor, row.limitMinor, t));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -92,7 +94,19 @@ function reachedThresholds(row: repo.BudgetRow): number[] {
 /* ------------------------------------------------------------------------- */
 
 async function syncBudgets(userId: string, budgetIds: string[]) {
-  for (const id of new Set(budgetIds)) await repo.syncAlerts(userId, id, reachedThresholds);
+  if (budgetIds.length === 0) return;
+  const mode = await repo.findAlertMode(userId);
+  for (const id of new Set(budgetIds)) {
+    await repo.syncAlerts(userId, id, (row) => reachedThresholds(row, mode));
+  }
+}
+
+/**
+ * After the notification preference changes: warnings that are no longer
+ * wanted are resolved (they leave the bell), and newly wanted ones appear.
+ */
+export async function resyncAllAlerts(userId: string): Promise<void> {
+  await syncBudgets(userId, await repo.activeBudgetIds(userId));
 }
 
 /**
@@ -119,11 +133,12 @@ async function reconcile(userId: string, rows: repo.BudgetRow[]) {
     userId,
     rows.map((r) => r.id),
   );
+  const mode = await repo.findAlertMode(userId);
   const byBudget = new Map<string, number[]>();
   for (const a of stored)
     byBudget.set(a.budgetId, [...(byBudget.get(a.budgetId) ?? []), a.thresholdPercent]);
   const stale = rows.filter((row) => {
-    const expected = reachedThresholds(row).join(",");
+    const expected = reachedThresholds(row, mode).join(",");
     const actual = (byBudget.get(row.id) ?? []).sort((a, b) => a - b).join(",");
     return expected !== actual;
   });

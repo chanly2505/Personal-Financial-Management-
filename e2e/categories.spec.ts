@@ -25,9 +25,12 @@ test("adds, edits, archives, restores and deletes a custom category", async ({ p
   await dialog.getByRole("button", { name: "Add category" }).click();
   await expect(page.getByText("Category added")).toBeVisible();
   await expect(page.getByText("Coffee", { exact: true })).toBeVisible();
+  // Let the dialog finish closing before opening it again.
+  await expect(dialog).toBeHidden();
 
   // Duplicate (case-insensitive) is rejected with a field error.
   await page.getByRole("button", { name: "Add category" }).first().click();
+  await expect(dialog.getByLabel("Name")).toHaveValue("");
   await dialog.getByLabel("Name").fill("coffee");
   await dialog.getByRole("button", { name: "Add category" }).click();
   await expect(

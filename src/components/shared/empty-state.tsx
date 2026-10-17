@@ -10,10 +10,20 @@ interface EmptyStateProps {
   /** One primary action, e.g. <Button>Add your first account</Button>. */
   action?: React.ReactNode;
   className?: string;
+  /** 1 when the empty state is the whole page (e.g. not found); otherwise a section heading. */
+  headingLevel?: 1 | 2 | 3;
 }
 
 /** Shown when a list or section has nothing to display yet. No illustrations. */
-export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  className,
+  headingLevel = 2,
+}: EmptyStateProps) {
+  const Heading = `h${headingLevel}` as const;
   return (
     <div
       data-slot="empty-state"
@@ -28,7 +38,7 @@ export function EmptyState({ icon: Icon, title, description, action, className }
         </div>
       )}
       <div className="flex max-w-sm flex-col gap-1">
-        <h2 className="text-base font-semibold">{title}</h2>
+        <Heading className="text-base font-semibold">{title}</Heading>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
       {action && <div className="mt-2">{action}</div>}

@@ -1,4 +1,6 @@
-import { type IsoDate, addDays, addMonthsClamped, daysBetween, isoDateToDb } from "@/lib/dates";
+import { type IsoDate, addDays, addMonthsClamped, daysBetween } from "@/lib/dates";
+import { formatDayMonthLong, formatWeekday } from "@/lib/format/dates";
+import type { FormatPrefs } from "@/lib/format/preferences";
 
 import { FREQUENCY_LABELS, type Frequency } from "./constants";
 
@@ -72,13 +74,6 @@ export function occurrencesBetween(
   return dates;
 }
 
-const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "UTC" });
-const dayMonth = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  timeZone: "UTC",
-});
-
 function ordinal(n: number): string {
   const suffix =
     n % 10 === 1 && n !== 11
@@ -92,16 +87,18 @@ function ordinal(n: number): string {
 }
 
 /** Plain-language schedule, including the short-month rule when it applies. */
-export function describeSchedule(s: Pick<Schedule, "frequency" | "interval" | "startOn">): string {
+export function describeSchedule(
+  s: Pick<Schedule, "frequency" | "interval" | "startOn">,
+  prefs?: FormatPrefs,
+): string {
   const unit = FREQUENCY_LABELS[s.frequency];
   const every = s.interval === 1 ? `Every ${unit.one}` : `Every ${s.interval} ${unit.many}`;
-  const start = isoDateToDb(s.startOn);
-  if (s.frequency === "WEEKLY") return `${every} on ${weekday.format(start)}`;
+  if (s.frequency === "WEEKLY") return `${every} on ${formatWeekday(s.startOn)}`;
   const [, m, d] = s.startOn.split("-").map(Number) as [number, number, number];
   if (s.frequency === "MONTHLY") {
     const note = d > 28 ? ` (the last day in shorter months)` : "";
     return `${every} on the ${ordinal(d)}${note}`;
   }
   const leapDay = m === 2 && d === 29;
-  return `${every} on ${dayMonth.format(start)}${leapDay ? " (28 February in common years)" : ""}`;
+  return `${every} on ${formatDayMonthLong(s.startOn, prefs)}${leapDay ? " (28 February in common years)" : ""}`;
 }

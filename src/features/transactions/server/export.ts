@@ -11,6 +11,7 @@ import { EXPORT_BATCH_SIZE, EXPORT_MAX_ROWS, KIND_LABELS } from "../constants";
 import type { LedgerFilters } from "../schemas";
 import * as repo from "./repository";
 import { toLedgerQuery } from "./service";
+import { formatInteger } from "@/lib/format/number";
 
 /**
  * CSV export of the ledger (docs/REPORTS.md §Export).
@@ -86,7 +87,7 @@ export async function prepareLedgerExport(
   const rowCount = totals.reduce((sum, t) => sum + t.count, 0);
   if (rowCount > limits.maxRows) {
     throw new ValidationError(
-      `This export would have ${rowCount.toLocaleString("en-US")} rows; the limit is ${limits.maxRows.toLocaleString("en-US")}. Choose a shorter date range or add filters, then export again.`,
+      `This export would have ${formatInteger(rowCount)} rows; the limit is ${formatInteger(limits.maxRows)}. Choose a shorter date range or add filters, then export again.`,
     );
   }
   const direction = sort === "date_asc" ? "asc" : "desc";

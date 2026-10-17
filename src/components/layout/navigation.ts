@@ -11,6 +11,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { t } from "@/i18n";
+
 export interface NavItem {
   href: string;
   label: string;
@@ -27,69 +29,69 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   {
     href: "/dashboard",
-    label: "Dashboard",
+    label: t("nav.dashboard.label"),
     icon: LayoutDashboard,
-    description: "Your balances, this month's spending and progress at a glance.",
+    description: t("nav.dashboard.description"),
     phase: 5,
     primaryOnMobile: true,
   },
   {
     href: "/transactions",
-    label: "Transactions",
+    label: t("nav.transactions.label"),
     icon: ArrowLeftRight,
-    description: "Record and review money in, money out and transfers between your accounts.",
+    description: t("nav.transactions.description"),
     phase: 4,
     primaryOnMobile: true,
   },
   {
     href: "/accounts",
-    label: "Accounts",
+    label: t("nav.accounts.label"),
     icon: Wallet,
-    description: "Cash, bank accounts and digital wallets, each with its current balance.",
+    description: t("nav.accounts.description"),
     phase: 3,
     primaryOnMobile: true,
   },
   {
     href: "/budgets",
-    label: "Budgets",
+    label: t("nav.budgets.label"),
     icon: PiggyBank,
-    description: "Monthly spending limits for your categories and how much is left.",
+    description: t("nav.budgets.description"),
     phase: 6,
     primaryOnMobile: true,
   },
   {
     href: "/categories",
-    label: "Categories",
+    label: t("nav.categories.label"),
     icon: Tags,
-    description: "The labels you use to group income and spending.",
+    description: t("nav.categories.description"),
     phase: 3,
   },
   {
     href: "/recurring",
-    label: "Recurring",
+    label: t("nav.recurring.label"),
     icon: Repeat,
-    description: "Income and bills that repeat on a schedule and are recorded automatically.",
+    description: t("nav.recurring.description"),
     phase: 7,
   },
   {
     href: "/goals",
-    label: "Savings goals",
+    label: t("nav.goals.label"),
     icon: Target,
-    description: "Targets you are saving toward and how close you are.",
+    description: t("nav.goals.description"),
     phase: 8,
   },
   {
     href: "/reports",
-    label: "Reports",
+    label: t("nav.reports.label"),
     icon: BarChart3,
-    description: "Income and spending over any date range, by month and by category.",
+    description: t("nav.reports.description"),
     phase: 9,
   },
   {
     href: "/settings",
-    label: "Settings",
+    label: t("nav.settings.label"),
     icon: Settings,
-    description: "Your profile, currency, timezone and security preferences.",
+    description: t("nav.settings.description"),
     phase: 2,
   },
 ];

@@ -16,6 +16,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { NOTE_MAX, PAYEE_MAX } from "@/features/transactions/constants";
+import { useFormatPrefs } from "@/components/shared/format-provider";
 import { type IsoDate, addDays, formatCalendarDate, isIsoDate } from "@/lib/dates";
 import { applyActionErrors } from "@/lib/form-errors";
 import { type CurrencyCode, parseMoney } from "@/lib/money";
@@ -68,6 +69,7 @@ type Props = {
 );
 
 export function RecurringForm(props: Props) {
+  const prefs = useFormatPrefs();
   const router = useRouter();
   const editing = props.mode === "edit";
   const [formError, setFormError] = useState<string | null>(null);
@@ -288,8 +290,10 @@ export function RecurringForm(props: Props) {
           />
           <span>
             Also record the {past.length} past {past.length === 1 ? "occurrence" : "occurrences"} (
-            {formatCalendarDate(past[0]!)}
-            {past.length > 1 && ` – ${formatCalendarDate(past[past.length - 1]!)}`}).
+            {formatCalendarDate(past[0]!, undefined, prefs)}
+            {past.length > 1 &&
+              ` – ${formatCalendarDate(past[past.length - 1]!, undefined, prefs)}`}
+            ).
             <span className="block text-xs text-muted-foreground">
               Off by default: past dates are only recorded if you choose this. They post on the next
               scheduled run.
@@ -317,10 +321,10 @@ export function RecurringForm(props: Props) {
       >
         {schedule ? (
           <>
-            <p className="font-medium">{describeSchedule(schedule)}</p>
+            <p className="font-medium">{describeSchedule(schedule, prefs)}</p>
             <p className="mt-1 text-muted-foreground">
               {preview.length > 0
-                ? `Next: ${preview.map((d) => formatCalendarDate(d, props.today)).join(", ")}`
+                ? `Next: ${preview.map((d) => formatCalendarDate(d, props.today, prefs)).join(", ")}`
                 : firstFuture
                   ? ""
                   : "No dates left before the end date."}

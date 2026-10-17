@@ -6,6 +6,7 @@ import { APP_NAME } from "@/lib/config";
 
 import { AccountMenu, type AccountMenuUser } from "./account-menu";
 import { BrandMark } from "./brand-mark";
+import { t } from "@/i18n";
 
 /** Sticky top bar: brand on phones, notifications and the account menu for the signed-in user. */
 export function AppHeader({
@@ -32,7 +33,7 @@ export function AppHeader({
         {user && signOutAction ? (
           <AccountMenu user={user} signOutAction={signOutAction} />
         ) : (
-          <Badge variant="outline">Not signed in</Badge>
+          <Badge variant="outline">{t("common.notSignedIn")}</Badge>
         )}
       </div>
     </header>

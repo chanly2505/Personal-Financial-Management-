@@ -27,6 +27,7 @@ import { ledgerHref } from "@/features/transactions/url";
 import { CURRENCIES, type CurrencyCode, formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { requirePageUser } from "@/server/auth/session";
+import { formatPercent } from "@/lib/format/number";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -98,7 +99,7 @@ function PeriodSummary({ totals, multi }: { totals: PeriodTotals; multi: boolean
           <span className="text-muted-foreground">—</span>
         ) : (
           <span className={cn(totals.savingsRatePercent < 0 && "text-expense")}>
-            {totals.savingsRatePercent.toFixed(1)}%
+            {formatPercent(totals.savingsRatePercent)}
           </span>
         )}
       </StatTile>
@@ -294,7 +295,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                     hint: c.isArchived ? "Archived" : undefined,
                     swatch: c.color,
                     value: toChartNumber(c.amountMinor, cc),
-                    valueText: `${formatMoney(c.amountMinor, cc)} · ${c.sharePercent.toFixed(1)}%`,
+                    valueText: `${formatMoney(c.amountMinor, cc)} · ${formatPercent(c.sharePercent)}`,
                   }))}
                 />
               ) : (

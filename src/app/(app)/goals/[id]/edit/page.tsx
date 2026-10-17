@@ -11,7 +11,7 @@ import { minorToDecimalString } from "@/lib/money";
 import { requirePageUser } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 
-export const metadata: Metadata = { title: "Edit goal" };
+export const metadata: Metadata = { title: "Edit savings goal" };
 
 export default async function EditGoalPage({ params }: PageProps<"/goals/[id]/edit">) {
   const user = await requirePageUser();
@@ -33,7 +33,7 @@ export default async function EditGoalPage({ params }: PageProps<"/goals/[id]/ed
   return (
     <PageContainer width="content">
       <PageHeader
-        title="Edit goal"
+        title="Edit savings goal"
         breadcrumbs={[
           { label: "Savings goals", href: "/goals" },
           { label: goal.name, href: `/goals/${goal.id}` },
