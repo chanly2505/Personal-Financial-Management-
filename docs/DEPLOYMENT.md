@@ -23,8 +23,10 @@ Configured in the repository: `vercel.json` (servers in Singapore, next to the d
 
 The app should not use the owner account: the owner can delete tables, and the app only needs to read and write rows (docs/SECURITY.md §8).
 
-1. In Neon: **Branches** → `main` → **Roles** → **New role** → name it exactly `finance_app` → **Create**. **Copy the password** it shows.
-2. Open **SQL Editor**, paste the whole content of [`prisma/sql/app-role-neon.sql`](../prisma/sql/app-role-neon.sql) from GitHub, and click **Run**. It should finish without errors.
+1. Make a password for it: on your Mac, open **Terminal** and run `openssl rand -hex 24`. Copy the result (letters and digits only, so it is safe inside a connection string).
+2. In Neon open **SQL Editor**, paste the whole content of [`prisma/sql/app-role-neon.sql`](../prisma/sql/app-role-neon.sql) from GitHub, replace `REPLACE_WITH_THE_PASSWORD` with that value, and click **Run**. It should finish without errors.
+
+Create this user **with the SQL script, not with the "New role" button**: Neon gives roles created in its console membership of `neon_superuser`, which could create roles and databases — the opposite of a limited user. The script creates the role without it and removes it if the role already exists.
 
 ## 3. Copy the two connection strings
 
@@ -33,7 +35,7 @@ On the Neon project **Dashboard**, click **Connect**:
 | Setting in Vercel | Role | "Connection pooling" | Looks like |
 |---|---|---|---|
 | `MIGRATION_DATABASE_URL` | `neondb_owner` | **Off** | `postgresql://neondb_owner:…@ep-…ap-southeast-1.aws.neon.tech/neondb?sslmode=require` |
-| `DATABASE_URL` | `finance_app` | **On** (the host contains `-pooler`) | `postgresql://finance_app:…@ep-…-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require` |
+| `DATABASE_URL` | Neon only lists console roles, so copy the `neondb_owner` string with pooling **on** (the host contains `-pooler`) and replace `neondb_owner:<its password>` with `finance_app:<your password from step 2>` | **On** | `postgresql://finance_app:…@ep-…-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require` |
 
 Keep them private: they contain passwords. Never put them in the code or in a GitHub issue.
 
@@ -51,7 +53,7 @@ The first is `AUTH_SECRET` (protects sign-in cookies), the second is `CRON_SECRE
 
 1. Go to <https://vercel.com/signup> → **Hobby** → **Continue with GitHub**.
 2. **Add New… → Project** → find **Personal-Financial-Management-** → **Import**. (If it is not listed, click *Adjust GitHub App Permissions* and allow that repository.)
-3. Leave Framework (Next.js) and the build settings as they are. Open **Environment Variables** and add:
+3. Leave Framework (Next.js) and the build settings as they are. Open **Environment Variables** and add the values below. For **each** one, set *Environments* to **Production only** (untick Preview and Development): otherwise every pushed branch would run with your real database and secrets.
 
    | Name | Value |
    |---|---|
@@ -79,6 +81,9 @@ The data on Vercel is separate from your Mac. To start fresh online, just regist
 Nothing to do: every push to `main` redeploys. Database changes are applied automatically during the production build (`vercel-build`). If a build fails, Vercel keeps the previous version online; the build log is under **Deployments**.
 
 ## Notes and limits
+
+- **Owner password on Vercel:** `MIGRATION_DATABASE_URL` is needed by the build to create and update tables, but Vercel also makes it visible to the running app (the app itself never reads it). Mark it **Sensitive** in Vercel. For a stricter setup, run `npx prisma migrate deploy` yourself before each release with that URL set only on your Mac, and remove it from Vercel.
+- **Rate limits:** keep `TRUSTED_IP_HEADER=x-real-ip`. Without it, per-IP sign-in and registration limits are off (the app logs `security.ip_rate_limits_disabled` at start-up).
 
 - **Password reset e-mails** are off until an e-mail provider is chosen (PRD Q-12). Users can still change their password in Settings while signed in.
 - **Recurring transactions post once a day** on the free plan. A rule that is due is posted by the next daily run; the Recurring page shows "Due — posts on the next scheduled run" until then. For hourly runs, upgrade Vercel or call `/api/cron/recurring` hourly from any scheduler with `Authorization: Bearer <CRON_SECRET>` (docs/OPERATIONS.md).

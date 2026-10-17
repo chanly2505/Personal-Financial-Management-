@@ -1,10 +1,24 @@
 -- Least-privilege runtime role on Neon (docs/DEPLOYMENT.md step 2).
 --
 -- Same grants as prisma/sql/app-role.sql, written as plain SQL for the Neon
--- SQL Editor (which has no psql variables). Before running it, create the role
--- `finance_app` in the Neon console (Branches → main → Roles → New role) and
--- copy its password. Run this as the database owner (`neondb_owner`), once.
--- Re-runnable.
+-- SQL Editor (which has no psql variables). Run it as the database owner
+-- (`neondb_owner`), once, after replacing REPLACE_WITH_THE_PASSWORD with a long
+-- random password (e.g. `openssl rand -hex 24`). Re-runnable.
+--
+-- The role is created here, not with Neon's "New role" button: console-created
+-- roles are made members of `neon_superuser` (CREATEROLE, CREATEDB), which would
+-- undo the point of a limited role (QA-15).
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'finance_app') THEN
+    CREATE ROLE finance_app LOGIN PASSWORD 'REPLACE_WITH_THE_PASSWORD';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'neon_superuser') THEN
+    EXECUTE 'REVOKE neon_superuser FROM finance_app';
+  END IF;
+END $$;
+ALTER ROLE finance_app NOSUPERUSER NOCREATEDB NOCREATEROLE;
 
 GRANT CONNECT ON DATABASE neondb TO finance_app;
 

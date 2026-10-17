@@ -124,22 +124,31 @@ export async function createAccount(
   return { id: account.id };
 }
 
+/** Archived accounts are frozen (zero balance, no changes) until restored. */
+function assertEditable(account: { name: string; isArchived: boolean }) {
+  if (account.isArchived) {
+    throw new ValidationError(`${account.name} is archived. Restore it to edit it.`);
+  }
+}
+
 export async function updateAccount(
   user: Pick<CurrentUser, "id">,
   input: { id: string; name: string; type: AccountType; openingBalance: string },
 ): Promise<void> {
   const existing = await repo.findAccount(user.id, input.id);
   if (!existing) throw new NotFoundError("We couldn't find that account.");
+  assertEditable(existing);
 
   // The account's own currency decides how the amount is parsed.
   const openingBalanceMinor = parseOpeningBalance(input.openingBalance, existing.currency);
   const name = normalizeName(input.name);
   await assertNameAvailable(user.id, name, input.id);
-  const changed = await repo.updateAccount(user.id, input.id, {
-    name,
-    type: input.type,
-    openingBalanceMinor,
-  });
+  const changed = await repo.updateAccount(
+    user.id,
+    input.id,
+    { name, type: input.type, openingBalanceMinor },
+    assertEditable,
+  );
   if (changed === 0) throw new NotFoundError("We couldn't find that account.");
 }
 

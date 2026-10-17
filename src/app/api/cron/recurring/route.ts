@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 
-import { runDueRules } from "@/features/recurring/server/service";
+import { runScheduledJobs } from "@/server/scheduled-jobs";
 import { env } from "@/server/env";
 import { describeError, logger } from "@/server/logger";
 
@@ -30,7 +30,7 @@ async function handle(request: Request) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
   try {
-    const summary = await runDueRules();
+    const summary = await runScheduledJobs();
     return Response.json(summary, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     logger.error("recurring.run_failed", describeError(error));

@@ -118,21 +118,29 @@ export function createGoal(userId: string, data: GoalWrite) {
   return prisma.savingsGoal.create({ data: { userId, ...goalData(data) }, select: { id: true } });
 }
 
-/** The currency of a goal with contributions is fixed (the service passes the existing one). */
+/**
+ * The currency of a goal with contributions is fixed. Checked under the goal's
+ * row lock — the same lock a contribution takes — so a contribution and a
+ * currency change can never both succeed (QA-03).
+ */
 export async function updateGoal(
   userId: string,
   id: string,
   expectedUpdatedAt: string,
   data: GoalWrite,
+  verify: (state: LockedGoal) => void,
 ) {
-  const { count } = await prisma.savingsGoal.updateMany({
-    where: { id, userId, updatedAt: new Date(expectedUpdatedAt) },
-    data: goalData(data),
+  const count = await prisma.$transaction(async (tx) => {
+    const exists = await tx.savingsGoal.count({ where: { id, userId } });
+    if (exists === 0) throw new NotFoundError("We couldn't find that goal.");
+    verify(await lockGoal(tx, userId, id));
+    const result = await tx.savingsGoal.updateMany({
+      where: { id, userId, updatedAt: new Date(expectedUpdatedAt) },
+      data: goalData(data),
+    });
+    return result.count;
   });
   if (count === 1) return;
-  if ((await prisma.savingsGoal.count({ where: { id, userId } })) === 0) {
-    throw new NotFoundError("We couldn't find that goal.");
-  }
   throw new ConflictError(
     "This goal was changed somewhere else after you opened it. Reload to see the latest version.",
   );
@@ -165,23 +173,38 @@ export function listContributions(userId: string, goalId: string, take: number) 
   });
 }
 
-/** Lock the goal row and return its archived flag and current saved total. */
+/**
+ * Lock the goal row and return what a change must be checked against: the
+ * goal's currency and archived flag, its saved total, and its contributions in
+ * date order (to keep the running saved amount ≥ 0 at every date, QA-08).
+ */
 async function lockGoal(tx: Tx, userId: string, goalId: string) {
-  const rows = await tx.$queryRaw<{ is_archived: boolean }[]>`
-    SELECT is_archived FROM savings_goals
+  const rows = await tx.$queryRaw<{ is_archived: boolean; currency: CurrencyCode }[]>`
+    SELECT is_archived, currency::text AS currency FROM savings_goals
     WHERE id = ${goalId}::uuid AND user_id = ${userId}::uuid
     FOR UPDATE`;
   const goal = rows[0];
   if (!goal) throw new NotFoundError("We couldn't find that goal.");
-  const [{ saved }] = (await tx.$queryRaw<{ saved: bigint }[]>`
-    SELECT COALESCE(SUM(amount_minor), 0)::bigint AS saved
-    FROM savings_contributions WHERE goal_id = ${goalId}::uuid AND user_id = ${userId}::uuid`) as [
-    { saved: bigint },
-  ];
-  return { isArchived: goal.is_archived, savedMinor: saved };
+  const entries = await tx.savingsContribution.findMany({
+    where: { goalId, userId },
+    orderBy: [{ occurredOn: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, amountMinor: true, occurredOn: true },
+  });
+  return {
+    isArchived: goal.is_archived,
+    currency: goal.currency,
+    savedMinor: entries.reduce((sum, e) => sum + e.amountMinor, 0n),
+    entries: entries.map((e) => ({
+      id: e.id,
+      amountMinor: e.amountMinor,
+      occurredOn: dbDateToIso(e.occurredOn),
+    })),
+  };
 }
 
-export type VerifyChange = (state: { isArchived: boolean; savedMinor: bigint }) => void;
+export type LockedGoal = Awaited<ReturnType<typeof lockGoal>>;
+
+export type VerifyChange = (state: LockedGoal) => void;
 
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -238,17 +261,14 @@ export async function deleteContribution(
   userId: string,
   goalId: string,
   contributionId: string,
-  verify: (state: { isArchived: boolean; savedMinor: bigint; amountMinor: bigint }) => void,
+  verify: (state: LockedGoal & { amountMinor: bigint }) => void,
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const state = await lockGoal(tx, userId, goalId);
-    const row = await tx.savingsContribution.findFirst({
-      where: { id: contributionId, goalId, userId },
-      select: { amountMinor: true },
-    });
+    const row = state.entries.find((e) => e.id === contributionId);
     if (!row) throw new NotFoundError("We couldn't find that contribution.");
     verify({ ...state, amountMinor: row.amountMinor });
-    await tx.savingsContribution.delete({ where: { id: contributionId } });
+    await tx.savingsContribution.deleteMany({ where: { id: contributionId, goalId, userId } });
   });
 }
 

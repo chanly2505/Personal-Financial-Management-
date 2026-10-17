@@ -4,7 +4,7 @@ Phases are ordered by dependency: each phase only builds on modules finished bef
 
 ## 1. Current state
 
-The project lives in `/home/user/personal-finance`. Phases 0–10 are complete.
+The project lives in `/home/user/personal-finance`. Phases 0–11 are complete.
 
 **Present and verified (end of Phase 10)**
 - Next.js 16.3.8 + React 19.2 + TypeScript 5.9 (strict) + Tailwind CSS 4; ESLint (with layer-boundary rules) and Prettier.
@@ -112,7 +112,10 @@ Verified: `npm run check` (444 tests, incl. `csv` and `report-period` unit tests
 Delivered: migration `…_user_preferences` (date/number format, currency display, budget-warning mode, default warning level + CHECK); `src/lib/format` (date, number and money formatting by preference; per-request preferences on the server via React `cache`, `FormatProvider`/`useFormatPrefs` on the client; `<Money>` reads them); comma-decimal amount input accepted where unambiguous; Settings rebuilt as six sections — Profile (email shown, not editable without verification), Region and display (live preview), Notifications (all / only at the limit / off, re-synced at once; default warning level used by Add budget), Security, Your data (CSV + streamed JSON `/api/me/export`), Delete account (counts, download offer, password + DELETE); default currency pre-selects new accounts; unused exchange-rate field removed (Q-2); `src/i18n` catalog + typed `t()` for shell and shared text (docs/I18N.md); UX/a11y audit — `e2e/audit.spec.ts` (every page × 3 widths: one h1, consistent titles, no sideways scroll, zero axe WCAG 2.2 A/AA violations), fixes: account button name (label in name), keyboard-scrollable tables, not-found h1, alert dialogs scroll on small screens, consistent add/edit titles, record names as tab titles, button sizing; the Add category dialog no longer keeps the previous name and errors when reopened. Hardened e2e select helpers against a lost click during the opening animation.
 Verified: `npm run check` (480 tests, incl. `format`, settings schema and money-input unit tests; `settings.test.ts`: persistence, isolation, preferences never alter stored data or balances, warning modes, default level, JSON export contents/secrets/streaming, full account deletion across every table); `npm run build`; full Playwright suite on desktop, tablet, mobile incl. `e2e/settings.spec.ts` and `e2e/audit.spec.ts`; screenshots.
 
-### Phase 11 — Hardening and release readiness
+### Phase 11 — Full system QA and security audit ✔ (complete)
+Independent audit of the whole repository with reproduced findings — report: [docs/QA_REPORT.md](QA_REPORT.md). 2 P1, 8 P2, 9 P3 found and fixed (timezones the database can't read, archived account edits, goal currency race, future transfer reversals, recurring edits dropping catch-up dates, registration limits, deployment-guide hardening, launcher bound to localhost, and minor items); 0 P0. Added `audit-regressions.test.ts` (16) and an independent `reconciliation.test.ts` (8). Accepted risks R1–R10 listed in the report (Prisma CLI upgrade due on/after 29 Oct 2026).
+
+### Phase 12 — Hardening and release readiness
 Depends on: all. Decision: **Q-14** (deployment target) — a free option is prepared: Vercel Hobby + Neon (docs/DEPLOYMENT.md, `vercel.json`, `vercel-build`, `prisma/sql/app-role-neon.sql`).
 
 Tasks: manual screen-reader pass (automated audit done in Phase 10); performance with 10,000+ seeded records (`EXPLAIN ANALYZE`, index review); full security review against SECURITY.md; dark-mode toggle; error/empty state review; deployment configuration (env, migrations on deploy, scheduler, backups); privacy notice.

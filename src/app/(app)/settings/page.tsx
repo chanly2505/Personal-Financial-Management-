@@ -13,7 +13,7 @@ import { ProfileForm } from "@/features/settings/components/profile-form";
 import { SignOutEverywhere } from "@/features/settings/components/sign-out-everywhere";
 import { getRecordCounts, getSettings } from "@/features/settings/server/service";
 import { EXPORT_MAX_ROWS } from "@/features/transactions/constants";
-import { todayInTimeZone } from "@/lib/dates";
+import { timeZoneChoices, todayInTimeZone } from "@/lib/dates";
 import { formatInstant } from "@/lib/format/dates";
 import { formatInteger } from "@/lib/format/number";
 import { requirePageUser } from "@/server/auth/session";
@@ -64,7 +64,7 @@ function Section({
 export default async function SettingsPage() {
   const user = await requirePageUser();
   const [settings, counts] = await Promise.all([getSettings(user.id), getRecordCounts(user.id)]);
-  const timezones = Intl.supportedValuesOf("timeZone");
+  const timezones = [...timeZoneChoices()];
   if (!timezones.includes(settings.timezone)) timezones.unshift(settings.timezone);
   const when = (date: Date) => formatInstant(date, settings.timezone);
 

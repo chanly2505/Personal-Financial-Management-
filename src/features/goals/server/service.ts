@@ -2,10 +2,11 @@ import "server-only";
 
 import { findOwnAccount, getAccountsOverview } from "@/features/accounts/server/service";
 import { type IsoDate, addDays, dbDateToIso, todayInTimeZone } from "@/lib/dates";
+import { formatDate } from "@/lib/format/dates";
 import { normalizeName } from "@/lib/utils";
 import { type CurrencyCode, formatMoney, parseMoney } from "@/lib/money";
 import type { CurrentUser } from "@/server/auth/session";
-import { NotFoundError, ValidationError } from "@/server/errors";
+import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
 import { CONTRIBUTIONS_LIMIT } from "../constants";
 import { goalProgress } from "../progress";
@@ -192,7 +193,13 @@ export async function updateGoal(
       throw new ValidationError(message, { accountId: message });
     }
   }
-  await repo.updateGoal(user.id, input.id, input.expectedUpdatedAt, data);
+  await repo.updateGoal(user.id, input.id, input.expectedUpdatedAt, data, (state) => {
+    if (data.currency !== state.currency && state.entries.length > 0) {
+      const message =
+        "The currency can't change after money has been set aside. Create a new goal instead.";
+      throw new ValidationError(message, { currency: message });
+    }
+  });
 }
 
 export async function archiveGoal(user: Pick<CurrentUser, "id">, id: string) {
@@ -211,6 +218,29 @@ export async function restoreGoal(user: Pick<CurrentUser, "id">, id: string) {
 /** Deletes the goal and its contributions. No account balance changes (they were earmarks). */
 export async function deleteGoal(user: Pick<CurrentUser, "id">, id: string) {
   if ((await repo.deleteGoal(user.id, id)) === 0) throw new NotFoundError(NOT_FOUND);
+}
+
+/**
+ * The lowest saved amount at any point in date order (0 if never below).
+ * Saved may never go below zero on any date, not just in total (QA-08).
+ */
+function lowestRunningSaved(entries: { amountMinor: bigint }[]): bigint {
+  let running = 0n;
+  let lowest = 0n;
+  for (const e of entries) {
+    running += e.amountMinor;
+    if (running < lowest) lowest = running;
+  }
+  return lowest;
+}
+
+function firstNegativeDate(entries: { amountMinor: bigint; occurredOn: string }[]) {
+  let running = 0n;
+  for (const e of entries) {
+    running += e.amountMinor;
+    if (running < 0n) return e.occurredOn;
+  }
+  return null;
 }
 
 export async function addContribution(
@@ -245,11 +275,24 @@ export async function addContribution(
       clientRequestId: input.clientRequestId,
     },
     (state) => {
+      if (state.currency !== goal.currency) {
+        // The goal changed currency after the amount was read (QA-03).
+        throw new ConflictError("This goal was just changed. Reload and try again.");
+      }
       if (state.isArchived) {
         throw new ValidationError("This goal is archived. Restore it to set money aside.");
       }
       if (state.savedMinor + amountMinor < 0n) {
         const message = `You can take back at most ${formatMoney(state.savedMinor, goal.currency)}.`;
+        throw new ValidationError(message, { amount: message });
+      }
+      // The new entry sorts after existing ones on the same date.
+      const after = [...state.entries, { id: "new", amountMinor, occurredOn }].sort((a, b) =>
+        a.occurredOn < b.occurredOn ? -1 : a.occurredOn > b.occurredOn ? 1 : 0,
+      );
+      const low = lowestRunningSaved(after);
+      if (low < 0n) {
+        const message = `This would make the saved amount negative on ${formatDate(firstNegativeDate(after)!)}. Choose a later date or a smaller amount.`;
         throw new ValidationError(message, { amount: message });
       }
     },
@@ -264,7 +307,10 @@ export async function deleteContribution(
     if (state.isArchived) {
       throw new ValidationError("This goal is archived. Restore it to change its history.");
     }
-    if (state.savedMinor - state.amountMinor < 0n) {
+    if (
+      state.savedMinor - state.amountMinor < 0n ||
+      lowestRunningSaved(state.entries.filter((e) => e.id !== input.contributionId)) < 0n
+    ) {
       throw new ValidationError(
         "Removing this would make the saved amount negative. Remove the later withdrawal first.",
       );

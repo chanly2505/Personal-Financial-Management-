@@ -95,7 +95,8 @@ function monthsSpanned(from: IsoDate, to: IsoDate): number {
  *   the same number of whole months just before;
  * - this month / this year to date: the same days of the previous month / year
  *   (1–16 Oct → 1–16 Sep; days past a shorter month's end are clamped);
- * - anything else (today, this week, last 30/90 days, other custom ranges):
+ * - anything else (today, this week, last 30/90 days — even when they cover
+ *   whole months — and other custom ranges):
  *   the same number of days just before.
  */
 export function previousPeriod(period: ReportPeriod): { from: IsoDate; to: IsoDate } {
@@ -106,7 +107,10 @@ export function previousPeriod(period: ReportPeriod): { from: IsoDate; to: IsoDa
   if (period.preset === "this_year") {
     return { from: addMonthsClamped(from, -12), to: addMonthsClamped(to, -12) };
   }
-  if (from === startOfMonth(from) && to === endOfMonth(to)) {
+  // Rolling presets keep their length even when they happen to cover whole
+  // months (last 30 days = 1–30 Sep → 2–31 Aug, not all of August; QA-05).
+  const rolling = period.preset === "last_30_days" || period.preset === "last_90_days";
+  if (!rolling && from === startOfMonth(from) && to === endOfMonth(to)) {
     const months = monthsSpanned(from, to);
     const start = addMonthsClamped(from, -months);
     return { from: start, to: endOfMonth(addMonthsClamped(startOfMonth(to), -months)) };

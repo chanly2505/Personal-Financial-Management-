@@ -214,6 +214,7 @@ npm run db:deploy                        # apply pending migrations (CI / produc
 | 6 ✔ | `budgets.alert_threshold_percent`, `budgets.archived_at`, `budgets (id, user_id)` unique; new `budget_alerts` table (unique `(budget_id, threshold_percent)`, composite FK to the budget's owner, cascade delete) (migration `…_budgets`) | Configurable warnings without duplicates; archive | — |
 | 5 ✔ | Covering index `transactions_user_date_covering_idx` replaces `(user_id, occurred_on DESC)` (migration `…_dashboard_covering_index`) | Index-only dashboard aggregations | — |
 | 10 ✔ | `users`: `date_format`, `number_format`, `currency_display`, `budget_alert_mode` (enums), `default_alert_threshold` + CHECK (migration `…_user_preferences`); `_prisma_migrations` revoked from the runtime role (migration `…_restrict_migration_history`) | Display and notification preferences (PRD §6.13); least privilege on hosted databases | — |
+| 11 ✔ | Data migration `…_normalize_timezones`: old IANA aliases → current names; unreadable values → `Asia/Phnom_Penh` | Every stored timezone readable by PostgreSQL and Node (QA-01) | — |
 | later | `categories.kind` enum (`STANDARD`, `ADJUSTMENT`, `REFUND`) or `exclude_from_reports BOOLEAN` | Balance adjustments / refunds treatment | Q-3, Q-9 |
 | later | Drop `transfers_same_amount_chk` | Cross-currency transfers | — |
 | 7 | `recurring_rules.paused_at DATE` (nullable) | Skip occurrences missed while paused | Q-4, Q-5 |

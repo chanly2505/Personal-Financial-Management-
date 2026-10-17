@@ -1,6 +1,6 @@
 import "server-only";
 
-import { runDueRules } from "@/features/recurring/server/service";
+import { runScheduledJobs } from "./scheduled-jobs";
 
 import { describeError, logger } from "./logger";
 
@@ -17,7 +17,7 @@ export function startInProcessScheduler() {
     if (running) return; // never overlap within one process
     running = true;
     try {
-      await runDueRules();
+      await runScheduledJobs();
     } catch (error) {
       logger.error("recurring.scheduler_tick_failed", describeError(error));
     } finally {

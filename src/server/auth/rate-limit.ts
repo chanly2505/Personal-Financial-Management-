@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { prisma } from "@/server/db";
+import { env } from "@/server/env";
 
 /**
  * Fixed-window rate limiting backed by PostgreSQL, so limits hold across
@@ -19,11 +20,21 @@ export const RATE_LIMITS = {
   signInPerEmail: { scope: "signin:email", limit: 5, windowSeconds: 15 * 60 },
   signInPerIp: { scope: "signin:ip", limit: 20, windowSeconds: 15 * 60 },
   registerPerIp: { scope: "register:ip", limit: 5, windowSeconds: 60 * 60 },
+  /**
+   * When the client IP is unknown (TRUSTED_IP_HEADER unset) all registrations
+   * share one budget, so sign-ups can't be used to burn CPU on password hashing
+   * or fill the database without limit (QA-12).
+   */
+  registerWithoutIp: {
+    scope: "register:no-ip",
+    limit: env.REGISTRATION_LIMIT_WITHOUT_IP,
+    windowSeconds: 60 * 60,
+  },
   resetRequestPerEmail: { scope: "reset-request:email", limit: 3, windowSeconds: 60 * 60 },
   resetRequestPerIp: { scope: "reset-request:ip", limit: 10, windowSeconds: 60 * 60 },
   resetSubmitPerIp: { scope: "reset-submit:ip", limit: 10, windowSeconds: 60 * 60 },
   passwordCheckPerUser: { scope: "password-check:user", limit: 5, windowSeconds: 15 * 60 },
-} as const satisfies Record<string, RateLimitRule>;
+} satisfies Record<string, RateLimitRule>;
 
 export interface RateLimitResult {
   allowed: boolean;

@@ -4,6 +4,8 @@ How to run the background work the app depends on, and how to recover when somet
 
 ## Recurring transactions scheduler
 
+Every scheduled run (`runScheduledJobs`, `src/server/scheduled-jobs.ts`) posts due recurring transactions and then removes expired sign-in rate-limit windows (housekeeping; a failure there never affects postings).
+
 Recurring rules (PRD §6.6) are posted by one engine, `runDueRules()` in `src/features/recurring/server/service.ts`. **Opening a page never posts anything.** The engine runs only when a scheduler calls it, and is safe to call at any time, repeatedly and concurrently:
 
 | Guarantee | How |
@@ -33,7 +35,8 @@ Production scheduling is **off by default** (`RECURRING_SCHEDULER="off"`, no `CR
 - **New rule:** the first posting is the first date on or after today. Past dates are posted only if the user ticks "Also record the N past occurrences" (start date at most one year back).
 - **Scheduler downtime:** dates that fell due while a rule was *active* are posted by the next run, oldest first, each with its own date (50 per rule per run).
 - **Paused rules:** nothing is posted while paused; on resume the paused period is skipped (Q-5).
-- **Edits:** only dates not yet posted change; a date that was already posted is never posted again.
+- **Edits:** only dates not yet posted change; a date that was already posted is never posted again. Editing an **active** rule keeps dates that were due but not yet posted (e.g. after downtime or a catch-up request) — they are posted with the new details. Editing a paused rule keeps skipping the pause (Q-5).
+- **Timezones:** a user's timezone must be readable by PostgreSQL; Settings only offers names that are (old aliases are stored by their current name). If a stored value is ever unreadable (e.g. a different database build), only that user's rules are skipped — the run continues for everyone else.
 
 ### Failure handling
 

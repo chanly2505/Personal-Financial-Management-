@@ -270,6 +270,7 @@ export interface LockedTransfer {
   fromAccountId: string;
   toAccountId: string;
   amountMinor: bigint;
+  occurredOn: IsoDate;
   updatedAt: Date;
   reversesTransferId: string | null;
   reversedByTransferId: string | null;
@@ -282,11 +283,13 @@ async function lockTransfer(tx: Tx, userId: string, id: string): Promise<LockedT
       from_account_id: string;
       to_account_id: string;
       from_amount_minor: bigint;
+      occurred_on: Date;
       updated_at: Date;
       reverses_transfer_id: string | null;
     }[]
   >`
-    SELECT id, from_account_id, to_account_id, from_amount_minor, updated_at, reverses_transfer_id
+    SELECT id, from_account_id, to_account_id, from_amount_minor, occurred_on, updated_at,
+           reverses_transfer_id
     FROM transfers
     WHERE id = ${id}::uuid AND user_id = ${userId}::uuid
     FOR UPDATE`;
@@ -302,6 +305,7 @@ async function lockTransfer(tx: Tx, userId: string, id: string): Promise<LockedT
     fromAccountId: row.from_account_id,
     toAccountId: row.to_account_id,
     amountMinor: row.from_amount_minor,
+    occurredOn: dbDateToIso(row.occurred_on),
     updatedAt: row.updated_at,
     reversesTransferId: row.reverses_transfer_id,
     reversedByTransferId: reversal?.id ?? null,
@@ -377,7 +381,10 @@ export async function reverseTransfer(
             fromAccountId: original.toAccountId,
             toAccountId: original.fromAccountId,
             amountMinor: original.amountMinor,
-            occurredOn: data.occurredOn,
+            // Never before the original: reversing a future-dated transfer must
+            // not move today's balances (QA-04).
+            occurredOn:
+              original.occurredOn > data.occurredOn ? original.occurredOn : data.occurredOn,
             note: data.note,
           }),
         },

@@ -45,6 +45,8 @@ export default defineConfig({
       ENABLE_DESIGN_SYSTEM_PAGE: "true",
       // Lets e2e tests trigger the recurring scheduler like a hosted cron would.
       CRON_SECRET: "e2e-cron-secret-0123456789abcdefghijklmnop",
+      // The suite registers hundreds of users without a client IP (QA-12 limit).
+      REGISTRATION_LIMIT_WITHOUT_IP: "1000000",
     },
   },
 });

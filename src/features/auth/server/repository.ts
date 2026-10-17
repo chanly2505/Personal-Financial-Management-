@@ -75,9 +75,23 @@ function createUserTransaction(data: { email: string; name?: string; passwordHas
   });
 }
 
-/** New password + revoke every existing session + consume all reset tokens. */
-export function replacePassword(userId: string, passwordHash: string) {
+/**
+ * New password + revoke every existing session + consume all reset tokens.
+ * With `consumeTokenHash`, the change only happens if that unexpired token is
+ * still there (deleted atomically here); otherwise returns null.
+ */
+export function replacePassword(
+  userId: string,
+  passwordHash: string,
+  options: { consumeTokenHash?: string } = {},
+) {
   return prisma.$transaction(async (tx) => {
+    if (options.consumeTokenHash) {
+      const { count } = await tx.passwordResetToken.deleteMany({
+        where: { userId, tokenHash: options.consumeTokenHash, expiresAt: { gt: new Date() } },
+      });
+      if (count !== 1) return null;
+    }
     await tx.passwordResetToken.deleteMany({ where: { userId } });
     return tx.user.update({
       where: { id: userId },

@@ -1,4 +1,4 @@
-import { type FirebaseApp, getApp, getApps, initializeApp } from "firebase/app";
+import { type FirebaseApp, getApp, getApps, initializeApp } from "@firebase/app";
 
 import { firebaseOptionsFrom, publicFirebaseEnv } from "./config";
 

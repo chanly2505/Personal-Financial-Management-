@@ -164,5 +164,7 @@ say "Starting the app at $APP_URL (keep this window open; close it to stop the a
     sleep 2
   done ) &
 export RECURRING_SCHEDULER="${RECURRING_SCHEDULER:-in-process}"  # post recurring rules hourly while the app runs
-exec npm run dev
+# Listen on this Mac only: `next dev` would otherwise accept connections from
+# any device on the same Wi-Fi, over plain HTTP, to your financial data.
+exec npm run dev -- --hostname 127.0.0.1
 }

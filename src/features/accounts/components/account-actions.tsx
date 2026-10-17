@@ -51,12 +51,14 @@ export function AccountActions({
 
   return (
     <>
-      <Button asChild variant="outline">
-        <Link href={`/accounts/${account.id}/edit`}>
-          <Pencil aria-hidden="true" />
-          Edit
-        </Link>
-      </Button>
+      {!account.isArchived && (
+        <Button asChild variant="outline">
+          <Link href={`/accounts/${account.id}/edit`}>
+            <Pencil aria-hidden="true" />
+            Edit
+          </Link>
+        </Button>
+      )}
       {account.isArchived ? (
         <Button variant="outline" onClick={restore}>
           <ArchiveRestore aria-hidden="true" />

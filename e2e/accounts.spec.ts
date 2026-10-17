@@ -101,6 +101,11 @@ test("archives only at zero balance, then restores", async ({ page, user }) => {
   await page.getByRole("button", { name: "Archive" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
   await expect(page.getByText("This account is archived.")).toBeVisible();
+  // Archived accounts are frozen: no Edit button, and the edit page refuses (QA-02).
+  await expect(page.getByRole("link", { name: "Edit" })).toHaveCount(0);
+  await page.goto(`${accountUrl}/edit`);
+  await expect(page.getByRole("heading", { name: "Cash is archived" })).toBeVisible();
+  await expect(page.getByLabel("Opening balance")).toHaveCount(0);
 
   await page.goto("/accounts");
   await expect(page.getByRole("heading", { name: "No active accounts" })).toBeVisible();

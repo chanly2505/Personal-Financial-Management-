@@ -58,6 +58,12 @@ const envSchema = z
      * external scheduler calling the cron endpoint or `npm run recurring:run`.
      */
     RECURRING_SCHEDULER: z.enum(["off", "in-process"]).default("off"),
+    /**
+     * Sign-ups per hour, shared by everyone, when the client IP is unknown
+     * (TRUSTED_IP_HEADER unset). The end-to-end suite raises it; leave the
+     * default elsewhere.
+     */
+    REGISTRATION_LIMIT_WITHOUT_IP: z.coerce.number().int().min(1).max(1_000_000).default(30),
   })
   .superRefine((value, ctx) => {
     if (value.MAIL_TRANSPORT === "console" && value.NODE_ENV === "production") {

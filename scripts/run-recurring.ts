@@ -5,11 +5,11 @@
  */
 import "dotenv/config";
 
-import { runDueRules } from "@/features/recurring/server/service";
+import { runScheduledJobs } from "@/server/scheduled-jobs";
 import { prisma } from "@/server/db";
 
 async function main() {
-  const summary = await runDueRules();
+  const summary = await runScheduledJobs();
   console.log(JSON.stringify({ event: "recurring.cli_finished", ...summary }));
   await prisma.$disconnect();
   process.exit(summary.failed > 0 ? 1 : 0);

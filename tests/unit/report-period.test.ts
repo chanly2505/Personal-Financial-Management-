@@ -69,6 +69,17 @@ describe("previous period", () => {
     });
   });
 
+  it("keeps rolling presets' length even when they cover whole months (QA-05)", () => {
+    expect(prev({ period: "last_30_days" }, d("2026-09-30"))).toEqual({
+      from: "2026-08-02",
+      to: "2026-08-31",
+    });
+    expect(prev({ period: "last_90_days" }, d("2026-03-31"))).toEqual({
+      from: "2025-10-03",
+      to: "2025-12-31",
+    });
+  });
+
   it("compares other ranges with the same number of days just before", () => {
     expect(prev({ period: "last_30_days" })).toEqual({ from: "2026-08-18", to: "2026-09-16" });
     expect(prev({ period: "today" })).toEqual({ from: "2026-10-15", to: "2026-10-15" });

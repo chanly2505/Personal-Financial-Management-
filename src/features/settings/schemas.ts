@@ -5,7 +5,7 @@ import {
   MAX_ALERT_THRESHOLD,
   MIN_ALERT_THRESHOLD,
 } from "@/features/budgets/constants";
-import { isValidTimeZone } from "@/lib/dates";
+import { isValidTimeZone, normalizeTimeZone } from "@/lib/dates";
 import { CURRENCY_DISPLAYS, DATE_FORMATS, NUMBER_FORMATS } from "@/lib/format/preferences";
 import { CURRENCY_CODES } from "@/lib/money";
 
@@ -24,11 +24,13 @@ export type ProfileValues = z.output<typeof profileSchema>;
  */
 export const preferencesSchema = z.object({
   baseCurrency: z.enum(CURRENCY_CODES, { error: "Choose a currency." }),
+  // Old aliases are stored by their current name; offsets and unknown names are refused (QA-01).
   timezone: z
     .string()
     .min(1, "Choose a timezone.")
     .max(64)
-    .refine(isValidTimeZone, "Choose a valid timezone."),
+    .refine(isValidTimeZone, "Choose a valid timezone.")
+    .transform((tz) => normalizeTimeZone(tz) ?? tz),
   dateFormat: z.enum(DATE_FORMATS, { error: "Choose a date format." }),
   numberFormat: z.enum(NUMBER_FORMATS, { error: "Choose a number format." }),
   currencyDisplay: z.enum(CURRENCY_DISPLAYS, { error: "Choose how currencies are shown." }),

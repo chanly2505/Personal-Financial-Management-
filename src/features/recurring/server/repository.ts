@@ -235,12 +235,19 @@ export async function findDueRules(
   limit: number,
 ): Promise<{ id: string; userId: string }[]> {
   const rows = await prisma.$queryRaw<{ id: string; user_id: string }[]>`
+    WITH zones AS MATERIALIZED (SELECT name FROM pg_timezone_names)
     SELECT r.id, r.user_id
     FROM recurring_rules r
     JOIN users u ON u.id = r.user_id
     WHERE r.status = 'ACTIVE'
       AND r.next_occurrence_on IS NOT NULL
-      AND r.next_occurrence_on <= (${now}::timestamptz AT TIME ZONE u.timezone)::date
+      -- A timezone this database cannot read skips only that user's rules
+      -- instead of failing the whole run for everyone (QA-01). CASE keeps
+      -- AT TIME ZONE from ever being evaluated for such a value.
+      AND r.next_occurrence_on <= CASE
+        WHEN u.timezone IN (SELECT name FROM zones)
+        THEN (${now}::timestamptz AT TIME ZONE u.timezone)::date
+      END
     ORDER BY r.next_occurrence_on ASC, r.id ASC
     LIMIT ${limit}`;
   return rows.map((r) => ({ id: r.id, userId: r.user_id }));

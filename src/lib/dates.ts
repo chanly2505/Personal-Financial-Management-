@@ -47,14 +47,70 @@ export function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-/** True if `timeZone` is a valid IANA identifier in this runtime. */
-export function isValidTimeZone(timeZone: string): boolean {
+/**
+ * Old IANA names that ICU (Node, browsers) still lists as canonical but that
+ * PostgreSQL rejects when built against tzdata without the "backward" aliases
+ * (e.g. Ubuntu 24.04). Stored timezones must work in both, because the
+ * recurring engine evaluates "today" in SQL for every user at once (QA-01).
+ */
+export const LEGACY_TIME_ZONES: Readonly<Record<string, string>> = {
+  "Africa/Asmera": "Africa/Asmara",
+  "America/Buenos_Aires": "America/Argentina/Buenos_Aires",
+  "America/Catamarca": "America/Argentina/Catamarca",
+  "America/Cordoba": "America/Argentina/Cordoba",
+  "America/Godthab": "America/Nuuk",
+  "America/Indianapolis": "America/Indiana/Indianapolis",
+  "America/Jujuy": "America/Argentina/Jujuy",
+  "America/Louisville": "America/Kentucky/Louisville",
+  "America/Mendoza": "America/Argentina/Mendoza",
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Katmandu": "Asia/Kathmandu",
+  "Asia/Rangoon": "Asia/Yangon",
+  "Asia/Saigon": "Asia/Ho_Chi_Minh",
+  "Atlantic/Faeroe": "Atlantic/Faroe",
+  "Europe/Kiev": "Europe/Kyiv",
+  "Pacific/Enderbury": "Pacific/Kanton",
+  "Pacific/Ponape": "Pacific/Pohnpei",
+  "Pacific/Truk": "Pacific/Chuuk",
+};
+
+function acceptedByIntl(timeZone: string): boolean {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone });
     return true;
   } catch {
     return false;
   }
+}
+
+let choices: string[] | undefined;
+
+/**
+ * The timezones a user can choose: the runtime's IANA list with old names
+ * replaced by their current ones, plus "UTC". No offsets ("+01:00") — PostgreSQL
+ * reads those with the opposite sign — and no removed names ("US/Pacific-New").
+ */
+export function timeZoneChoices(): readonly string[] {
+  choices ??= [
+    ...new Set([
+      ...Intl.supportedValuesOf("timeZone").map((tz) => LEGACY_TIME_ZONES[tz] ?? tz),
+      "UTC",
+    ]),
+  ]
+    .filter(acceptedByIntl)
+    .sort();
+  return choices;
+}
+
+/** The name to store for `timeZone` (old aliases → current name), or null if not allowed. */
+export function normalizeTimeZone(timeZone: string): string | null {
+  const name = LEGACY_TIME_ZONES[timeZone] ?? timeZone;
+  return timeZoneChoices().includes(name) ? name : null;
+}
+
+/** True if `timeZone` may be stored as a user's timezone. */
+export function isValidTimeZone(timeZone: string): boolean {
+  return normalizeTimeZone(timeZone) !== null;
 }
 
 /** The calendar date it currently is in `timeZone`. */

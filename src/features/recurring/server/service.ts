@@ -249,15 +249,21 @@ export async function createRecurring(
   return repo.createRule(user.id, data, next);
 }
 
-/** Next date after an edit or resume: never before today, never a date already posted. */
+/**
+ * Next date after an edit or resume: never a date already posted, and never
+ * before today — except that editing an active rule keeps the past dates it was
+ * still due to catch up on (`pendingFrom`, QA-07). Resuming skips the pause (Q-5).
+ */
 async function nextFromNow(
   user: User,
   ruleId: string,
   schedule: Schedule,
+  pendingFrom?: IsoDate | null,
 ): Promise<IsoDate | null> {
   const today = todayInTimeZone(user.timezone);
   const last = await repo.lastPostedOn(user.id, ruleId);
-  const from = last && addDays(last, 1) > today ? addDays(last, 1) : today;
+  let from = pendingFrom && pendingFrom < today ? pendingFrom : today;
+  if (last && addDays(last, 1) > from) from = addDays(last, 1);
   return nextScheduled(schedule, from);
 }
 
@@ -275,7 +281,14 @@ export async function updateRecurring(
     startOn: data.startOn,
     endOn: data.endOn,
   };
-  const next = await nextFromNow(user, input.id, schedule);
+  const next = await nextFromNow(
+    user,
+    input.id,
+    schedule,
+    existing.status === "ACTIVE" && existing.nextOccurrenceOn
+      ? dbDateToIso(existing.nextOccurrenceOn)
+      : null,
+  );
   // No dates left → completed. Otherwise a paused rule stays paused (its next
   // date is recomputed on resume); an active or completed rule becomes active.
   await repo.updateRule(user.id, input.id, input.expectedUpdatedAt, data, {

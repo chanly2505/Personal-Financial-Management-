@@ -67,17 +67,32 @@ export function createAccount(
   });
 }
 
-/** Never touches `currency`. Returns the number of rows changed (0 = not this user's). */
+/**
+ * Never touches `currency`. Returns the number of rows changed (0 = not this
+ * user's). Locks the row (FOR UPDATE, like archiving) and refuses archived
+ * accounts, so an edit can never put money on an account that is archived —
+ * even when an archive commits at the same moment (QA-02).
+ */
 export async function updateAccount(
   userId: string,
   id: string,
   data: { name: string; type: AccountType; openingBalanceMinor: bigint },
+  verify: (account: { name: string; isArchived: boolean }) => void,
 ): Promise<number> {
-  const { count } = await prisma.financialAccount.updateMany({
-    where: { id, userId },
-    data: { name: data.name, type: data.type, openingBalanceMinor: data.openingBalanceMinor },
+  return prisma.$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<{ name: string; is_archived: boolean }[]>`
+      SELECT name, is_archived FROM accounts
+      WHERE id = ${id}::uuid AND user_id = ${userId}::uuid
+      FOR UPDATE`;
+    const row = rows[0];
+    if (!row) return 0;
+    verify({ name: row.name, isArchived: row.is_archived });
+    const { count } = await tx.financialAccount.updateMany({
+      where: { id, userId },
+      data: { name: data.name, type: data.type, openingBalanceMinor: data.openingBalanceMinor },
+    });
+    return count;
   });
-  return count;
 }
 
 export async function setArchived(userId: string, id: string, archived: boolean): Promise<number> {

@@ -73,7 +73,7 @@ export function RecordActions({
             </Button>
           }
           title="Reverse this transfer?"
-          description="This records a new transfer dated today that moves the same amount back. The original stays in your history, linked to the reversal."
+          description="This records a new transfer that moves the same amount back, dated today (or on the transfer's own date if that is later). The original stays in your history, linked to the reversal."
           confirmLabel="Reverse transfer"
           destructive={false}
           onConfirm={reverse}

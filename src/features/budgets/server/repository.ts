@@ -288,7 +288,8 @@ export async function budgetIdsForKeys(userId: string, keys: BudgetKey[]): Promi
  * every committed record):
  * - a threshold now reached gets an alert, created at most once — the unique
  *   (budget_id, threshold_percent) index makes duplicates impossible; an alert
- *   that had been resolved is re-activated silently (no new notification);
+ *   that had been resolved is re-activated silently (no new notification) with
+ *   the current spent amount;
  * - an alert whose threshold is no longer reached, no longer configured, or
  *   whose budget is archived is marked resolved (kept, not deleted).
  * `decide` returns the thresholds currently reached for the budget.
@@ -309,7 +310,8 @@ export async function syncAlerts(
           INSERT INTO budget_alerts (id, user_id, budget_id, threshold_percent, spent_minor)
           VALUES (gen_random_uuid(), ${userId}::uuid, ${budgetId}::uuid, ${threshold}, ${budget.spentMinor})
           ON CONFLICT (budget_id, threshold_percent)
-          DO UPDATE SET resolved_at = NULL WHERE budget_alerts.resolved_at IS NOT NULL`;
+          DO UPDATE SET resolved_at = NULL, spent_minor = EXCLUDED.spent_minor
+          WHERE budget_alerts.resolved_at IS NOT NULL`;
       }
       await tx.budgetAlert.updateMany({
         where: {

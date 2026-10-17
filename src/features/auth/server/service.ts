@@ -83,7 +83,8 @@ export async function registerUser(
   input: { name?: string; email: string; password: string },
   ip?: string,
 ): Promise<AuthenticatedUser> {
-  await enforce(RATE_LIMITS.registerPerIp, ip);
+  if (ip) await enforce(RATE_LIMITS.registerPerIp, ip);
+  else await enforce(RATE_LIMITS.registerWithoutIp, "all");
 
   const existing = await repo.findUserCredentialsByEmail(input.email);
   if (existing) throw new ConflictError(REGISTRATION_CONFLICT);
@@ -132,12 +133,18 @@ export async function requestPasswordReset(email: string, ip?: string): Promise<
 export async function resetPassword(token: string, newPassword: string, ip?: string) {
   await enforce(RATE_LIMITS.resetSubmitPerIp, ip);
 
-  const record = await repo.findResetToken(hashToken(token));
+  const tokenHash = hashToken(token);
+  const record = await repo.findResetToken(tokenHash);
   if (!record || record.expiresAt.getTime() <= Date.now()) {
     throw new ValidationError(INVALID_RESET, { token: INVALID_RESET });
   }
 
-  await repo.replacePassword(record.userId, await hashPassword(newPassword));
+  // The token is consumed in the same transaction as the password change, so
+  // two submissions racing with one link can't both succeed (QA-14).
+  const changed = await repo.replacePassword(record.userId, await hashPassword(newPassword), {
+    consumeTokenHash: tokenHash,
+  });
+  if (!changed) throw new ValidationError(INVALID_RESET, { token: INVALID_RESET });
   await resetRateLimit(RATE_LIMITS.signInPerEmail, record.user.email);
   logger.info("auth.password_reset");
 }

@@ -99,7 +99,7 @@ All users are non-technical. The UI uses plain language; no accounting jargon ("
 - Must: amounts validated per currency (§6.3); date defaults to today in the user's timezone (§6.5).
 - Must: delete asks for confirmation.
 - Must: transfers move money between two different accounts of the **same currency** (v1; see §6.1). Cross-currency transfers (amount sent ≠ amount received) are deferred.
-- Must: a transfer can be **reversed** (a linked opposite transfer dated today) instead of edited after the fact.
+- Must: a transfer can be **reversed** (a linked opposite transfer dated today, or on the original's date if that is later) instead of edited after the fact.
 - Must: a double submission of the same form creates one record (one-time request id per form).
 
 ### 5.5 Budgets
@@ -153,7 +153,7 @@ Rules:
 - A transfer always has two different accounts owned by the same user. Transfers **never** appear in income, expense, budget or category totals. Structural: they live in a separate table.
 - **v1: both accounts of a transfer must use the same currency**, and amount sent = amount received (enforced by the service and the `transfers_same_amount_chk` constraint). Cross-currency transfers (both amounts entered, implied rate shown) are a later change: drop that constraint and relax the service rule.
 - Valid dates: 2000-01-01 up to one year after today in the user's timezone.
-- Records of an **archived** account are frozen (no add, edit or delete), so its zero balance stays zero.
+- An **archived** account is frozen: its records cannot be added, edited or deleted, and the account itself (name, type, opening balance) cannot be edited until restored — checked under the account's row lock — so its zero balance stays zero.
 
 ### 6.2 Balance calculation
 
@@ -229,7 +229,7 @@ balance(account, asOf) = opening_balance
 ### 6.8 Savings goals
 
 - A goal has a name, currency, target amount > 0, optional target date and optional linked account.
-- Progress is tracked by **contributions** — positive (set aside) or negative (withdrawn), never zero. **Saved** = Σ contributions; it can never go below zero (a withdrawal larger than saved is rejected).
+- Progress is tracked by **contributions** — positive (set aside) or negative (withdrawn), never zero. **Saved** = Σ contributions; it can never go below zero — neither in total nor on any date in the history (a withdrawal larger than what was saved by its date, or removing a contribution a later withdrawal relies on, is rejected). The goal's currency is fixed once it has a contribution; both rules are checked under the goal's row lock.
 - Contributions are **earmarks**, not money movements: they do not change any account balance, the ledger, budgets or reports **[Q-7 A — chosen in Phase 8 on the user's request for a recommendation]**.
 - Achieved when saved ≥ target; saving beyond the target is allowed. Achieved state is derived, not stored.
 - If the total earmarked for goals linked to an account exceeds that account's current balance, the UI shows a warning (not a block).
@@ -251,7 +251,7 @@ balance(account, asOf) = opening_balance
 |---|---|---|
 | Income / expense | All fields. Changing type requires a category of the new type. | Allowed, with confirmation. Permanent. |
 | Transfer | All fields (accounts, amount, date, note) — unless it has been reversed or is itself a reversal. | Allowed, with confirmation. Permanent. A reversed transfer can only be deleted after its reversal. |
-| Transfer reversal | "Reverse" creates the opposite transfer dated today, linked to the original (`reverses_transfer_id`); at most one per transfer; a reversal cannot itself be reversed. | Deleting the reversal restores the original's effect. |
+| Transfer reversal | "Reverse" creates the opposite transfer dated today (or on the original's date if that is in the future, so current balances never move), linked to the original (`reverses_transfer_id`); at most one per transfer; a reversal cannot itself be reversed. | Deleting the reversal restores the original's effect. |
 | Converting income/expense ↔ transfer | Done as delete + create in one database transaction. | — |
 | Account | Name, type, opening balance, archived flag. **Not** currency. | Only if it has no records; otherwise archive. Archive requires zero current balance (Q-10). |
 | Category | Name, colour, archived flag. Type only if unused. | Only if unused; otherwise archive. |

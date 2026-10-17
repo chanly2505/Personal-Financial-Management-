@@ -310,8 +310,10 @@ describe("editing and deleting", () => {
       interval: 1,
       startOn: "2026-01-31",
     });
-    const next = (await nextOf(id))!;
-    expect(next >= today()).toBe(true);
+    // Posted: 31 Jan and 28 Feb. Dates that were due but not yet posted (the
+    // engine last ran "on" 15 Mar) are kept, with the new amount, not skipped
+    // (QA-07, PRD §6.6 catch-up policy); posted dates are never redone.
+    expect(await nextOf(id)).toBe("2026-03-31");
     const amounts = await prisma.transaction.findMany({
       where: { recurringRuleId: id },
       select: { amountMinor: true },

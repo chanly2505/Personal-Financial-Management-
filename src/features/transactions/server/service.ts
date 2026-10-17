@@ -278,7 +278,10 @@ export async function deleteTransfer(user: Pick<CurrentUser, "id">, id: string):
   );
 }
 
-/** Undo a transfer with an opposite one dated today. Each transfer can be reversed once. */
+/**
+ * Undo a transfer with an opposite one dated today — or on the original's date
+ * if that is later. Each transfer can be reversed once.
+ */
 export async function reverseTransfer(
   user: User,
   input: { id: string; clientRequestId: string },
@@ -325,7 +328,10 @@ export function amountBounds(value: string, rounding: "up" | "down"): Record<Cur
     const dropped = fraction.slice(exponent);
     let minor = BigInt(whole + kept);
     if (rounding === "up" && /[1-9]/.test(dropped)) minor += 1n;
-    return minor > MAX_AMOUNT_MINOR ? MAX_AMOUNT_MINOR : minor;
+    // A minimum above the largest storable amount matches nothing (QA-09).
+    if (minor > MAX_AMOUNT_MINOR)
+      return rounding === "up" ? MAX_AMOUNT_MINOR + 1n : MAX_AMOUNT_MINOR;
+    return minor;
   };
   return { USD: bound("USD"), KHR: bound("KHR") };
 }

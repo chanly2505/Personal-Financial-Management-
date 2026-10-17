@@ -1,4 +1,4 @@
-import type { FirebaseOptions } from "firebase/app";
+import type { FirebaseOptions } from "@firebase/app";
 
 /**
  * Firebase web configuration. These values identify the Firebase project and
