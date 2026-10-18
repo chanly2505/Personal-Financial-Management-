@@ -13,7 +13,7 @@
 | Scheduler | `netlify/functions/scheduled-jobs.mts`, hourly at :05 UTC, calls `/api/cron/recurring` with `CRON_SECRET` (recurring items post hourly) |
 | Client IP header | `TRUSTED_IP_HEADER=x-nf-client-connection-ip` |
 
-**Status:** site created, configuration committed; **waiting for the Neon connector** (the owner connects it at claude.ai/customize/connectors and starts a new session).
+**Status (18 Oct 2026):** Neon project `personal-finance` (`raspy-waterfall-82036981`, PostgreSQL 17, AWS US East 2) created; `finance_app` role created and verified (no superuser/createrole/createdb, cannot create in `public`); Netlify Production environment variables set (`MIGRATION_DATABASE_URL` scoped to builds only, so the running app cannot read the owner password). Next: first deploy and release checks.
 
 **Remaining steps (Claude, in the next session):**
 

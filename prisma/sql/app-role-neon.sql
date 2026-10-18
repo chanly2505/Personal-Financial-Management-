@@ -14,11 +14,16 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'finance_app') THEN
     CREATE ROLE finance_app LOGIN PASSWORD 'REPLACE_WITH_THE_PASSWORD';
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'neon_superuser') THEN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'neon_superuser')
+     AND pg_has_role('finance_app', 'neon_superuser', 'MEMBER') THEN
     EXECUTE 'REVOKE neon_superuser FROM finance_app';
   END IF;
 END $$;
-ALTER ROLE finance_app NOSUPERUSER NOCREATEDB NOCREATEROLE;
+-- A role created this way has no SUPERUSER, CREATEDB or CREATEROLE power.
+-- (No `ALTER ROLE … NOSUPERUSER …` here: on PostgreSQL 16+ only a superuser may
+-- run it, and Neon's owner is not one — found on the first real Neon setup.)
+-- Check afterwards:
+--   SELECT rolsuper, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = 'finance_app';
 
 GRANT CONNECT ON DATABASE neondb TO finance_app;
 
