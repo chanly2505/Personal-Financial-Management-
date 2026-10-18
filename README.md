@@ -4,7 +4,7 @@ Track income, expenses, transfers, accounts, budgets, recurring items, savings g
 
 Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL (16 locally, 17 on Neon) and Prisma 7.
 
-**Status:** every module is built, audited and hardened (Phases 0–11 and 13: [docs/QA_REPORT.md](docs/QA_REPORT.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)) and being deployed on **Netlify + Neon** ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Phase 12 (production deployment) is prepared; the deployed address is added here only after the release checks pass against it.
+**Status:** every module is built, audited and hardened (Phases 0–11 and 13: [docs/QA_REPORT.md](docs/QA_REPORT.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)) and being deployed on **Vercel + Neon** ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Phase 12 (production deployment) is prepared; the deployed address is added here only after the release checks pass against it.
 
 ## Contents
 
@@ -111,11 +111,9 @@ npm run build && npm start     # production build and server (set AUTH_URL to th
 
 ## Deployment
 
-**Current target: Netlify + Neon** (US East, Ohio): `netlify.toml`, an hourly scheduled function, migrations on production builds; status and remaining steps in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#netlify--neon-current).
+**Current target: Vercel + Neon** — Vercel Hobby in `cle1` (Cleveland) next to Neon PostgreSQL in AWS US East 2 (Ohio); free tiers, HTTPS by default. Status and steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). In short:
 
-Alternative — **Vercel** (Hobby, region Singapore `sin1`) with **Neon** PostgreSQL (Singapore), free tiers, HTTPS by default:
-
-1. Neon project in Singapore; create the limited `finance_app` role with `prisma/sql/app-role-neon.sql`.
+1. Neon project in AWS US East 2 (Ohio); create the limited `finance_app` role with `prisma/sql/app-role-neon.sql`.
 2. Vercel project from this GitHub repository; set `DATABASE_URL` (app role, pooled), `MIGRATION_DATABASE_URL` (owner, direct), `AUTH_SECRET`, `CRON_SECRET`, `TRUSTED_IP_HEADER=x-real-ip` — **Production environment only**.
 3. Deploy. `vercel-build` applies migrations, then builds; a failed migration fails the deploy and the previous version stays live.
 4. Verify: `/api/health`, then `npm run release:check` against the address.

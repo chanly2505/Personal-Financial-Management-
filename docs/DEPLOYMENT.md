@@ -1,8 +1,34 @@
 # Deploying
 
-**Current target: Netlify + Neon** (chosen by the owner on 18 Oct 2026, replacing Vercel). Claude sets it up through the Netlify and Neon connectors; the Vercel guide further down still works as an alternative.
+**Current target: Vercel + Neon** (approved by the owner on 18 Oct 2026). The app runs on Vercel (Hobby, region `cle1` — Cleveland, US East) next to the existing Neon database in AWS US East 2 (Ohio). The Netlify configuration below remains as an alternative.
 
-## Netlify + Neon (current)
+## Vercel + Neon (current)
+
+| | |
+|---|---|
+| Database | Neon project `personal-finance` (`raspy-waterfall-82036981`), PostgreSQL 17, AWS US East 2 (Ohio). Limited role `finance_app` created and verified; no tables yet — the first production build creates them. |
+| App | Vercel Hobby, functions in `cle1` (`vercel.json`), daily job at 17:05 UTC (`/api/cron/recurring`) |
+| Build | `vercel-build`: `prisma migrate deploy` on production builds only, then `next build` |
+
+**Credentials to rotate first.** The `finance_app` and `neondb_owner` passwords used during the Netlify attempt passed through a chat session, so both are replaced before Vercel is set up (steps 1–2).
+
+**Steps (the owner, in the browser):**
+
+1. **New app password** — Neon console → project `personal-finance` → **SQL Editor**. On your Mac run `openssl rand -hex 24`, then run in the editor (with that value):
+   `ALTER ROLE finance_app PASSWORD 'PASTE_THE_VALUE';`
+2. **New owner password** — Neon console → **Roles** → `neondb_owner` → **Reset password**.
+3. **Connection strings** — Neon → **Connect**:
+   - `MIGRATION_DATABASE_URL`: role `neondb_owner`, **Connection pooling off**, copy exactly as shown.
+   - `DATABASE_URL`: `postgresql://finance_app:PASSWORD_FROM_STEP_1@ep-morning-resonance-b5x68340-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=verify-full`
+4. **Two secrets** — on your Mac run `openssl rand -base64 32` twice: `AUTH_SECRET`, `CRON_SECRET`.
+5. **Vercel** — vercel.com → Continue with GitHub → **Add New… → Project** → import **Personal-Financial-Management-** → Environment Variables (each **Production only**; mark the two URLs **Sensitive**): `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `AUTH_SECRET`, `CRON_SECRET`, `TRUSTED_IP_HEADER=x-real-ip` → **Deploy**.
+6. **Pin the address** — Settings → Environment Variables → `AUTH_URL=https://<your-address>` (Production) → Deployments → **Redeploy**.
+7. **Verification (Claude)** — `/api/health`, then `RELEASE_URL=… RELEASE_CRON_SECRET=… npm run release:check` from a session whose network policy allows the address.
+8. **Clean-up (Claude, with the owner's OK)** — remove the Netlify site's environment variables (or the site), then add the live address to README.md and mark Phase 12 done.
+
+---
+
+## Netlify + Neon (alternative, configured)
 
 | | |
 |---|---|
@@ -27,7 +53,7 @@
 
 ---
 
-## Vercel + Neon (alternative)
+## Vercel + Neon — detailed guide (fresh setup)
 
 The app runs on **Vercel** (free *Hobby* plan, made for Next.js) with its data in **Neon** (free PostgreSQL). Both sign in with your GitHub account. No credit card is needed. Every time new code is pushed to `main`, Vercel rebuilds the site and applies any database changes automatically.
 
@@ -41,12 +67,12 @@ The app runs on **Vercel** (free *Hobby* plan, made for Next.js) with its data i
 | Vercel Hobby | Personal, non-commercial use; generous traffic | Fine for you and your family. |
 | Vercel Cron (Hobby) | Once a day | Recurring transactions post once a day, just after midnight Cambodia time (§5). |
 
-Configured in the repository: `vercel.json` (servers in Singapore, next to the database; the daily recurring job), the `vercel-build` script in `package.json` (applies database migrations on production builds only, then builds), and `prisma/sql/app-role-neon.sql` (a limited database user for the app).
+Configured in the repository: `vercel.json` (servers in Cleveland `cle1`, next to the Ohio database; the daily recurring job), the `vercel-build` script in `package.json` (applies database migrations on production builds only, then builds), and `prisma/sql/app-role-neon.sql` (a limited database user for the app).
 
 ### 1. Create the database (Neon)
 
 1. Go to <https://neon.tech> → **Sign up** → **Continue with GitHub**.
-2. Create a project: name `personal-finance`, PostgreSQL version 17, region **AWS Asia Pacific (Singapore)**. The database is called `neondb` and its owner `neondb_owner`. Keep those names.
+2. Create a project: name `personal-finance`, PostgreSQL version 17, region **AWS US East 2 (Ohio)** (it must match the `vercel.json` region `cle1`). The database is called `neondb` and its owner `neondb_owner`. Keep those names.
 
 ### 2. Add a limited user for the app
 

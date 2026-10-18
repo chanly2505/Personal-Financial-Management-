@@ -4,7 +4,7 @@ How to run the background work the app depends on, and how to recover when somet
 
 ## Production runbook
 
-Production = **Vercel** (Hobby, functions in Singapore `sin1`) + **Neon** PostgreSQL 17 (Singapore, same region to keep each query a few milliseconds). Set-up steps: [DEPLOYMENT.md](DEPLOYMENT.md).
+Production = **Vercel** (Hobby, functions in Cleveland `cle1`) + **Neon** PostgreSQL 17 (AWS US East 2, Ohio — the same area, to keep each query a few milliseconds). Set-up steps: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Environments
 
