@@ -70,6 +70,9 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "coverage/**",
+    // Cloudflare build output (scripts/cloudflare-build.sh, wrangler).
+    ".open-next/**",
+    ".wrangler/**",
   ]),
 ]);
 

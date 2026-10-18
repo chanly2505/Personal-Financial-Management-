@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { type Page, expect, test as base } from "@playwright/test";
+import { type Locator, type Page, expect, test as base } from "@playwright/test";
 
 export const PASSWORD = "e2e password 12345";
 
@@ -46,6 +46,19 @@ export async function signOut(page: Page) {
 }
 
 /** `page` already signed in as a freshly registered user. */
+/**
+ * Open an actions menu and choose an item. Retries opening: under load a click
+ * during the menu's open animation can be lost, leaving the item missing.
+ */
+export async function chooseMenuItem(page: Page, trigger: Locator, item: string) {
+  const option = page.getByRole("menuitem", { name: item });
+  await expect(async () => {
+    if (!(await option.isVisible())) await trigger.click();
+    await expect(option).toBeVisible({ timeout: 1_000 });
+  }).toPass();
+  await option.click();
+}
+
 export const test = base.extend<{ user: TestUser }>({
   // (Playwright's fixture callback is conventionally named `use`; renamed so the
   // React hooks lint rule does not mistake it for React's use().)

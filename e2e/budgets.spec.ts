@@ -2,7 +2,7 @@ import "dotenv/config";
 import { type Page } from "@playwright/test";
 import { Client } from "pg";
 
-import { expect, newUser, register, test } from "./fixtures";
+import { chooseMenuItem, expect, newUser, register, test } from "./fixtures";
 
 /** Budgets through the real UI: limits, live spending, warnings, archive, months. */
 
@@ -160,24 +160,36 @@ test.describe("with accounts", () => {
     const row = budgetRow(page, "Transportation (USD)");
     await expect(row.getByText("Warning at 90%")).toBeVisible();
 
-    await row.getByRole("button", { name: "Actions for Transportation" }).click();
-    await page.getByRole("menuitem", { name: "Edit" }).click();
+    await chooseMenuItem(
+      page,
+      row.getByRole("button", { name: "Actions for Transportation" }),
+      "Edit",
+    );
     await expect(page.getByLabel("Monthly limit")).toHaveValue("40.00");
     await page.getByLabel("Monthly limit").fill("55.25");
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(row.getByText("$55.25 left")).toBeVisible();
 
-    await row.getByRole("button", { name: "Actions for Transportation" }).click();
-    await page.getByRole("menuitem", { name: "Archive" }).click();
+    await chooseMenuItem(
+      page,
+      row.getByRole("button", { name: "Actions for Transportation" }),
+      "Archive",
+    );
     await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
     await expect(page.getByRole("heading", { name: /^No budgets for/ })).toBeVisible();
     await page.getByText("Archived budgets (1)").click();
-    await row.getByRole("button", { name: "Actions for Transportation" }).click();
-    await page.getByRole("menuitem", { name: "Restore" }).click();
+    await chooseMenuItem(
+      page,
+      row.getByRole("button", { name: "Actions for Transportation" }),
+      "Restore",
+    );
     await expect(page.getByRole("heading", { name: "Budgets", level: 2 })).toBeVisible();
 
-    await row.getByRole("button", { name: "Actions for Transportation" }).click();
-    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await chooseMenuItem(
+      page,
+      row.getByRole("button", { name: "Actions for Transportation" }),
+      "Delete",
+    );
     await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("heading", { name: /^No budgets for/ })).toBeVisible();
   });

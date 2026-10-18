@@ -32,7 +32,7 @@ PostgreSQL 16  (Prisma 7 + node-postgres driver adapter)
 | Database | **PostgreSQL** | 16 | Transactions, CHECK constraints, composite foreign keys, exact `BIGINT`/`NUMERIC`. | SQLite (weak for concurrent writes in hosted setups), MySQL (fewer constraint features). |
 | ORM | **Prisma** | 7.10 | Typed client, migrations, adapters; raw SQL available for constraints and aggregates. | Drizzle (good, but Prisma's migration workflow is more mature for this team size). Prisma 8 is still RC. |
 | Authentication | **Auth.js** (`next-auth` v5) | 5 beta, pinned | See ADR-1. | Supabase Auth (rejected, ADR-1). |
-| Password hashing | **argon2id** via `@node-rs/argon2` | Phase 2 | OWASP-recommended; prebuilt binaries, no compiler. Fallback if binaries are unavailable on the host: `bcryptjs`, cost 12. | — |
+| Password hashing | **argon2id** via `@noble/hashes` (pure JavaScript; was `@node-rs/argon2` until Oct 2026) | Phase 2 | OWASP-recommended; runs unchanged on Node.js and Cloudflare Workers (no native addon, no runtime WebAssembly). ~0.2–0.4 s per hash; same PHC format, old hashes verify. | — |
 | Validation | **Zod** | 4.6 | One schema per input, used by forms and server. | Valibot/Yup (duplicate purpose — not added). |
 | Forms | **React Hook Form** + `@hookform/resolvers` | Phase 2 | Uncontrolled inputs, good performance on mobile, integrates with Zod. | Formik (duplicate purpose — not added). |
 | Charts | **Recharts** | Phase 5 | Composable React charts, adequate accessibility with table fallbacks. | Chart.js/visx (duplicate purpose — not added). |

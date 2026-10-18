@@ -65,7 +65,12 @@ describe("failures and retries", () => {
     failing.ids.add(id);
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(await runDueRules({ now: at("2026-02-01") })).toMatchObject({ failed: 1, posted: 0 });
-    const logged = errors.mock.calls.map((c) => String(c[0])).join("");
+    // Ids are random and may contain digits like "300", so drop them before
+    // checking that no amount or description leaked into the log.
+    const logged = errors.mock.calls
+      .map((c) => String(c[0]))
+      .join("")
+      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<id>");
     errors.mockRestore();
     // Logs carry ids and the error class, never amounts or names.
     expect(logged).toContain("recurring.rule_failed");

@@ -8,3 +8,5 @@ prisma/migrations
 package-lock.json
 next-env.d.ts
 *.md
+.open-next
+.wrangler

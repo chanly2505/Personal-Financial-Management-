@@ -13,6 +13,7 @@ Phase 13 exit criterion. Each item is either **verified** (with the evidence: a 
 | A5 | Performance: page data loading with 10,000 records < 500 ms p95 (PRD §7) | `npm run test:perf` | dashboard p95 15–19 ms; slowest page 53 ms; CSV of 11,500 rows 282 ms |
 | A6 | Dependencies | `npm audit` | only accepted R1 (Prisma CLI) and R11 (lint tool) |
 | A7 | No secrets in the repository | `git log -p \| grep` for keys; `.env` ignored | clean |
+| A8 | Cloudflare build and size | `npm run cf:build`, then `npx wrangler deploy --dry-run --outdir /tmp/cf` (gzip size < 10 MB) and `npm run cf:preview` + `RELEASE_URL=http://localhost:8787 npm run release:check` | 5.4 MB gzip; release checks 4/4; desktop e2e 104/104 on workerd |
 
 ## After deploying — against the live site
 

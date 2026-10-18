@@ -1,0 +1,18 @@
+// Cloudflare Workers (docs/DEPLOYMENT.md §Cloudflare). Secrets are set in the
+// Cloudflare dashboard (Variables and Secrets), never here.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Must match the Workers project name in the Cloudflare dashboard.
+  "name": "personal-financial-management",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "personal-financial-management" }],
+  // Recurring transactions and housekeeping: 5 minutes past every hour (UTC).
+  "triggers": { "crons": ["5 * * * *"] },
+  // Run next to the database (Neon, US East) instead of next to each visitor:
+  // a page makes several queries, each a round trip to the database.
+  "placement": { "mode": "smart" },
+  "observability": { "enabled": true },
+}

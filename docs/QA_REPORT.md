@@ -133,6 +133,7 @@ Not exploitable (preceded by a user-scoped lookup under lock); the delete is now
 | R9 | Recurring engine writes by rule id without user filter | P3 | System path; ids come from a user-scoped query, never from a client; composite FKs enforce ownership. | — |
 | R10 | No currency conversion exists | — | By design until Q-2 is decided; nothing is ever added across currencies. | Q-2 |
 | R11 | `braces@3.0.3` (via `eslint-config-next` → `fast-glob` → `micromatch`): stack-exhaustion advisory GHSA-vfj7-8cjw-p6xm, 7 high in full `npm audit` (found Phase 13) | P3 | Development-only lint tool; it only expands the project's own file patterns; not in the app or the production install. No fixed version exists (3.0.3 is the latest; npm's suggested fix is a downgrade to Next 14's config). | Upgrade when `braces` or `eslint-config-next` publishes a fix. |
+| R12 | `glob@10.3.3` via `@opennextjs/cloudflare` → `@opennextjs/aws` → `@node-minify/core`: GHSA-5j98-mcp5-4vw2, command injection in the glob **CLI** `-c/--cmd` option (3 high entries in `npm audit --omit=dev`, Oct 2026) | P3 | Build-time dependency of the Cloudflare adapter; the glob CLI is never run and none of it is in the Worker. npm's suggested fix downgrades the adapter to a version without Next.js 16.4 support. | Upgrade `@opennextjs/cloudflare` when it moves off `@node-minify/core` 9 / glob 10.3. |
 
 ## What was verified
 
@@ -248,3 +249,23 @@ These times cover server data loading only, not React rendering or the network. 
 | Release checks against a local production build | 4 passed; no test accounts left |
 
 The release recommendation above still applies. The Phase 13 fixes remove SR-1 from the list of reasons for caution. The manual items in docs/RELEASE_CHECKLIST.md (screen reader, Safari and Firefox, real phone, live-site checks) are still to be done.
+
+## Cloudflare Workers adaptation (18 Oct 2026)
+
+On the owner's request the app was adapted to run on Cloudflare Workers as well as Node.js, without changing features.
+
+| Change | Why | Evidence |
+|---|---|---|
+| Next.js 16.3.8 → 16.4.2 | `@opennextjs/cloudflare` 1.20.12 requires Next ≥ 16.4.1 (released 14–15 Oct; adopted earlier than the usual two-week wait, at the owner's request) | all suites below |
+| Password hashing: `@node-rs/argon2` (native) → `@noble/hashes` argon2id (pure JS) | Workers cannot load native addons or compile WebAssembly at runtime | `tests/unit/password.test.ts`: hashes made by the old library still verify; same PHC format and parameters. ~0.2–0.4 s per hash (was ~0.04 s), so Workers needs the Paid plan. |
+| One Prisma client per request on Workers, closed when the response has been sent (`src/server/db.ts`, `cloudflare/worker.ts`) | Workers cannot share a database connection between requests | e2e and release checks on workerd |
+| Prisma client generated for `workerd` in Cloudflare builds; Prisma CLI/dev engines and `instrumentation.ts` kept out of the Worker (`scripts/cloudflare-build.sh`, `CF_BUILD` tracing excludes) | WebAssembly must be imported as a module; upload size limit | dry-run upload 5.4 MB gzip (was 20.6 MB) |
+| Hourly cron trigger → `/api/cron/recurring` | scheduler on Workers | scheduled handler run 5×, all 200 |
+| `prisma.config.ts` no longer requires a database URL for `prisma generate` | the first Cloudflare build failed during `npm install` | generate without variables succeeds; migrate still refuses without a URL |
+| Test fix: `recurring-failures.test.ts` stripped ids before checking that amounts never reach logs | a random id containing "300" made it fail intermittently | test passes repeatedly |
+
+**Verified on the workerd runtime** (`npm run cf:build`, `wrangler dev`, local PostgreSQL): release checks 4/4 (no test accounts left), the desktop end-to-end suite 104 passed / 0 failed (run with one worker: a single local workerd process serialises CPU-heavy password hashing), scheduled handler 5/5.
+
+**Known, not fixed:** in long local runs `pg`'s Cloudflare socket occasionally logs "Network connection lost" or "Broken pipe" when a connection is torn down (≈ 1 in 2,000 requests; no request failed). It comes from `pg-cloudflare`; supplying our own socket is not possible because Next.js bundles app code for Node.js.
+
+**Not verified here:** an actual deployment to Cloudflare (the account, plan and secrets are the owner's), Smart Placement latency, and behaviour under concurrent production traffic.

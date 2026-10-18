@@ -1,8 +1,36 @@
 # Deploying
 
-**Current target: Vercel + Neon** (approved by the owner on 18 Oct 2026). The app runs on Vercel (Hobby, region `cle1` — Cleveland, US East) next to the existing Neon database in AWS US East 2 (Ohio). The Netlify configuration below remains as an alternative.
+**Current target: Cloudflare Workers + Neon** (chosen by the owner on 18 Oct 2026). The Vercel and Netlify setups below remain documented alternatives; all three use the same Neon database.
 
-## Vercel + Neon (current)
+## Cloudflare Workers + Neon (current)
+
+| | |
+|---|---|
+| Worker | `personal-financial-management` (`wrangler.jsonc`), built by Workers Builds from GitHub `main` |
+| Plan | **Workers Paid (US$5/month) is required**: password hashing (argon2id, OWASP minimum) needs ~0.2–0.4 s of CPU, above the free plan's 10 ms per request |
+| Adapter | `@opennextjs/cloudflare` (Next.js ≥ 16.4.1); entry `cloudflare/worker.ts` adds the hourly cron handler |
+| Database | Neon `personal-finance` (AWS US East 2). Smart Placement runs the worker next to it. One Prisma client per request on Workers (`src/server/db.ts`). |
+| Build | `npm run cf:build` → `scripts/cloudflare-build.sh`: migrations on `main` builds only, Prisma client for workerd, OpenNext build |
+| Scheduler | Cron trigger `5 * * * *` (hourly) → `/api/cron/recurring` with `CRON_SECRET` |
+
+**Settings in the Cloudflare dashboard** (Workers & Pages → `personal-financial-management`):
+
+1. **Plan:** Workers & Pages → Plans → **Workers Paid**.
+2. **Settings → Build → Build configuration:** Build command `npm run cf:build`; Deploy command `npx wrangler deploy`; root directory `/`.
+3. **Settings → Build → Variables and secrets** (used while building): `MIGRATION_DATABASE_URL` (secret) = Neon owner, connection pooling **off**.
+4. **Settings → Variables and Secrets** (used by the running app; type **Secret** for the first three):
+   - `DATABASE_URL` = `postgresql://finance_app:<app password>@<Neon pooled host>/neondb?sslmode=verify-full`
+   - `AUTH_SECRET`, `CRON_SECRET` = each `openssl rand -base64 32`
+   - `TRUSTED_IP_HEADER` = `cf-connecting-ip`
+   - `AUTH_URL` = the worker's address, e.g. `https://personal-financial-management.<account>.workers.dev`
+5. Rotate the two Neon passwords first if they were ever shared (see the Vercel section, steps 1–2).
+6. **Deployments → Retry build** (or push to `main`). Then verify: `/api/health`, and `RELEASE_URL=… RELEASE_CRON_SECRET=… npm run release:check`.
+
+Verified locally on the workerd runtime (`npm run cf:build`, then `npm run cf:preview` with a `.dev.vars` file): health, release checks 4/4, the scheduled handler, and the full end-to-end suite (see docs/QA_REPORT.md).
+
+---
+
+## Vercel + Neon (alternative)
 
 | | |
 |---|---|
