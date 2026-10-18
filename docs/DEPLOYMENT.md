@@ -13,7 +13,7 @@
 | Scheduler | `netlify/functions/scheduled-jobs.mts`, hourly at :05 UTC, calls `/api/cron/recurring` with `CRON_SECRET` (recurring items post hourly) |
 | Client IP header | `TRUSTED_IP_HEADER=x-nf-client-connection-ip` |
 
-**Status (18 Oct 2026):** Neon project `personal-finance` (`raspy-waterfall-82036981`, PostgreSQL 17, AWS US East 2) created; `finance_app` role created and verified (no superuser/createrole/createdb, cannot create in `public`); Netlify Production environment variables set (`MIGRATION_DATABASE_URL` scoped to builds only, so the running app cannot read the owner password). Next: first deploy and release checks.
+**Status (18 Oct 2026):** Neon project `personal-finance` (`raspy-waterfall-82036981`, PostgreSQL 17, AWS US East 2) created; `finance_app` role created and verified (no superuser/createrole/createdb, cannot create in `public`); Netlify Production environment variables set (`MIGRATION_DATABASE_URL` scoped to builds only, so the running app cannot read the owner password). First deploy attempt blocked: the Claude cloud environment's network policy refuses `netlify-mcp.netlify.app`, `api.netlify.com` and `*.netlify.app` (proxy 403). Next: once those are allowed (environment settings → Network access → Allowed domains), deploy and run the release checks. Upload with `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` so Node's fetch uses the proxy.
 
 **Remaining steps (Claude, in the next session):**
 
