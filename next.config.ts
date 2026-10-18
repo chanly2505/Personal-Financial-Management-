@@ -22,6 +22,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  env: {
+    // Short commit id of the build, shown by /api/health. Vercel and Netlify
+    // expose it only while building, so it is fixed into the build here.
+    APP_COMMIT: (process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.COMMIT_REF ?? "").slice(0, 7),
+  },
   logging: {
     // `next dev` otherwise prints every server action call *with its arguments* —
     // which would put passwords and financial data in the terminal (docs/SECURITY.md §9).

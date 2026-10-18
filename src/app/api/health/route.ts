@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const database = await isDatabaseReachable();
-  const version = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local";
+  const version = process.env.APP_COMMIT || "local";
   return Response.json(
     { status: database ? "ok" : "error", database: database ? "ok" : "unreachable", version },
     { status: database ? 200 : 503, headers: { "Cache-Control": "no-store" } },

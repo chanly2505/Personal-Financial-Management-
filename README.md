@@ -4,7 +4,7 @@ Track income, expenses, transfers, accounts, budgets, recurring items, savings g
 
 Built with Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL (16 locally, 17 on Neon) and Prisma 7.
 
-**Status:** every module is built, audited and hardened (Phases 0–11 and 13: [docs/QA_REPORT.md](docs/QA_REPORT.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)) and ready to deploy on **Vercel + Neon** ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Phase 12 (production deployment) is prepared; the deployed address is added here only after the release checks pass against it.
+**Status:** every module is built, audited and hardened (Phases 0–11 and 13: [docs/QA_REPORT.md](docs/QA_REPORT.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)) and being deployed on **Netlify + Neon** ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Phase 12 (production deployment) is prepared; the deployed address is added here only after the release checks pass against it.
 
 ## Contents
 
@@ -111,7 +111,9 @@ npm run build && npm start     # production build and server (set AUTH_URL to th
 
 ## Deployment
 
-Production runs on **Vercel** (Hobby, region Singapore `sin1`) with **Neon** PostgreSQL (Singapore) — free tiers, HTTPS by default. Full click-by-click guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). In short:
+**Current target: Netlify + Neon** (US East, Ohio): `netlify.toml`, an hourly scheduled function, migrations on production builds; status and remaining steps in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#netlify--neon-current).
+
+Alternative — **Vercel** (Hobby, region Singapore `sin1`) with **Neon** PostgreSQL (Singapore), free tiers, HTTPS by default:
 
 1. Neon project in Singapore; create the limited `finance_app` role with `prisma/sql/app-role-neon.sql`.
 2. Vercel project from this GitHub repository; set `DATABASE_URL` (app role, pooled), `MIGRATION_DATABASE_URL` (owner, direct), `AUTH_SECRET`, `CRON_SECRET`, `TRUSTED_IP_HEADER=x-real-ip` — **Production environment only**.

@@ -64,7 +64,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(signIn);
   }
 
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  // btoa rather than Buffer: hosts may run the proxy in an edge runtime (Netlify).
+  const nonce = btoa(crypto.randomUUID());
   const csp = contentSecurityPolicy(nonce, request);
 
   const requestHeaders = new Headers(request.headers);

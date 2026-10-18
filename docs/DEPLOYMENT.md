@@ -1,4 +1,33 @@
-# Deploying for free (Vercel + Neon)
+# Deploying
+
+**Current target: Netlify + Neon** (chosen by the owner on 18 Oct 2026, replacing Vercel). Claude sets it up through the Netlify and Neon connectors; the Vercel guide further down still works as an alternative.
+
+## Netlify + Neon (current)
+
+| | |
+|---|---|
+| Netlify site | `chanly-personal-finance` — <https://chanly-personal-finance.netlify.app> (team `chanly2505`, site id `5347deed-b7a4-4839-8ede-87d3306b8b0a`) |
+| Server region | Netlify Functions run in US East (Ohio, `cmh`) on the free plan (choosing a region needs Pro) |
+| Database | Neon PostgreSQL 17 in **AWS US East 2 (Ohio)** — next to the functions, so the several queries per page stay fast |
+| Build | `netlify.toml` → `npm run netlify-build`: `prisma migrate deploy` on production deploys only (`CONTEXT=production`), then `next build`; Netlify's Next.js runtime is added automatically |
+| Scheduler | `netlify/functions/scheduled-jobs.mts`, hourly at :05 UTC, calls `/api/cron/recurring` with `CRON_SECRET` (recurring items post hourly) |
+| Client IP header | `TRUSTED_IP_HEADER=x-nf-client-connection-ip` |
+
+**Status:** site created, configuration committed; **waiting for the Neon connector** (the owner connects it at claude.ai/customize/connectors and starts a new session).
+
+**Remaining steps (Claude, in the next session):**
+
+1. Neon (connector): create project `personal-finance`, PostgreSQL 17, region `aws-us-east-2`.
+2. Create the limited `finance_app` role: run `prisma/sql/app-role-neon.sql` with a freshly generated password (`openssl rand -hex 24`), never committed.
+3. Connection strings: `MIGRATION_DATABASE_URL` = owner, direct (as Neon shows it); `DATABASE_URL` = `finance_app`, pooled host (`-pooler`), ending `?sslmode=verify-full`.
+4. Netlify environment variables (manage-env-vars), **Production context only**, scopes builds + functions, marked secret: `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `AUTH_SECRET` and `CRON_SECRET` (each `openssl rand -base64 32`), `AUTH_URL=https://chanly-personal-finance.netlify.app`, `TRUSTED_IP_HEADER=x-nf-client-connection-ip`.
+5. Deploy with the Netlify deploy tool **from a clean export of the committed files** (`git archive HEAD | tar -x -C <empty dir>`), so a local `.env` can never be uploaded.
+6. Verify: `/api/health` (status ok, version = commit), then `RELEASE_URL=https://chanly-personal-finance.netlify.app RELEASE_CRON_SECRET=… npm run release:check`; check the scheduled function in Netlify → Logs → Functions.
+7. Only after that: add the address to README.md and mark Phase 12 done.
+
+---
+
+## Vercel + Neon (alternative)
 
 The app runs on **Vercel** (free *Hobby* plan, made for Next.js) with its data in **Neon** (free PostgreSQL). Both sign in with your GitHub account. No credit card is needed. Every time new code is pushed to `main`, Vercel rebuilds the site and applies any database changes automatically.
 
@@ -14,12 +43,12 @@ The app runs on **Vercel** (free *Hobby* plan, made for Next.js) with its data i
 
 Configured in the repository: `vercel.json` (servers in Singapore, next to the database; the daily recurring job), the `vercel-build` script in `package.json` (applies database migrations on production builds only, then builds), and `prisma/sql/app-role-neon.sql` (a limited database user for the app).
 
-## 1. Create the database (Neon)
+### 1. Create the database (Neon)
 
 1. Go to <https://neon.tech> → **Sign up** → **Continue with GitHub**.
 2. Create a project: name `personal-finance`, PostgreSQL version 17, region **AWS Asia Pacific (Singapore)**. The database is called `neondb` and its owner `neondb_owner`. Keep those names.
 
-## 2. Add a limited user for the app
+### 2. Add a limited user for the app
 
 The app should not use the owner account: the owner can delete tables, and the app only needs to read and write rows (docs/SECURITY.md §8).
 
@@ -28,7 +57,7 @@ The app should not use the owner account: the owner can delete tables, and the a
 
 Create this user **with the SQL script, not with the "New role" button**: Neon gives roles created in its console membership of `neon_superuser`, which could create roles and databases — the opposite of a limited user. The script creates the role without it and removes it if the role already exists.
 
-## 3. Copy the two connection strings
+### 3. Copy the two connection strings
 
 On the Neon project **Dashboard**, click **Connect**:
 
@@ -41,7 +70,7 @@ On the Neon project **Dashboard**, click **Connect**:
 
 Keep them private: they contain passwords. Never put them in the code or in a GitHub issue.
 
-## 4. Make two random secrets
+### 4. Make two random secrets
 
 On your Mac, open **Terminal** and run this **twice**, copying each result:
 
@@ -51,7 +80,7 @@ openssl rand -base64 32
 
 The first is `AUTH_SECRET` (protects sign-in cookies), the second is `CRON_SECRET` (protects the recurring job). Use new values, not the ones in your Mac's `.env`.
 
-## 5. Create the site (Vercel)
+### 5. Create the site (Vercel)
 
 1. Go to <https://vercel.com/signup> → **Hobby** → **Continue with GitHub**.
 2. **Add New… → Project** → find **Personal-Financial-Management-** → **Import**. (If it is not listed, click *Adjust GitHub App Permissions* and allow that repository.)
@@ -70,7 +99,7 @@ The first is `AUTH_SECRET` (protects sign-in cookies), the second is `CRON_SECRE
 
 Sign-in works on Vercel without `AUTH_URL` (Auth.js detects the Vercel address). If you later add your own domain, add `AUTH_URL=https://your-domain` and redeploy.
 
-## 6. Check that it works
+### 6. Check that it works
 
 1. Open `https://<your-address>/api/health` → it should show `"status":"ok","database":"ok"` and a `version` that matches the latest commit on GitHub.
 2. **Pin the address:** Vercel → Settings → Environment Variables → add `AUTH_URL` = `https://<your-address>` (Production) → **Deployments → Redeploy**. Sign-in already works without it; pinning it makes every sign-in link use your real address.
@@ -79,13 +108,13 @@ Sign-in works on Vercel without `AUTH_URL` (Auth.js detects the Vercel address).
 
 The data on Vercel is separate from your Mac. To start fresh online, just register there.
 
-## 7. After the first deploy
+### 7. After the first deploy
 
 - **Uptime alert (optional, free):** create a monitor at <https://uptimerobot.com> for `https://<your-address>/api/health` every 5 minutes; you get an e-mail if it fails.
 - **First backup:** on your Mac, `brew install libpq && brew link --force libpq`, then `BACKUP_DATABASE_URL="<neondb_owner direct URL>" scripts/backup-db.sh` and `scripts/verify-backup.sh <the file it printed>`. Repeat weekly — see [OPERATIONS.md §Backups](OPERATIONS.md#backups).
 - **Updating:** nothing to do — every push to `main` redeploys and applies database changes (`vercel-build`). If a build fails, the previous version stays online; the build log is under **Deployments**. To undo a bad release: **Deployments → last good one → ⋯ → Instant Rollback** ([OPERATIONS.md](OPERATIONS.md#rolling-back-an-application-deployment)).
 
-## Notes and limits
+### Notes and limits
 
 - **Owner password on Vercel:** `MIGRATION_DATABASE_URL` is needed by the build to create and update tables, but Vercel also makes it visible to the running app (the app itself never reads it). Mark it **Sensitive** in Vercel. For a stricter setup, run `npx prisma migrate deploy` yourself before each release with that URL set only on your Mac, and remove it from Vercel.
 - **Direct database access:** authorization (who may see which records) is enforced by the app; anyone holding a database password could read every user's rows. So the passwords live only in Vercel's Production variables (and the owner's on your Mac for backups), connections require TLS, and the app's own role cannot change the schema or create roles. Neon's IP allow-list (paid plans) can additionally restrict who may connect.
