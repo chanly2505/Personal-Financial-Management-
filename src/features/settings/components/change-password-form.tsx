@@ -14,6 +14,7 @@ import {
   changePasswordSchema,
 } from "@/features/auth/schemas";
 import { applyActionErrors } from "@/lib/form-errors";
+import { callAction } from "@/lib/action-result";
 
 import { changePasswordAction } from "../actions";
 
@@ -29,7 +30,7 @@ export function ChangePasswordForm() {
   async function onSubmit(values: ChangePasswordInput) {
     setFormError(null);
     // On success the action signs this session out and redirects to sign-in.
-    const result = await changePasswordAction(values);
+    const result = await callAction(() => changePasswordAction(values));
     if (!result.ok) {
       form.resetField("currentPassword");
       setFormError(

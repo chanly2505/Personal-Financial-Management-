@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { applyActionErrors } from "@/lib/form-errors";
 import { CURRENCIES, CURRENCY_CODES, type CurrencyCode, parseMoney } from "@/lib/money";
+import { callAction } from "@/lib/action-result";
 
 import { createAccountAction, updateAccountAction } from "../actions";
 import {
@@ -71,13 +72,15 @@ export function AccountForm(
       return;
     }
     const result = editing
-      ? await updateAccountAction({
-          id: props.accountId,
-          name: values.name,
-          type: values.type,
-          openingBalance: values.openingBalance,
-        })
-      : await createAccountAction(values);
+      ? await callAction(() =>
+          updateAccountAction({
+            id: props.accountId,
+            name: values.name,
+            type: values.type,
+            openingBalance: values.openingBalance,
+          }),
+        )
+      : await callAction(() => createAccountAction(values));
     if (!result.ok) {
       setFormError(applyActionErrors(result, form.setError, FIELDS));
       return;

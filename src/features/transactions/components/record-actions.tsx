@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/action-result";
 
 import { deleteRecordAction, reverseTransferAction } from "../actions";
 
@@ -30,7 +31,7 @@ export function RecordActions({
   const [reverseRequestId] = useState(() => crypto.randomUUID());
 
   async function remove() {
-    const result = await deleteRecordAction({ id: record.id });
+    const result = await callAction(() => deleteRecordAction({ id: record.id }));
     if (!result.ok) {
       toast.error(result.error);
       return;
@@ -41,10 +42,12 @@ export function RecordActions({
   }
 
   async function reverse() {
-    const result = await reverseTransferAction({
-      id: record.id,
-      clientRequestId: reverseRequestId,
-    });
+    const result = await callAction(() =>
+      reverseTransferAction({
+        id: record.id,
+        clientRequestId: reverseRequestId,
+      }),
+    );
     if (!result.ok) {
       toast.error(result.error);
       return;

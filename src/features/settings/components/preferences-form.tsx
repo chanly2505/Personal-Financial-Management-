@@ -13,6 +13,7 @@ import { applyActionErrors } from "@/lib/form-errors";
 import { formatDate } from "@/lib/format/dates";
 import type { FormatPrefs } from "@/lib/format/preferences";
 import { CURRENCIES, CURRENCY_CODES, formatMoney } from "@/lib/money";
+import { callAction } from "@/lib/action-result";
 
 import { updatePreferencesAction } from "../actions";
 import { CURRENCY_DISPLAY_OPTIONS, DATE_FORMAT_OPTIONS, NUMBER_FORMAT_OPTIONS } from "../options";
@@ -56,7 +57,7 @@ export function PreferencesForm({
 
   async function onSubmit(values: PreferencesInput) {
     setFormError(null);
-    const result = await updatePreferencesAction(values);
+    const result = await callAction(() => updatePreferencesAction(values));
     if (!result.ok) {
       setFormError(applyActionErrors(result, form.setError, FIELDS));
       return;

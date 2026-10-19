@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { CONNECTION_ERROR, callAction } from "@/lib/action-result";
 import { action, ok, toActionError, zodFieldErrors } from "@/server/action-result";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
@@ -86,5 +87,21 @@ describe("action", () => {
       throw new NotFoundError();
     });
     expect(await run({ name: "x" })).toMatchObject({ ok: false, code: "NOT_FOUND" });
+  });
+});
+
+describe("callAction", () => {
+  it("passes results through unchanged", async () => {
+    const ok = { ok: true as const, data: 1 };
+    expect(await callAction(async () => ok)).toBe(ok);
+    const failed = { ok: false as const, error: "No", code: "VALIDATION" as const };
+    expect(await callAction(async () => failed)).toBe(failed);
+  });
+
+  it("turns a thrown request (dropped connection) into an error result", async () => {
+    const result = await callAction<number>(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    expect(result).toEqual({ ok: false, error: CONNECTION_ERROR, code: "INTERNAL" });
   });
 });

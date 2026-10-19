@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { callAction } from "@/lib/action-result";
 
 import {
   archiveGoalAction,
@@ -112,7 +113,7 @@ export function RemoveContribution({
       description="Only the goal's saved amount changes. Account balances are not affected."
       confirmLabel="Remove"
       onConfirm={async () => {
-        const result = await deleteContributionAction({ goalId, contributionId });
+        const result = await callAction(() => deleteContributionAction({ goalId, contributionId }));
         if (!result.ok) {
           toast.error(result.error);
           return;

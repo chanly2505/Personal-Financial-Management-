@@ -262,3 +262,34 @@ test("another user's record is not found", async ({ page, browser }) => {
   await expect(other.getByRole("heading", { name: /not found|couldn't find/i })).toBeVisible();
   await context.close();
 });
+
+test("a dropped connection while saving shows a message and keeps what was typed (UX-1)", async ({
+  page,
+  context,
+  user,
+}) => {
+  expect(user).toBeTruthy();
+  const bank = await addAccount(page, "ABA Bank", "100");
+  await page.goto("/transactions/new");
+  await page.getByLabel("Amount").fill("7.25");
+  await choose(page, "Category", "Food and drinks");
+  await page.getByLabel("Paid to (optional)").fill("Offline Cafe");
+
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("We couldn't reach the server");
+  await expect(page.getByLabel("Amount")).toHaveValue("7.25");
+  const save = page.getByRole("button", { name: "Save", exact: true });
+  await expect(save).toBeEnabled();
+
+  // Back online, the same form saves exactly once.
+  await context.setOffline(false);
+  await save.click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  const card = await balanceOn(page, bank);
+  await expect(card.getByText("$92.75")).toBeVisible();
+  await page.goto("/transactions?q=Offline");
+  await expect(
+    page.getByRole("list", { name: "Transactions" }).getByText("Offline Cafe"),
+  ).toHaveCount(1);
+});

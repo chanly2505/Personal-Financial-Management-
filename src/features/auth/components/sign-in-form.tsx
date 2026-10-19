@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { applyActionErrors } from "@/lib/form-errors";
+import { callAction } from "@/lib/action-result";
 
 import { signInAction } from "../actions";
 import { type SignInInput, signInSchema } from "../schemas";
@@ -34,7 +35,7 @@ export function SignInForm({
 
   async function onSubmit(values: SignInInput) {
     setFormError(null);
-    const result = await signInAction(values);
+    const result = await callAction(() => signInAction(values));
     if (!result.ok) {
       form.resetField("password");
       setFormError(applyActionErrors(result, form.setError, ["email", "password"]));

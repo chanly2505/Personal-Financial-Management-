@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { t } from "@/i18n";
+import { CONNECTION_ERROR } from "@/lib/action-result";
 
 interface ConfirmDialogProps {
   /** Element that opens the dialog, e.g. a "Delete" button. Omit when controlled. */
@@ -60,6 +62,9 @@ export function ConfirmDialog({
     try {
       await onConfirm();
       setOpen(false);
+    } catch {
+      // Callers handle results themselves; this only catches a dropped connection.
+      toast.error(CONNECTION_ERROR);
     } finally {
       setPending(false);
     }

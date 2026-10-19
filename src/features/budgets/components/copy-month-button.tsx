@@ -6,6 +6,7 @@ import { Copy } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/action-result";
 
 import { copyPreviousMonthAction } from "../actions";
 
@@ -18,7 +19,7 @@ export function CopyMonthButton({ month, count }: { month: string; count: number
       loading={pending}
       onClick={async () => {
         setPending(true);
-        const result = await copyPreviousMonthAction({ month });
+        const result = await callAction(() => copyPreviousMonthAction({ month }));
         setPending(false);
         if (!result.ok) {
           toast.error(result.error);

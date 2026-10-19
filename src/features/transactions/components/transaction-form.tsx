@@ -19,6 +19,7 @@ import type { IsoDate } from "@/lib/dates";
 import { applyActionErrors } from "@/lib/form-errors";
 import { type CurrencyCode, parseMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { callAction } from "@/lib/action-result";
 
 import {
   createEntryAction,
@@ -185,12 +186,14 @@ export function TransactionForm(props: Props) {
         toAccountId: values.toAccountId,
       };
       result = editing
-        ? await updateTransferAction({
-            ...transfer,
-            id: props.recordId,
-            expectedUpdatedAt: props.expectedUpdatedAt,
-          })
-        : await createTransferAction({ ...transfer, clientRequestId: requestId });
+        ? await callAction(() =>
+            updateTransferAction({
+              ...transfer,
+              id: props.recordId,
+              expectedUpdatedAt: props.expectedUpdatedAt,
+            }),
+          )
+        : await callAction(() => createTransferAction({ ...transfer, clientRequestId: requestId }));
     } else {
       const entry = {
         ...common,
@@ -200,12 +203,14 @@ export function TransactionForm(props: Props) {
         payee: values.payee,
       };
       result = editing
-        ? await updateEntryAction({
-            ...entry,
-            id: props.recordId,
-            expectedUpdatedAt: props.expectedUpdatedAt,
-          })
-        : await createEntryAction({ ...entry, clientRequestId: requestId });
+        ? await callAction(() =>
+            updateEntryAction({
+              ...entry,
+              id: props.recordId,
+              expectedUpdatedAt: props.expectedUpdatedAt,
+            }),
+          )
+        : await callAction(() => createEntryAction({ ...entry, clientRequestId: requestId }));
     }
 
     if (!result.ok) {

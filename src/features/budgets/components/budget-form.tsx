@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { applyActionErrors } from "@/lib/form-errors";
 import { CURRENCIES, type CurrencyCode, parseMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { callAction } from "@/lib/action-result";
 
 import { createBudgetAction, updateBudgetAction } from "../actions";
 import {
@@ -90,13 +91,15 @@ export function BudgetForm(props: Props) {
     }
     const alertThresholdPercent = Number(values.alertThresholdPercent);
     const result = editing
-      ? await updateBudgetAction({
-          id: props.budgetId,
-          amount: values.amount,
-          alertThresholdPercent,
-          expectedUpdatedAt: props.expectedUpdatedAt,
-        })
-      : await createBudgetAction({ ...values, alertThresholdPercent });
+      ? await callAction(() =>
+          updateBudgetAction({
+            id: props.budgetId,
+            amount: values.amount,
+            alertThresholdPercent,
+            expectedUpdatedAt: props.expectedUpdatedAt,
+          }),
+        )
+      : await callAction(() => createBudgetAction({ ...values, alertThresholdPercent }));
     if (!result.ok) {
       setFormError(applyActionErrors(result, form.setError, FIELDS));
       return;

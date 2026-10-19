@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 import { markAlertsReadAction } from "../actions";
 import { t } from "@/i18n";
+import { callAction } from "@/lib/action-result";
 
 export interface AlertMenuItem {
   id: string;
@@ -40,7 +41,7 @@ export function AlertsMenu({ unread, items }: { unread: number; items: AlertMenu
 
   function markRead(ids?: string[]) {
     startTransition(async () => {
-      await markAlertsReadAction(ids ? { ids } : {});
+      await callAction(() => markAlertsReadAction(ids ? { ids } : {}));
       router.refresh();
     });
   }

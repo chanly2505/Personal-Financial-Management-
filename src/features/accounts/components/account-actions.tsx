@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/action-result";
 
 import { archiveAccountAction, deleteAccountAction, restoreAccountAction } from "../actions";
 
@@ -19,7 +20,7 @@ export function AccountActions({
   const router = useRouter();
 
   async function archive() {
-    const result = await archiveAccountAction({ id: account.id });
+    const result = await callAction(() => archiveAccountAction({ id: account.id }));
     if (!result.ok) {
       toast.error(result.error);
       return;
@@ -29,7 +30,7 @@ export function AccountActions({
   }
 
   async function restore() {
-    const result = await restoreAccountAction({ id: account.id });
+    const result = await callAction(() => restoreAccountAction({ id: account.id }));
     if (!result.ok) {
       toast.error(result.error);
       return;
@@ -39,7 +40,7 @@ export function AccountActions({
   }
 
   async function remove() {
-    const result = await deleteAccountAction({ id: account.id });
+    const result = await callAction(() => deleteAccountAction({ id: account.id }));
     if (!result.ok) {
       toast.error(result.error);
       return;

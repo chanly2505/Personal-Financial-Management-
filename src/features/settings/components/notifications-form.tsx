@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ALERT_THRESHOLD_PRESETS } from "@/features/budgets/constants";
 import { applyActionErrors } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
+import { callAction } from "@/lib/action-result";
 
 import { updateNotificationsAction } from "../actions";
 import { BUDGET_ALERT_OPTIONS } from "../options";
@@ -37,7 +38,7 @@ export function NotificationsForm({ defaultValues }: { defaultValues: Notificati
 
   async function onSubmit(values: NotificationsInput) {
     setFormError(null);
-    const result = await updateNotificationsAction(values);
+    const result = await callAction(() => updateNotificationsAction(values));
     if (!result.ok) {
       setFormError(
         applyActionErrors(result, form.setError, ["budgetAlertMode", "defaultAlertThreshold"]),

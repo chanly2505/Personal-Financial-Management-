@@ -21,6 +21,7 @@ import { type IsoDate, addDays, formatCalendarDate, isIsoDate } from "@/lib/date
 import { applyActionErrors } from "@/lib/form-errors";
 import { type CurrencyCode, parseMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { callAction } from "@/lib/action-result";
 
 import { createRecurringAction, updateRecurringAction } from "../actions";
 import { FREQUENCIES, FREQUENCY_LABELS, MAX_INTERVAL, NAME_MAX } from "../constants";
@@ -143,12 +144,16 @@ export function RecurringForm(props: Props) {
       description: values.description,
     };
     const result = editing
-      ? await updateRecurringAction({
-          ...input,
-          id: props.ruleId,
-          expectedUpdatedAt: props.expectedUpdatedAt,
-        })
-      : await createRecurringAction({ ...input, catchUp: values.catchUp && past.length > 0 });
+      ? await callAction(() =>
+          updateRecurringAction({
+            ...input,
+            id: props.ruleId,
+            expectedUpdatedAt: props.expectedUpdatedAt,
+          }),
+        )
+      : await callAction(() =>
+          createRecurringAction({ ...input, catchUp: values.catchUp && past.length > 0 }),
+        );
     if (!result.ok) {
       setFormError(applyActionErrors(result, form.setError, FIELDS));
       return;

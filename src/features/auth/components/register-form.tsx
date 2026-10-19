@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { applyActionErrors } from "@/lib/form-errors";
+import { callAction } from "@/lib/action-result";
 
 import { registerAction } from "../actions";
 import { PASSWORD_MIN, type RegisterInput, registerSchema } from "../schemas";
@@ -27,7 +28,7 @@ export function RegisterForm() {
 
   async function onSubmit(values: RegisterInput) {
     setFormError(null);
-    const result = await registerAction(values);
+    const result = await callAction(() => registerAction(values));
     if (!result.ok) {
       setFormError(
         applyActionErrors(result, form.setError, ["name", "email", "password", "confirmPassword"]),

@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { applyActionErrors } from "@/lib/form-errors";
 import { CURRENCIES, CURRENCY_CODES, type CurrencyCode, parseMoney } from "@/lib/money";
+import { callAction } from "@/lib/action-result";
 
 import { createGoalAction, updateGoalAction } from "../actions";
 import { NAME_MAX, NOTE_MAX } from "../constants";
@@ -87,12 +88,14 @@ export function GoalForm(props: Props) {
       accountId: values.accountId === NONE ? undefined : values.accountId,
     };
     const result = editing
-      ? await updateGoalAction({
-          ...input,
-          id: props.goalId,
-          expectedUpdatedAt: props.expectedUpdatedAt,
-        })
-      : await createGoalAction(input);
+      ? await callAction(() =>
+          updateGoalAction({
+            ...input,
+            id: props.goalId,
+            expectedUpdatedAt: props.expectedUpdatedAt,
+          }),
+        )
+      : await callAction(() => createGoalAction(input));
     if (!result.ok) {
       setFormError(applyActionErrors(result, form.setError, FIELDS));
       return;

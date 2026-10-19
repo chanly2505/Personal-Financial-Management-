@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { applyActionErrors } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
+import { callAction } from "@/lib/action-result";
 
 import { createCategoryAction, updateCategoryAction } from "../actions";
 import {
@@ -97,8 +98,8 @@ export function CategoryDialog({
   async function onSubmit(values: CreateCategoryInput) {
     setFormError(null);
     const result = category
-      ? await updateCategoryAction({ ...values, id: category.id })
-      : await createCategoryAction(values);
+      ? await callAction(() => updateCategoryAction({ ...values, id: category.id }))
+      : await callAction(() => createCategoryAction(values));
     if (!result.ok) {
       setFormError(applyActionErrors(result, form.setError, ["name", "type", "color"]));
       return;

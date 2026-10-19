@@ -10,6 +10,7 @@ import { FormField } from "@/components/shared/form-field";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { applyActionErrors } from "@/lib/form-errors";
+import { callAction } from "@/lib/action-result";
 
 import { resetPasswordAction } from "../actions";
 import { PASSWORD_MIN, type ResetPasswordInput, resetPasswordSchema } from "../schemas";
@@ -26,7 +27,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   async function onSubmit(values: ResetPasswordInput) {
     setFormError(null);
-    const result = await resetPasswordAction(values);
+    const result = await callAction(() => resetPasswordAction(values));
     if (!result.ok) {
       setFormError(
         result.fieldErrors?.token ??

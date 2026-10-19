@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import type { IsoDate } from "@/lib/dates";
 import { type CurrencyCode, parseMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { callAction } from "@/lib/action-result";
 
 import { addContributionAction } from "../actions";
 import { CONTRIBUTION_NOTE_MAX } from "../constants";
@@ -52,14 +53,16 @@ export function ContributionForm({
     }
     setErrors({});
     setPending(true);
-    const result = await addContributionAction({
-      goalId,
-      kind,
-      amount,
-      occurredOn,
-      note,
-      clientRequestId: requestId,
-    });
+    const result = await callAction(() =>
+      addContributionAction({
+        goalId,
+        kind,
+        amount,
+        occurredOn,
+        note,
+        clientRequestId: requestId,
+      }),
+    );
     setPending(false);
     if (!result.ok) {
       setErrors(result.fieldErrors ?? {});

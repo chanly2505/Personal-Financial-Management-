@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/action-result";
 
 import { signOutEverywhereAction } from "../actions";
 
@@ -21,7 +22,7 @@ export function SignOutEverywhere() {
       destructive={false}
       onConfirm={async () => {
         // On success the action redirects to sign-in.
-        const result = await signOutEverywhereAction();
+        const result = await callAction(() => signOutEverywhereAction());
         if (!result.ok) toast.error(result.error);
       }}
     />

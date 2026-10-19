@@ -25,6 +25,7 @@ import {
   deleteAccountSchema,
 } from "@/features/auth/schemas";
 import { applyActionErrors } from "@/lib/form-errors";
+import { callAction } from "@/lib/action-result";
 
 import { deleteAccountAction } from "../actions";
 
@@ -51,7 +52,7 @@ export function DeleteAccountDialog({ summary }: { summary: DeletionSummary[] })
 
   async function onSubmit(values: DeleteAccountInput) {
     setFormError(null);
-    const result = await deleteAccountAction(values);
+    const result = await callAction(() => deleteAccountAction(values));
     if (!result.ok) {
       form.resetField("password");
       setFormError(applyActionErrors(result, form.setError, ["password", "confirmation"]));

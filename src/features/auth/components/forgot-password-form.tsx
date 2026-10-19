@@ -9,6 +9,7 @@ import { FormField } from "@/components/shared/form-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { applyActionErrors } from "@/lib/form-errors";
+import { callAction } from "@/lib/action-result";
 
 import { forgotPasswordAction } from "../actions";
 import { type ForgotPasswordInput, forgotPasswordSchema } from "../schemas";
@@ -25,7 +26,7 @@ export function ForgotPasswordForm() {
 
   async function onSubmit(values: ForgotPasswordInput) {
     setFormError(null);
-    const result = await forgotPasswordAction(values);
+    const result = await callAction(() => forgotPasswordAction(values));
     if (!result.ok) {
       setFormError(applyActionErrors(result, form.setError, ["email"]));
       return;

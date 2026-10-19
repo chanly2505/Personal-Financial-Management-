@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { callAction } from "@/lib/action-result";
 
 import { deleteRecurringAction, pauseRecurringAction, resumeRecurringAction } from "../actions";
 import type { RuleStatus } from "../types";
@@ -78,7 +79,7 @@ export function RuleActions({
         title={`Delete "${rule.name}"?`}
         description="No more transactions will be posted from it. Transactions it already posted stay in your history. This cannot be undone."
         onConfirm={async () => {
-          const result = await deleteRecurringAction({ id: rule.id });
+          const result = await callAction(() => deleteRecurringAction({ id: rule.id }));
           if (!result.ok) {
             toast.error(result.error);
             return;

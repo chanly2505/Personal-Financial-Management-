@@ -10,6 +10,7 @@ import { FormField } from "@/components/shared/form-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { applyActionErrors } from "@/lib/form-errors";
+import { callAction } from "@/lib/action-result";
 
 import { updateProfileAction } from "../actions";
 import { type ProfileInput, profileSchema } from "../schemas";
@@ -36,7 +37,7 @@ export function ProfileForm({
 
   async function onSubmit(values: ProfileInput) {
     setFormError(null);
-    const result = await updateProfileAction(values);
+    const result = await callAction(() => updateProfileAction(values));
     if (!result.ok) {
       setFormError(applyActionErrors(result, form.setError, ["name"]));
       return;
