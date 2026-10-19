@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { callAction } from "@/lib/action-result";
+import { showError } from "@/lib/notify";
 
 import { deleteRecurringAction, pauseRecurringAction, resumeRecurringAction } from "../actions";
 import type { RuleStatus } from "../types";
@@ -31,11 +32,8 @@ export function RuleActions({
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function run(action: typeof pauseRecurringAction, success: string) {
-    const result = await action({ id: rule.id });
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
+    const result = await callAction(() => action({ id: rule.id }));
+    if (!result.ok) return showError(result.error);
     toast.success(success);
     router.refresh();
   }
@@ -80,10 +78,7 @@ export function RuleActions({
         description="No more transactions will be posted from it. Transactions it already posted stay in your history. This cannot be undone."
         onConfirm={async () => {
           const result = await callAction(() => deleteRecurringAction({ id: rule.id }));
-          if (!result.ok) {
-            toast.error(result.error);
-            return;
-          }
+          if (!result.ok) return result.error;
           toast.success("Recurring rule deleted");
           router.push(afterDelete);
           router.refresh();

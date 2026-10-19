@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -17,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { t } from "@/i18n";
 import { CONNECTION_ERROR } from "@/lib/action-result";
 
+import { FormAlert } from "./form-alert";
+
 interface ConfirmDialogProps {
   /** Element that opens the dialog, e.g. a "Delete" button. Omit when controlled. */
   trigger?: React.ReactNode;
@@ -29,8 +30,11 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
-  /** May be async; the dialog stays open with a pending button until it settles. */
-  onConfirm: () => void | Promise<void>;
+  /**
+   * May be async; the dialog stays open with a pending button until it settles.
+   * Return an error message to keep the dialog open and show it inline.
+   */
+  onConfirm: () => void | string | Promise<void | string | undefined>;
 }
 
 /**
@@ -51,20 +55,24 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const setOpen = (next: boolean) => {
     setUncontrolledOpen(next);
+    setError(null);
     onOpenChange?.(next);
   };
-  const [pending, setPending] = React.useState(false);
 
   async function handleConfirm() {
     setPending(true);
+    setError(null);
     try {
-      await onConfirm();
-      setOpen(false);
+      const message = await onConfirm();
+      if (message) setError(message);
+      else setOpen(false);
     } catch {
-      // Callers handle results themselves; this only catches a dropped connection.
-      toast.error(CONNECTION_ERROR);
+      // Callers return their own messages; this only catches a dropped connection.
+      setError(CONNECTION_ERROR);
     } finally {
       setPending(false);
     }
@@ -78,6 +86,7 @@ export function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        <FormAlert message={error} />
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel>
           {/* A plain Button (not AlertDialogAction) so the dialog stays open while pending. */}

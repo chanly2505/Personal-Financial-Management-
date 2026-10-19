@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-result";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { showError } from "@/lib/notify";
 
 import { archiveBudgetAction, deleteBudgetAction, restoreBudgetAction } from "../actions";
 
@@ -27,11 +29,8 @@ export function BudgetActions({
   const [confirm, setConfirm] = useState<"archive" | "delete" | null>(null);
 
   async function run(action: typeof archiveBudgetAction, success: string) {
-    const result = await action({ id: budget.id });
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
+    const result = await callAction(() => action({ id: budget.id }));
+    if (!result.ok) return result.error;
     toast.success(success);
     router.refresh();
   }
@@ -54,7 +53,9 @@ export function BudgetActions({
             </DropdownMenuItem>
           )}
           {budget.isArchived ? (
-            <DropdownMenuItem onSelect={() => run(restoreBudgetAction, "Budget restored")}>
+            <DropdownMenuItem
+              onSelect={() => void run(restoreBudgetAction, "Budget restored").then(showError)}
+            >
               <ArchiveRestore aria-hidden="true" />
               Restore
             </DropdownMenuItem>

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { callAction } from "@/lib/action-result";
+import { showError } from "@/lib/notify";
 
 import { copyPreviousMonthAction } from "../actions";
 
@@ -21,10 +22,7 @@ export function CopyMonthButton({ month, count }: { month: string; count: number
         setPending(true);
         const result = await callAction(() => copyPreviousMonthAction({ month }));
         setPending(false);
-        if (!result.ok) {
-          toast.error(result.error);
-          return;
-        }
+        if (!result.ok) return showError(result.error);
         toast.success(
           result.data.created === 1 ? "Copied 1 budget" : `Copied ${result.data.created} budgets`,
         );

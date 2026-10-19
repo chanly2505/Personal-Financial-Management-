@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { type ActionResult, callAction } from "@/lib/action-result";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { showError } from "@/lib/notify";
 
 import { archiveCategoryAction, deleteCategoryAction, restoreCategoryAction } from "../actions";
 import type { CategoryColor, CategoryType } from "../schemas";
@@ -161,14 +163,11 @@ function CategoryRowActions({ category, onEdit }: { category: CategoryItem; onEd
   const [confirm, setConfirm] = useState<"archive" | "delete" | null>(null);
 
   async function run(
-    action: (input: { id: string }) => Promise<{ ok: boolean; error?: string }>,
+    action: (input: { id: string }) => Promise<ActionResult<unknown>>,
     success: string,
   ) {
-    const result = await action({ id: category.id });
-    if (!result.ok) {
-      toast.error(result.error ?? "Something went wrong.");
-      return;
-    }
+    const result = await callAction(() => action({ id: category.id }));
+    if (!result.ok) return result.error;
     toast.success(success);
     router.refresh();
   }
@@ -187,7 +186,9 @@ function CategoryRowActions({ category, onEdit }: { category: CategoryItem; onEd
             Edit
           </DropdownMenuItem>
           {category.isArchived ? (
-            <DropdownMenuItem onSelect={() => run(restoreCategoryAction, "Category restored")}>
+            <DropdownMenuItem
+              onSelect={() => void run(restoreCategoryAction, "Category restored").then(showError)}
+            >
               <ArchiveRestore aria-hidden="true" />
               Restore
             </DropdownMenuItem>

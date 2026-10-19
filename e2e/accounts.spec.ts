@@ -91,7 +91,13 @@ test("archives only at zero balance, then restores", async ({ page, user }) => {
 
   await page.getByRole("button", { name: "Archive" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
-  await expect(page.getByText(/still holds \$3\.00/)).toBeVisible();
+  // The refusal stays inside the open dialog until the user closes it (UX-3).
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByRole("alert")).toContainText(/still holds \$3\.00/);
+  await page.waitForTimeout(5_000); // longer than a toast would last
+  await expect(dialog.getByRole("alert")).toContainText(/still holds \$3\.00/);
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
 
   await page.getByRole("link", { name: "Edit" }).click();
   await page.getByLabel("Starting balance").fill("");

@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { callAction } from "@/lib/action-result";
+import { showError } from "@/lib/notify";
 
 import {
   archiveGoalAction,
@@ -29,11 +30,8 @@ export function GoalActions({ goal }: { goal: { id: string; name: string; isArch
   const [confirm, setConfirm] = useState<"archive" | "delete" | null>(null);
 
   async function run(action: typeof archiveGoalAction, success: string, then?: string) {
-    const result = await action({ id: goal.id });
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
+    const result = await callAction(() => action({ id: goal.id }));
+    if (!result.ok) return result.error;
     toast.success(success);
     if (then) router.push(then);
     router.refresh();
@@ -55,7 +53,9 @@ export function GoalActions({ goal }: { goal: { id: string; name: string; isArch
             </Link>
           </DropdownMenuItem>
           {goal.isArchived ? (
-            <DropdownMenuItem onSelect={() => run(restoreGoalAction, "Goal restored")}>
+            <DropdownMenuItem
+              onSelect={() => void run(restoreGoalAction, "Goal restored").then(showError)}
+            >
               <ArchiveRestore aria-hidden="true" />
               Restore
             </DropdownMenuItem>
@@ -114,10 +114,7 @@ export function RemoveContribution({
       confirmLabel="Remove"
       onConfirm={async () => {
         const result = await callAction(() => deleteContributionAction({ goalId, contributionId }));
-        if (!result.ok) {
-          toast.error(result.error);
-          return;
-        }
+        if (!result.ok) return result.error;
         toast.success("Removed");
         router.refresh();
       }}

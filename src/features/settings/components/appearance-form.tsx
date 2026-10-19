@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
-import { toast } from "sonner";
 
 import { type ThemePreference, applyTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { showError } from "@/lib/notify";
 
 import { setThemeAction } from "../theme-action";
 
@@ -40,7 +40,7 @@ export function AppearanceForm({ defaultValue }: { defaultValue: ThemePreference
     if (!result.ok) {
       setTheme(previous);
       applyTheme(previous);
-      toast.error("We couldn't save your theme. Please try again.");
+      showError("We couldn't save your theme. Please try again.");
     }
   }
 

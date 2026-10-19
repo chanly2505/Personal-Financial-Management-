@@ -32,10 +32,7 @@ export function RecordActions({
 
   async function remove() {
     const result = await callAction(() => deleteRecordAction({ id: record.id }));
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
+    if (!result.ok) return result.error;
     toast.success(record.isTransfer ? "Transfer deleted" : "Transaction deleted");
     router.push("/transactions");
     router.refresh();
@@ -48,10 +45,7 @@ export function RecordActions({
         clientRequestId: reverseRequestId,
       }),
     );
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
+    if (!result.ok) return result.error;
     toast.success("Transfer reversed");
     router.push(`/transactions/${result.data.id}`);
     router.refresh();

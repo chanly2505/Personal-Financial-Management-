@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { callAction } from "@/lib/action-result";
+import { showError } from "@/lib/notify";
 
 import { archiveAccountAction, deleteAccountAction, restoreAccountAction } from "../actions";
 
@@ -21,30 +22,21 @@ export function AccountActions({
 
   async function archive() {
     const result = await callAction(() => archiveAccountAction({ id: account.id }));
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
+    if (!result.ok) return result.error;
     toast.success("Account archived");
     router.refresh();
   }
 
   async function restore() {
     const result = await callAction(() => restoreAccountAction({ id: account.id }));
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
+    if (!result.ok) return showError(result.error);
     toast.success("Account restored");
     router.refresh();
   }
 
   async function remove() {
     const result = await callAction(() => deleteAccountAction({ id: account.id }));
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
+    if (!result.ok) return result.error;
     toast.success("Account deleted");
     router.push("/accounts");
     router.refresh();
