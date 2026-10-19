@@ -354,3 +354,39 @@ describe("upcoming", () => {
     expect(await prisma.transaction.count()).toBe(0);
   });
 });
+
+describe("duplicate submissions (FIN-1)", () => {
+  it("creates one rule when the same request arrives twice at once", async () => {
+    const f = await setup();
+    const clientRequestId = crypto.randomUUID();
+    const [a, b] = await Promise.all([rule(f, { clientRequestId }), rule(f, { clientRequestId })]);
+    expect(a.id).toBe(b.id);
+    expect(await prisma.recurringRule.count({ where: { userId: f.user.id } })).toBe(1);
+
+    // A later retry also returns the first rule, and the engine posts each date once.
+    const again = await rule(f, { clientRequestId });
+    expect(again.id).toBe(a.id);
+    await runDueRules({ now: at(today()) });
+    const dates = await postedDates(a.id);
+    expect(new Set(dates).size).toBe(dates.length);
+    expect(dates.length).toBeGreaterThan(0);
+  });
+
+  it("keeps different requests separate and leaves rules without an id untouched", async () => {
+    const f = await setup();
+    await rule(f, { clientRequestId: crypto.randomUUID() });
+    await rule(f, { clientRequestId: crypto.randomUUID() });
+    await rule(f);
+    await rule(f);
+    expect(await prisma.recurringRule.count({ where: { userId: f.user.id } })).toBe(4);
+  });
+
+  it("does not let another user's request id collide", async () => {
+    const f = await setup();
+    const g = await setup();
+    const clientRequestId = crypto.randomUUID();
+    const mine = await rule(f, { clientRequestId });
+    const theirs = await rule(g, { clientRequestId });
+    expect(theirs.id).not.toBe(mine.id);
+  });
+});

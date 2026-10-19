@@ -271,6 +271,8 @@ model RecurringRule {
   pauseReason      RecurringPauseReason? @map("pause_reason")
   pausedAt         DateTime?             @map("paused_at") @db.Timestamptz(3)
   createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// One-time id from the form: a resubmission returns the first rule (FIN-1).
+  clientRequestId  String?               @map("client_request_id") @db.Uuid
   updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -279,6 +281,7 @@ model RecurringRule {
   transactions Transaction[]
   runs         RecurringRun[]
 
+  @@unique([userId, clientRequestId])
   @@unique([id, userId])
   @@index([userId])
   @@index([status, nextOccurrenceOn])

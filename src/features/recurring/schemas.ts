@@ -50,6 +50,8 @@ export const createRecurringSchema = z.object({
   ...ruleFields,
   /** Explicit catch-up: also post occurrences between the start date and today. */
   catchUp: z.boolean().optional().default(false),
+  /** Generated once per form; resubmitting it returns the first rule (FIN-1). */
+  clientRequestId: z.uuid({ error: "Please reload the page and try again." }),
 });
 export type CreateRecurringInput = z.input<typeof createRecurringSchema>;
 

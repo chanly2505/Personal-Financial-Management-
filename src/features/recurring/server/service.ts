@@ -223,7 +223,7 @@ async function prepare(
  */
 export async function createRecurring(
   user: User,
-  input: RuleInput & { catchUp?: boolean },
+  input: RuleInput & { catchUp?: boolean; clientRequestId?: string },
 ): Promise<{ id: string }> {
   const data = await prepare(user, input);
   const today = todayInTimeZone(user.timezone);
@@ -246,7 +246,7 @@ export async function createRecurring(
       "This schedule has no dates left. Change the end date, or record past occurrences.";
     throw new ValidationError(message, { endOn: message });
   }
-  return repo.createRule(user.id, data, next);
+  return repo.createRule(user.id, data, next, input.clientRequestId);
 }
 
 /**

@@ -74,6 +74,8 @@ export function RecurringForm(props: Props) {
   const router = useRouter();
   const editing = props.mode === "edit";
   const [formError, setFormError] = useState<string | null>(null);
+  // One per form: a double click or a retry after a lost response creates one rule.
+  const [requestId] = useState(() => crypto.randomUUID());
   const form = useForm<Values>({
     resolver: zodResolver(formSchema),
     defaultValues: editing
@@ -152,7 +154,11 @@ export function RecurringForm(props: Props) {
           }),
         )
       : await callAction(() =>
-          createRecurringAction({ ...input, catchUp: values.catchUp && past.length > 0 }),
+          createRecurringAction({
+            ...input,
+            catchUp: values.catchUp && past.length > 0,
+            clientRequestId: requestId,
+          }),
         );
     if (!result.ok) {
       setFormError(applyActionErrors(result, form.setError, FIELDS));

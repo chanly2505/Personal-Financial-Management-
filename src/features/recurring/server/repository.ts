@@ -92,20 +92,50 @@ function ruleData(data: RuleWrite) {
   };
 }
 
+function findRuleByRequest(userId: string, clientRequestId: string) {
+  return prisma.recurringRule.findUnique({
+    where: { userId_clientRequestId: { userId, clientRequestId } },
+    select: { id: true },
+  });
+}
+
+/**
+ * Idempotent when `clientRequestId` is given: a second submission returns the
+ * first rule instead of creating another — also when both arrive at once (the
+ * unique index decides; the loser re-reads the winner's row).
+ */
 export async function createRule(
   userId: string,
   data: RuleWrite,
   nextOccurrenceOn: IsoDate | null,
+  clientRequestId?: string,
 ): Promise<{ id: string }> {
-  return prisma.recurringRule.create({
-    data: {
-      userId,
-      ...ruleData(data),
-      nextOccurrenceOn: nextOccurrenceOn ? isoDateToDb(nextOccurrenceOn) : null,
-      status: nextOccurrenceOn ? "ACTIVE" : "COMPLETED",
-    },
-    select: { id: true },
-  });
+  if (clientRequestId) {
+    const existing = await findRuleByRequest(userId, clientRequestId);
+    if (existing) return existing;
+  }
+  try {
+    return await prisma.recurringRule.create({
+      data: {
+        userId,
+        clientRequestId,
+        ...ruleData(data),
+        nextOccurrenceOn: nextOccurrenceOn ? isoDateToDb(nextOccurrenceOn) : null,
+        status: nextOccurrenceOn ? "ACTIVE" : "COMPLETED",
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    if (
+      clientRequestId &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const winner = await findRuleByRequest(userId, clientRequestId);
+      if (winner) return winner;
+    }
+    throw error;
+  }
 }
 
 /** The latest occurrence date ever posted for a rule (from history), if any. */
