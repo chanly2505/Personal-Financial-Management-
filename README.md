@@ -111,7 +111,7 @@ npm run build && npm start     # production build and server (set AUTH_URL to th
 
 ## Deployment
 
-**Live:** <https://personal-financial-management.cly541913.workers.dev> (Cloudflare Workers + Neon). **Current target: Cloudflare Workers + Neon** (Workers Paid plan; `wrangler.jsonc`, `npm run cf:build`, hourly cron trigger). Settings and steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Alternative — Vercel Hobby in `cle1` (Cleveland) next to Neon PostgreSQL in AWS US East 2 (Ohio); free tiers, HTTPS by default. In short:
+**Hosting:** Railway + Neon (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#railway--neon-current)); Cloudflare Workers remains a documented alternative. **Current target: Cloudflare Workers + Neon** (Workers Paid plan; `wrangler.jsonc`, `npm run cf:build`, hourly cron trigger). Settings and steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Alternative — Vercel Hobby in `cle1` (Cleveland) next to Neon PostgreSQL in AWS US East 2 (Ohio); free tiers, HTTPS by default. In short:
 
 1. Neon project in AWS US East 2 (Ohio); create the limited `finance_app` role with `prisma/sql/app-role-neon.sql`.
 2. Vercel project from this GitHub repository; set `DATABASE_URL` (app role, pooled), `MIGRATION_DATABASE_URL` (owner, direct), `AUTH_SECRET`, `CRON_SECRET`, `TRUSTED_IP_HEADER=x-real-ip` — **Production environment only**.

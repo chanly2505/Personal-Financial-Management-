@@ -1,8 +1,33 @@
 # Deploying
 
-**Current target: Cloudflare Workers + Neon** (chosen by the owner on 18 Oct 2026). The Vercel and Netlify setups below remain documented alternatives; all three use the same Neon database.
+**Current target: Railway + Neon** (chosen by the owner on 19 Oct 2026). Railway runs the app as a normal Node.js server (no per-request CPU limit), next to the existing Neon database. The Cloudflare, Vercel and Netlify setups below remain documented alternatives; all use the same Neon database.
 
-## Cloudflare Workers + Neon (current)
+## Railway + Neon (current)
+
+| | |
+|---|---|
+| Config | `railway.json`: start `npm start`, health check `/api/health` (a deploy only goes live when the database answers) |
+| Build | Railway detects Node.js and runs `npm ci` and `npm run build` (a plain `next build` outside Cloudflare) |
+| Region | **US East (Virginia)**, closest to Neon in AWS US East 2 (Ohio) |
+| Database | Neon `personal-finance`; schema already applied (all migrations). New migrations: run `npx prisma migrate deploy` with the owner URL, or through the Neon connector, before deploying code that needs them |
+| Scheduler | `RECURRING_SCHEDULER=in-process`: one always-on server runs recurring items hourly (no separate cron service) |
+
+**Variables** (service → Variables; Railway sets `PORT`):
+
+| Name | Value |
+|---|---|
+| `DATABASE_URL` | `finance_app` pooled Neon address, `?sslmode=verify-full` (the same value as on Cloudflare) |
+| `AUTH_SECRET` | 32+ random characters (`openssl rand -base64 32`) |
+| `CRON_SECRET` | optional; enables `/api/cron/recurring` for an external scheduler |
+| `AUTH_TRUST_HOST` | `true` (Auth.js uses the request's address; or set `AUTH_URL` to the Railway domain) |
+| `TRUSTED_IP_HEADER` | `x-real-ip` (Railway's documented client-IP header; community reports say it is not guaranteed spoof-proof, so per-email limits remain the main protection) |
+| `RECURRING_SCHEDULER` | `in-process` |
+
+**Steps:** railway.com → New Project → Deploy from GitHub repo → `Personal-Financial-Management-` → Settings → Region **US East** → Variables (above) → Settings → Networking → **Generate Domain** → open `/api/health`.
+
+Verified locally the way Railway runs it (`npm run build`, `npm start` with `PORT` and the variables above): health ok, release checks 4/4, in-process scheduler runs.
+
+## Cloudflare Workers + Neon (alternative; needs Workers Paid)
 
 **Live (19 Oct 2026):** <https://personal-financial-management.cly541913.workers.dev> — secrets set in the Cloudflare dashboard and confirmed working by the owner. The automated release checks (`npm run release:check`) have not yet been run against it from a Claude session (this environment's network policy blocks `*.workers.dev`).
 
