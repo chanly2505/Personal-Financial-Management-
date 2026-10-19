@@ -84,8 +84,29 @@ const envSchema = z
 
 export type Env = z.infer<typeof envSchema>;
 
+/**
+ * `next build` loads server modules to collect route configuration, but never
+ * connects to the database or issues session cookies, and every page renders
+ * per request. Build servers (e.g. Cloudflare Workers Builds) only receive
+ * build variables, so the two required runtime secrets get inert placeholders
+ * there. The running app always validates the real values.
+ */
+const BUILD_PLACEHOLDERS = {
+  DATABASE_URL: "postgresql://build-placeholder@localhost:5432/build_placeholder",
+  AUTH_SECRET: "build-time-placeholder-never-used-to-sign-anything",
+};
+
 export function parseEnv(source: Record<string, string | undefined>): Env {
-  const result = envSchema.safeParse(source);
+  const building = source.NEXT_PHASE === "phase-production-build";
+  const result = envSchema.safeParse(
+    building
+      ? {
+          ...source,
+          DATABASE_URL: source.DATABASE_URL || BUILD_PLACEHOLDERS.DATABASE_URL,
+          AUTH_SECRET: source.AUTH_SECRET || BUILD_PLACEHOLDERS.AUTH_SECRET,
+        }
+      : source,
+  );
   if (!result.success) {
     // Name the variables, never print their values (they may be secrets).
     const problems = result.error.issues

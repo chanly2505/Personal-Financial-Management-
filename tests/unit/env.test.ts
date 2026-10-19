@@ -42,6 +42,30 @@ describe("parseEnv", () => {
   });
 });
 
+describe("build time (next build on a build server)", () => {
+  const build = { NODE_ENV: "production", NEXT_PHASE: "phase-production-build" };
+
+  it("accepts missing runtime secrets with inert placeholders", () => {
+    const env = parseEnv(build);
+    expect(env.DATABASE_URL).toContain("build-placeholder");
+    expect(env.AUTH_SECRET).toContain("placeholder");
+  });
+
+  it("keeps real values when they are given, and still validates them", () => {
+    expect(parseEnv({ ...build, ...valid, NODE_ENV: "production" }).DATABASE_URL).toBe(
+      valid.DATABASE_URL,
+    );
+    expect(() => parseEnv({ ...build, DATABASE_URL: "mysql://u:p@h/db" })).toThrow(/DATABASE_URL/);
+  });
+
+  it("never applies placeholders outside the build", () => {
+    expect(() => parseEnv({ NODE_ENV: "production" })).toThrow(/DATABASE_URL[\s\S]*AUTH_SECRET/);
+    expect(() =>
+      parseEnv({ NODE_ENV: "production", NEXT_PHASE: "phase-production-server" }),
+    ).toThrow(/DATABASE_URL/);
+  });
+});
+
 describe("auth and mail configuration", () => {
   it("requires a long AUTH_SECRET", () => {
     expect(() => parseEnv({ ...valid, AUTH_SECRET: "short" })).toThrow(/AUTH_SECRET/);
