@@ -4,6 +4,8 @@
 
 ## Cloudflare Workers + Neon (current)
 
+**Live (19 Oct 2026):** <https://personal-financial-management.cly541913.workers.dev> — secrets set in the Cloudflare dashboard and confirmed working by the owner. The automated release checks (`npm run release:check`) have not yet been run against it from a Claude session (this environment's network policy blocks `*.workers.dev`).
+
 | | |
 |---|---|
 | Worker | `personal-financial-management` (`wrangler.jsonc`), built by Workers Builds from GitHub `main` |
