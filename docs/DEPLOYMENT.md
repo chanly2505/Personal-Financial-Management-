@@ -8,7 +8,7 @@
 
 | | |
 |---|---|
-| Config | `railway.json`: start `npm start`, health check `/api/health` (a deploy only goes live when the database answers) |
+| Config | Service settings (set 19 Oct 2026 via the Railway connector, mirrored in `railway.json`): pre-deploy `bash scripts/migrate-deploy.sh`, start `npm start`, health check `/api/health` (120 s), restart on failure ×5. **Railway was not applying `railway.json` on this service** (its settings never appeared in the service config and the first P1 deploy skipped the migration), so change these in the dashboard (service → Settings → Deploy) and keep `railway.json` in sync |
 | Build | Railway detects Node.js and runs `npm ci` and `npm run build` (a plain `next build` outside Cloudflare) |
 | Region | **US East (Virginia)**, closest to Neon in AWS US East 2 (Ohio) |
 | Database | Neon `personal-finance`. Pending migrations are applied by the pre-deploy command (`scripts/migrate-deploy.sh`, owner role via `MIGRATION_DATABASE_URL`) before each new version starts; a failure keeps the previous version running |

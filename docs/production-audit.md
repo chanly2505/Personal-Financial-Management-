@@ -313,7 +313,7 @@ Severity scale: Critical (data loss or exposure now), High (likely serious harm 
 
 ## P1 status (branch `audit/production-readiness`)
 
-Implemented and tested on the branch; nothing below is live until the branch is merged into `main` with the owner's approval.
+Implemented, tested (`npm run check` 545/545; e2e 306 passed + the 4 failures fixed and re-run 36/36) and deployed to Railway on 19 Oct 2026 with the owner's approval.
 
 | Finding | Status | Change |
 |---|---|---|
@@ -321,7 +321,7 @@ Implemented and tested on the branch; nothing below is live until the branch is 
 | UX-1 | Done | `callAction()` in every form and action menu; offline e2e test |
 | FIN-1 | Done (needs migration `20261019120000_recurring_client_request_id`, additive) | One rule per form submission; race test |
 | SEC-5 | Done | Malformed ids → "Not found" for accounts, transactions, goals, recurring, budgets |
-| PROD-2 | Done (code); needs `MIGRATION_DATABASE_URL` on Railway set to the Neon owner address before merging | `railway.json` pre-deploy runs `scripts/migrate-deploy.sh` |
+| PROD-2 | Done, live 19 Oct 2026 | Pre-deploy `scripts/migrate-deploy.sh` set directly on the Railway service (Railway did not apply `railway.json`; the first deploy therefore skipped the migration, which was then applied through the Neon connector with a Prisma-compatible history row; no 5xx responses occurred) |
 | PROD-3 | Done (code); owner to turn on Railway "Wait for CI" | `.github/workflows/ci.yml` |
 | PROD-4 | Partly | Manual Neon snapshot taken 19 Oct 2026. Scheduled snapshots are not available on the Neon Free plan, and point-in-time history is 6 hours. Remaining: weekly `pg_dump` from the Mac, or a paid Neon plan |
 | PROD-8 | Done | `/api/health` reports the Railway commit |
