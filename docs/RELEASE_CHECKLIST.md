@@ -29,7 +29,7 @@ Phase 13 exit criterion. Each item is either **verified** (with the evidence: a 
 |---|---|---|---|
 | M1 | Screen reader pass | macOS VoiceOver (⌘ + F5) in Safari: sign in; add an account; add an expense with a wrong amount first (the error must be read out); open the dashboard and use "Show as table"; change a setting and hear the confirmation; open and close the delete dialog with the keyboard. Every control must have a sensible name and focus must never get lost. | not done |
 | M2 | Other browsers | Latest Safari and Firefox on the Mac, Safari on an iPhone (iOS 17+): sign in, add a transaction, dashboard, reports, dark mode | not done (only Chromium is installed in the test environment) |
-| M3 | Real phone | The live site on your own phone: layout, keyboard covering fields, number entry | not done |
+| M3 | Real phone | The live site on your own phone: layout, keyboard covering fields, number entry | done — owner tested the live Railway site after P3 (19 Oct 2026) and confirmed it works |
 | M4 | Privacy notice | Read `/privacy`; add a contact if others will use the site | not done |
 
 ## Known and accepted
