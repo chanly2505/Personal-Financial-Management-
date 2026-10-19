@@ -14,10 +14,13 @@ describe("getClientIp", () => {
     expect(getClientIp(h, "x-real-ip")).toBe("203.0.113.5");
   });
 
-  it("takes the first address of a list and supports IPv6", () => {
+  it("refuses comma-separated lists, whose first entry the client controls (SEC-6)", () => {
     expect(
       getClientIp(headers({ "x-forwarded-for": "203.0.113.5, 10.0.0.1" }), "x-forwarded-for"),
-    ).toBe("203.0.113.5");
+    ).toBeUndefined();
+  });
+
+  it("supports IPv6", () => {
     expect(getClientIp(headers({ "x-real-ip": "2001:db8::1" }), "x-real-ip")).toBe("2001:db8::1");
   });
 

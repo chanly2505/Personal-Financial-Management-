@@ -4,7 +4,7 @@ Track income, expenses, transfers, accounts, budgets, recurring items, savings g
 
 Built with Next.js 16.4, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL (16 locally, 17 on Neon) and Prisma 7.
 
-**Status:** every module is built, audited and hardened (Phases 0–11 and 13: [docs/QA_REPORT.md](docs/QA_REPORT.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)) and being deployed on **Cloudflare Workers + Neon** ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Phase 12 (production deployment) is prepared; the deployed address is added here only after the release checks pass against it.
+**Status:** every module is built, audited and hardened (Phases 0–11 and 13: [docs/QA_REPORT.md](docs/QA_REPORT.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)) and live on **Railway + Neon** at https://personal-financial-management-production-c29c.up.railway.app ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Production-readiness audit and fixes: [docs/production-audit.md](docs/production-audit.md).
 
 ## Contents
 
@@ -21,7 +21,7 @@ Built with Next.js 16.4, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL (16 l
 | [docs/UI_GUIDELINES.md](docs/UI_GUIDELINES.md) | Design tokens, layouts, components, accessibility |
 | [docs/REPORTS.md](docs/REPORTS.md) | Report definitions and CSV export format and limits |
 | [docs/I18N.md](docs/I18N.md) | Text catalog and how to add Khmer |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Step-by-step production setup on Vercel + Neon |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production setup on Railway + Neon (Vercel, Netlify and Cloudflare as alternatives) |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Production runbook: migrations, backups, recovery, rollback, outages, scheduler |
 | [docs/QA_REPORT.md](docs/QA_REPORT.md) | Phase 11 audit and Phase 13 security review: findings, fixes, accepted risks, release recommendation |
 | [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | What to verify before and after each release (automated and manual) |
@@ -55,8 +55,8 @@ Open `/register` to create an account, or sign in as the seeded demo user. `/des
 | `DATABASE_URL` | yes | Runtime connection — the least-privilege app role (`finance_app`); pooled on Neon |
 | `MIGRATION_DATABASE_URL` | for migrations | Schema owner, used only by `prisma migrate` (direct, non-pooled on Neon) |
 | `AUTH_SECRET` | yes | 32+ random bytes; encrypts session cookies; unique per environment |
-| `AUTH_URL` | locally with `npm start`; recommended in production | The address users open (`https://…`). On Vercel the host is trusted automatically |
-| `TRUSTED_IP_HEADER` | production | Header carrying the client IP for rate limits (`x-real-ip` on Vercel) |
+| `AUTH_URL` | locally with `npm start`; recommended in production | The address users open (`https://…`). On Railway it is set to the public address |
+| `TRUSTED_IP_HEADER` | production | Header carrying the client IP for rate limits (`x-real-ip` on Railway) |
 | `CRON_SECRET` | if the cron endpoint is used | 32+ characters; protects `/api/cron/recurring` |
 | `RECURRING_SCHEDULER` | no | `in-process` runs recurring posting inside the server (single machine, e.g. a Mac); default `off` |
 | `REGISTRATION_LIMIT_WITHOUT_IP` | no | Shared sign-up limit per hour while the client IP is unknown (default 30) |
@@ -83,7 +83,7 @@ psql -d finance_dev -v app_role=finance_app -v app_password='change-me' \
 | Command | What it does |
 |---|---|
 | `npm run db:migrate -- --name <change>` | Create and apply a migration in development |
-| `npm run db:deploy` | Apply pending migrations (production uses this, automatically on Vercel via `vercel-build`) |
+| `npm run db:deploy` | Apply pending migrations (production runs it automatically before each Railway deploy) |
 | `npm run db:status` | Show applied/pending migrations |
 | `npm run setup` | `npm install` + generate client + apply migrations (run after every `git pull`) |
 | `npm run db:seed` | Demo data (refuses to run against production or non-dev databases) |
@@ -98,7 +98,7 @@ npm run check          # typecheck + lint + format check + unit & integration te
 npm run test:unit      # unit tests only
 npm run test:e2e       # Playwright: desktop, tablet and phone against a local production build (incl. accessibility sweep)
 npm run test:perf      # performance benchmark: 10,000 records, p50/p95 per page (uses the test database)
-RELEASE_URL=https://your-site.vercel.app npm run release:check   # release checks against a deployed site
+RELEASE_URL=https://your-site.up.railway.app npm run release:check   # release checks against a deployed site
 ```
 
 Integration tests run against `TEST_DATABASE_URL`; end-to-end tests build the app and run it against `E2E_DATABASE_URL`. Release checks use a throwaway account with made-up data and delete it afterwards (add `RELEASE_CRON_SECRET=…` to also check the scheduled job). If Chromium is preinstalled, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
@@ -111,13 +111,13 @@ npm run build && npm start     # production build and server (set AUTH_URL to th
 
 ## Deployment
 
-**Hosting:** Railway + Neon, live at https://personal-financial-management-production-c29c.up.railway.app (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#railway--neon-current)). Cloudflare Workers + Neon remains a documented alternative (needs the Workers Paid plan; `wrangler.jsonc`, `npm run cf:build`). Settings and steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Alternative — Vercel Hobby in `cle1` (Cleveland) next to Neon PostgreSQL in AWS US East 2 (Ohio); free tiers, HTTPS by default. In short:
+**Hosting:** Railway + Neon, live at https://personal-financial-management-production-c29c.up.railway.app (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#railway--neon-current)). Cloudflare Workers + Neon remains a documented alternative (needs the Workers Paid plan; `wrangler.jsonc`, `npm run cf:build`). Settings and steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). In short:
 
 1. Neon project in AWS US East 2 (Ohio); create the limited `finance_app` role with `prisma/sql/app-role-neon.sql`.
-2. Vercel project from this GitHub repository; set `DATABASE_URL` (app role, pooled), `MIGRATION_DATABASE_URL` (owner, direct), `AUTH_SECRET`, `CRON_SECRET`, `TRUSTED_IP_HEADER=x-real-ip` — **Production environment only**.
-3. Deploy. `vercel-build` applies migrations, then builds; a failed migration fails the deploy and the previous version stays live.
+2. Railway service from this GitHub repository, region US East; variables `DATABASE_URL` (app role, pooled), `MIGRATION_DATABASE_URL` (owner, direct), `AUTH_SECRET`, `AUTH_URL`, `AUTH_TRUST_HOST=true`, `TRUSTED_IP_HEADER=x-real-ip`, `RECURRING_SCHEDULER=in-process`, `REGISTRATION_MODE`/`REGISTRATION_ALLOWLIST`.
+3. Service settings: pre-deploy `bash scripts/migrate-deploy.sh`, start `npm start`, health check `/api/health`. A failed migration stops the deploy and the previous version stays live.
 4. Verify: `/api/health`, then `npm run release:check` against the address.
-5. Every push to `main` deploys again; the recurring job runs daily from `vercel.json`.
+5. Every push to `main` deploys again after the GitHub check (turn on Railway's "Wait for CI").
 
 ## Backup and recovery
 
@@ -127,15 +127,16 @@ Summary (full runbook in [docs/OPERATIONS.md](docs/OPERATIONS.md)):
 - **Logical backups** — weekly: `BACKUP_DATABASE_URL=<owner direct URL> scripts/backup-db.sh` (read-only `pg_dump`; file written owner-only outside the repo).
 - **Recovery test** — monthly: `scripts/verify-backup.sh <file.dump>` restores into a temporary local database, checks counts and integrity, and drops it.
 - **Users' own copies** — Settings → Your data (CSV and full JSON).
-- **App rollback** — Vercel → Deployments → previous deployment → *Instant Rollback* (safe because migrations are additive).
+- **Neon snapshots** — manual snapshot before risky releases (scheduled snapshots need a paid Neon plan).
+- **App rollback** — Railway → Deployments → previous deployment → *Rollback* (safe because migrations are additive).
 
 ## Known limitations
 
 - Single currency per account; no currency conversion anywhere (Q-2). Cross-currency transfers not supported.
-- No e-mail: password reset and e-mail changes are unavailable until a provider is chosen (Q-12).
-- Recurring transactions post once a day on Vercel Hobby (hourly needs a paid plan or another scheduler).
+- No e-mail: password reset and e-mail changes are unavailable until a provider is chosen (Q-12); the owner can reset a password with `npm run user:reset-password` (docs/OPERATIONS.md).
+- Recurring transactions are posted hourly by the server itself (`RECURRING_SCHEDULER=in-process`).
 - English only (structure ready for Khmer, docs/I18N.md). No CSV import.
-- Free tiers: Neon 0.5 GB and sleeps when idle (first request after a pause is slower); Vercel Hobby is for personal, non-commercial use; short log retention.
+- Free tiers: Neon 0.5 GB and sleeps when idle (first request after a pause is slower); Neon Free keeps only 6 hours of point-in-time history.
 - Accepted risks from the audit (Prisma CLI upgrade due on/after 29 Oct 2026, `next-auth` beta, etc.): [docs/QA_REPORT.md](docs/QA_REPORT.md#accepted-risks-and-known-limitations-not-fixed).
 
 ## Troubleshooting
@@ -154,7 +155,7 @@ Summary (full runbook in [docs/OPERATIONS.md](docs/OPERATIONS.md)):
 - **`/api/health` returns 503 `unreachable`** — database outage or wrong `DATABASE_URL`: check Neon's status and the project's compute; see "Database outage".
 - **Deploy failed at `prisma migrate deploy`** — the previous version is still live; see "Failed migration".
 - **Everyone gets "Too many attempts"** — `TRUSTED_IP_HEADER` missing (the log shows `security.ip_rate_limits_disabled`).
-- **Recurring items not posting** — Vercel → Settings → Cron Jobs: last run and status; `CRON_SECRET` set in Production; Recurring page shows paused rules and reasons.
+- **Recurring items not posting** — Railway logs: `recurring.run_finished` each hour; `RECURRING_SCHEDULER=in-process` set; Recurring page shows paused rules and reasons.
 - **Signed out unexpectedly** — sessions last 7 days and end on password change or "Sign out everywhere".
 
 ## Easiest way on a Mac

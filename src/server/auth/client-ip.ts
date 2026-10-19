@@ -15,8 +15,10 @@ export function getClientIp(
   if (!trustedHeader) return undefined;
   const raw = headers.get(trustedHeader);
   if (!raw) return undefined;
-  // For X-Forwarded-For style lists, the platform appends the real client first.
-  const first = raw.split(",")[0]?.trim();
-  if (!first || first.length > 64 || !/^[0-9a-fA-F:.]+$/.test(first)) return undefined;
-  return first;
+  // Single-value headers only (x-real-ip, cf-connecting-ip, …), set by the
+  // platform's edge. Lists like X-Forwarded-For are refused: proxies append on
+  // the right, so the leftmost entry is whatever the client sent (SEC-6).
+  const ip = raw.trim();
+  if (!ip || ip.length > 64 || !/^[0-9a-fA-F:.]+$/.test(ip)) return undefined;
+  return ip;
 }

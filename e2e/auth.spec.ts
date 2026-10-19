@@ -156,6 +156,10 @@ test.describe("session invalidation", () => {
     await stolen.goto("/dashboard");
     await expect(stolen).toHaveURL(/\/sign-in/);
     expect((await stolen.request.get("/api/me")).status()).toBe(401);
+    // The Auth.js session endpoint reveals nothing for the revoked cookie (SEC-3).
+    const session = await stolen.request.get("/api/auth/session");
+    expect(await session.json()).toBeNull();
+    expect(session.headers()["set-cookie"]).toBeUndefined();
     await thief.close();
 
     // Signing out on one device does not sign out the others.

@@ -4,7 +4,7 @@ How to run the background work the app depends on, and how to recover when somet
 
 ## Production runbook
 
-Production = **Vercel** (Hobby, functions in Cleveland `cle1`) + **Neon** PostgreSQL 17 (AWS US East 2, Ohio — the same area, to keep each query a few milliseconds). Set-up steps: [DEPLOYMENT.md](DEPLOYMENT.md).
+Production = **Railway** (one always-on Node.js service, region US East / Virginia, project `jubilant-unity`) + **Neon** PostgreSQL 17 (AWS US East 2, Ohio — close by, to keep each query a few milliseconds). Live at https://personal-financial-management-production-c29c.up.railway.app. Set-up steps: [DEPLOYMENT.md](DEPLOYMENT.md). The Vercel, Netlify and Cloudflare notes below and in DEPLOYMENT.md are alternatives, not production.
 
 ### Environments
 
@@ -12,15 +12,15 @@ Production = **Vercel** (Hobby, functions in Cleveland `cle1`) + **Neon** Postgr
 |---|---|---|---|
 | Development | your computer (`npm run dev`, or the Mac launcher) | local PostgreSQL `finance_dev` | `.env` (git-ignored) |
 | Tests | local / CI | `finance_test`, `finance_e2e` (truncated by the tests) | test-only values in the test setup |
-| Preview | Vercel preview deployments (other branches) | none by default — previews fail to start without variables; give them their own Neon branch if you want previews | never the production values |
-| Production | Vercel, branch `main` | Neon `main` branch, database `neondb` | Vercel → Settings → Environment Variables, **Production** only, marked Sensitive |
+| CI | GitHub Actions on every push (`.github/workflows/ci.yml`) | throwaway PostgreSQL service | none |
+| Production | Railway, branch `main` (every push deploys) | Neon `main` branch, database `neondb` | Railway → service → **Variables** |
 
-Credentials: the app uses `finance_app` (rows only, no schema changes, no role creation); the owner `neondb_owner` is used only for migrations and backups. Rotate a credential by resetting it in Neon (or `ALTER ROLE … PASSWORD`), updating Vercel, and redeploying. Rotating `AUTH_SECRET` signs everyone out (intended after a suspected leak).
+Credentials: the app uses `finance_app` (rows only, no schema changes, no role creation); the owner `neondb_owner` is used only for migrations and backups. Rotate a credential by resetting it in Neon (or `ALTER ROLE … PASSWORD`), updating the Railway variable (which redeploys). Rotating `AUTH_SECRET` signs everyone out (intended after a suspected leak).
 
 ### Production migrations
 
 - Migrations are committed SQL in `prisma/migrations/` and are **additive** (new tables, columns with defaults, constraints, data normalizations) so that the previous app version keeps working on the new schema.
-- **Railway (current):** every deploy runs the pre-deploy command in `railway.json` (`scripts/migrate-deploy.sh` → `prisma migrate deploy` as the owner, using the Railway variable `MIGRATION_DATABASE_URL`) before the new version starts. Pending migrations are applied in order and recorded in `_prisma_migrations`; already-applied ones are skipped. If the variable is missing or a migration fails, Railway stops that deploy and keeps the previous version running — fix the cause and redeploy. (On the Vercel alternative, `vercel-build` does the same.)
+- **Railway (current):** every deploy runs the pre-deploy command in `railway.json` (`scripts/migrate-deploy.sh` → `prisma migrate deploy` as the owner, using the Railway variable `MIGRATION_DATABASE_URL`) before the new version starts. Pending migrations are applied in order and recorded in `_prisma_migrations`; already-applied ones are skipped. If the variable is missing or a migration fails, Railway stops that deploy and keeps the previous version running — fix the cause and redeploy. Railway runs this from the service settings (Deploy → Pre-deploy command); keep `railway.json` in sync with them.
 - To apply by hand: on your computer, `MIGRATION_DATABASE_URL="<owner direct URL>" npx prisma migrate deploy`, then `npx prisma migrate status`.
 - **Never** run `prisma migrate reset`, `prisma db push` or hand-written `DROP`/`TRUNCATE` against production. A destructive schema change (drop/rename) needs, in this order: explicit approval, a fresh backup verified with `scripts/verify-backup.sh`, an expand-and-contract plan across two releases, and a written rollback.
 
@@ -59,26 +59,26 @@ Monthly (and after changing backup tooling): `scripts/verify-backup.sh <latest .
 
 Only when data was lost or corrupted (not for routine fixes):
 
-1. Stop writes: in Vercel, temporarily remove `DATABASE_URL` from Production and redeploy, or pause the project, so users see an error instead of writing to bad data.
+1. Stop writes: in Railway, remove the service's public domain or scale it down (service → Settings), so users see an error instead of writing to bad data.
 2. **Point-in-time:** Neon → Branches → *Create branch* from `main` at a time before the incident (or use Neon's restore feature). This leaves `main` untouched.
    **From a dump:** create an empty Neon branch, then `pg_restore --no-owner --no-privileges --dbname="<branch owner URL>" <file.dump>`, and re-run `prisma/sql/app-role-neon.sql` on it.
 3. Check the branch: `MIGRATION_DATABASE_URL=<branch owner URL> npx prisma migrate status`, spot-check balances with a test account.
-4. Point `DATABASE_URL`/`MIGRATION_DATABASE_URL` in Vercel at the restored branch (or make it the primary branch in Neon), redeploy, run the release checks.
+4. Point `DATABASE_URL`/`MIGRATION_DATABASE_URL` in Railway at the restored branch (or make it the primary branch in Neon); Railway redeploys; run the release checks.
 5. Keep the old branch until the restore is confirmed; then delete it (explicit decision — deleting is irreversible).
 
 ### Rolling back an application deployment
 
 A failed build never goes live — the previous deployment keeps serving. For a bad deployment that is live:
 
-1. Vercel → Deployments → the last good deployment → **⋯ → Instant Rollback** (seconds; no rebuild). Or revert the commit on `main` and let Vercel deploy it (fix forward).
+1. Railway → service → **Deployments** → the last good deployment → **⋯ → Rollback** (reuses that build). Or revert the commit on `main` and let Railway deploy it (fix forward).
 2. Migrations are not undone by a rollback. Because they are additive, the older code still works on the newer schema. If a migration ever is not backward-compatible, the release must say so and the rollback plan must include the schema step.
 3. After rolling back, the next push to `main` deploys again — fix the problem before pushing.
 
 ### Failed migration
 
-Symptom: the Vercel build log stops at `prisma migrate deploy` with an error; the deployment is marked failed; **the previous version stays live** and the database is unchanged except possibly by the failing migration.
+Symptom: the Railway deployment fails at the **pre-deploy** stage (`prisma migrate deploy`); **the previous version stays live** and the database is unchanged except possibly by the failing migration. A wrong or outdated `MIGRATION_DATABASE_URL` shows as `P1000: Authentication failed` (19 Oct 2026: fixed by copying the current owner address from Neon).
 
-1. Read the error in the build log. Run `MIGRATION_DATABASE_URL=<owner direct URL> npx prisma migrate status` from your computer: it names the failed migration.
+1. Read the error in the deployment's logs. Run `MIGRATION_DATABASE_URL=<owner direct URL> npx prisma migrate status` from your computer: it names the failed migration.
 2. If the migration failed before changing anything (e.g. a constraint that existing rows violate): fix the migration *or the data* in a **new** commit (data fixes go in their own migration), then mark the failed attempt as rolled back: `npx prisma migrate resolve --rolled-back <migration_name>` and redeploy.
 3. If it partially applied: inspect what exists (`\d table` in `psql` as the owner), write a corrective migration, mark the failed one `--rolled-back` (or `--applied` if you completed it by hand exactly as written), and redeploy. Take a dump first.
 4. Never edit a migration that has already been applied in production, and never delete rows from `_prisma_migrations` by hand.
@@ -96,8 +96,8 @@ Symptoms: pages show "We couldn't load this page", `/api/health` returns **503**
 ### Monitoring and error reporting
 
 - **Health:** `GET /api/health` → 200 `{"status":"ok","database":"ok","version":"<commit>"}`. Point a free uptime monitor (e.g. UptimeRobot, 5-minute interval) at it to get an e-mail when it fails; checking every few minutes keeps a free Neon compute awake, so use ≥ 5 minutes.
-- **Errors:** the app writes one-line JSON logs (event name, ids, error class — never passwords, tokens, amounts or record text) to Vercel → Project → **Logs** (short retention on Hobby). Filter by `"level":"error"`. Key events: `route.failed`, `action.failed`, `recurring.run_failed`, `recurring.rule_failed`, `auth.rate_limited`, `security.ip_rate_limits_disabled`, `export.failed`.
-- **Scheduled job:** Vercel → Settings → Cron Jobs shows each run; the endpoint returns counts only.
+- **Errors:** the app writes one-line JSON logs (event name, ids, error class — never passwords, tokens, amounts or record text) to Railway → service → **Logs** (deployment logs; HTTP logs show every request's status). Filter by `"level":"error"`. Key events: `route.failed`, `action.failed`, `recurring.run_failed`, `recurring.rule_failed`, `auth.rate_limited`, `security.ip_rate_limits_disabled`, `export.failed`.
+- **Scheduled job:** with `RECURRING_SCHEDULER=in-process` the server runs it 30 s after start and then hourly; look for `recurring.run_finished` in the logs. Keep Railway's App Sleeping off, or recurring items wait until the app wakes.
 - No third-party analytics or error-tracking SDK is included (product decision); a log drain or error service can be added later without code changes to the logger format.
 
 ### Release checks
@@ -130,7 +130,7 @@ Recurring rules (PRD §6.6) are posted by one engine, `runDueRules()` in `src/fe
 | A platform with HTTP cron (Vercel Cron, Render, Railway, GitHub Actions, cron + curl) | Set `CRON_SECRET` (32+ random characters) and call `GET` or `POST /api/cron/recurring` hourly with `Authorization: Bearer $CRON_SECRET` | Returns only counts: `{ rules, posted, failed, paused, busy }`. 503 while `CRON_SECRET` is unset, 401 for a wrong secret (constant-time comparison). |
 | A machine with system cron / launchd / a job runner | `npm run recurring:run` hourly | Loads `.env`, runs once, exits 1 if any rule failed. Example crontab: `5 * * * * cd /srv/personal-finance && npm run recurring:run >> /var/log/pf-recurring.log 2>&1` |
 
-The repository's `vercel.json` schedules `/api/cron/recurring` **daily at 17:05 UTC** (00:05 in Phnom Penh), because Vercel's free Hobby plan allows one run per day (docs/DEPLOYMENT.md). On a paid plan, change the schedule to hourly (`5 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET` automatically when `CRON_SECRET` is set in the project.
+On the Vercel alternative only: the repository's `vercel.json` schedules `/api/cron/recurring` **daily at 17:05 UTC** (00:05 in Phnom Penh), because Vercel's free Hobby plan allows one run per day (docs/DEPLOYMENT.md). On a paid plan, change the schedule to hourly (`5 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET` automatically when `CRON_SECRET` is set in the project.
 
 Production scheduling is **off by default** (`RECURRING_SCHEDULER="off"`, no `CRON_SECRET`). Enable it only after the idempotency tests pass in CI (`tests/integration/recurring*.test.ts`).
 

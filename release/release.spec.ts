@@ -234,7 +234,7 @@ test("scheduled job endpoint runs with the secret", async ({ request }) => {
   const secret = process.env.RELEASE_CRON_SECRET;
   test.skip(
     !secret,
-    "RELEASE_CRON_SECRET not given; the job's own run history is in Vercel → Settings → Cron Jobs",
+    "RELEASE_CRON_SECRET not given; on Railway the in-process scheduler logs recurring.run_finished hourly",
   );
   const response = await request.get("/api/cron/recurring", {
     headers: { authorization: `Bearer ${secret}` },
