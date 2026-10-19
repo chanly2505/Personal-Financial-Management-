@@ -3,6 +3,7 @@ import "server-only";
 import { assertCategoryUsable } from "@/features/categories/server/service";
 import { dbDateToIso, todayInTimeZone } from "@/lib/dates";
 import { type CurrencyCode, parseMoney } from "@/lib/money";
+import { isUuid } from "@/lib/ids";
 import type { CurrentUser } from "@/server/auth/session";
 import { NotFoundError, ValidationError } from "@/server/errors";
 import { describeError, logger } from "@/server/logger";
@@ -273,6 +274,7 @@ export async function getBudgetMonth(user: User, requested?: string): Promise<Bu
 }
 
 export async function getBudget(user: Pick<CurrentUser, "id">, id: string): Promise<BudgetView> {
+  if (!isUuid(id)) throw new NotFoundError(NOT_FOUND);
   const row = await repo.findBudget(user.id, id);
   if (!row) throw new NotFoundError(NOT_FOUND);
   return toView(row);

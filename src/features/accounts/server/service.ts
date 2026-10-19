@@ -4,6 +4,7 @@ import { type IsoDate, todayInTimeZone } from "@/lib/dates";
 import { type CurrencyCode, formatMoney, parseMoney } from "@/lib/money";
 import type { CurrentUser } from "@/server/auth/session";
 import { normalizeName } from "@/lib/utils";
+import { isUuid } from "@/lib/ids";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
 import type { AccountType } from "../constants";
@@ -80,6 +81,7 @@ export async function getAccount(
   user: Pick<CurrentUser, "id" | "timezone">,
   id: string,
 ): Promise<AccountDetail> {
+  if (!isUuid(id)) throw new NotFoundError("We couldn't find that account.");
   const row = await repo.findAccount(user.id, id);
   if (!row) throw new NotFoundError("We couldn't find that account.");
   const [current, projected, refs] = await Promise.all([

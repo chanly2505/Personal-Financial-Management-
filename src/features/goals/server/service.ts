@@ -5,6 +5,7 @@ import { type IsoDate, addDays, dbDateToIso, todayInTimeZone } from "@/lib/dates
 import { formatDate } from "@/lib/format/dates";
 import { normalizeName } from "@/lib/utils";
 import { type CurrencyCode, formatMoney, parseMoney } from "@/lib/money";
+import { isUuid } from "@/lib/ids";
 import type { CurrentUser } from "@/server/auth/session";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
@@ -82,6 +83,7 @@ export async function getGoal(
   user: User,
   id: string,
 ): Promise<{ goal: GoalView; contributions: ContributionView[]; today: IsoDate }> {
+  if (!isUuid(id)) throw new NotFoundError(NOT_FOUND);
   const today = todayInTimeZone(user.timezone);
   const [row, short, contributions] = await Promise.all([
     repo.findGoal(user.id, id),

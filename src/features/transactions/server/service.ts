@@ -4,6 +4,7 @@ import { syncAlertsForExpenses } from "@/features/budgets/server/service";
 import { assertCategoryUsable } from "@/features/categories/server/service";
 import { type IsoDate, addDays, startOfMonth, todayInTimeZone } from "@/lib/dates";
 import { CURRENCIES, type CurrencyCode, MAX_AMOUNT_MINOR, parseMoney } from "@/lib/money";
+import { isUuid } from "@/lib/ids";
 import type { CurrentUser } from "@/server/auth/session";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
@@ -311,6 +312,7 @@ export async function reverseTransfer(
 
 /** An income, expense or transfer by id, or NotFound (also for other users' records). */
 export async function getRecord(user: Pick<CurrentUser, "id">, id: string): Promise<RecordDetail> {
+  if (!isUuid(id)) throw new NotFoundError("We couldn't find that record.");
   const record = (await repo.findEntry(user.id, id)) ?? (await repo.findTransfer(user.id, id));
   if (!record) throw new NotFoundError("We couldn't find that record.");
   return record;

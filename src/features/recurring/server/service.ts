@@ -6,6 +6,7 @@ import { assertCategoryUsable } from "@/features/categories/server/service";
 import type { EntryType } from "@/features/transactions/constants";
 import { type IsoDate, addDays, dbDateToIso, startOfMonth, todayInTimeZone } from "@/lib/dates";
 import { parseMoney } from "@/lib/money";
+import { isUuid } from "@/lib/ids";
 import type { CurrentUser } from "@/server/auth/session";
 import { NotFoundError, ValidationError } from "@/server/errors";
 import { describeError, logger } from "@/server/logger";
@@ -136,6 +137,7 @@ export async function listRecurring(user: User) {
 }
 
 export async function getRecurring(user: Pick<CurrentUser, "id">, id: string) {
+  if (!isUuid(id)) throw new NotFoundError(NOT_FOUND);
   const row = await repo.findRule(user.id, id);
   if (!row) throw new NotFoundError(NOT_FOUND);
   const runs = await repo.listRuns(user.id, id, 100);

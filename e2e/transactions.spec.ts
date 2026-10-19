@@ -260,6 +260,17 @@ test("another user's record is not found", async ({ page, browser }) => {
   await expect(other.getByRole("heading", { name: /not found|couldn't find/i })).toBeVisible();
   await other.goto(`${url}/edit`);
   await expect(other.getByRole("heading", { name: /not found|couldn't find/i })).toBeVisible();
+  // Malformed ids are "not found" too, not an error page (SEC-5).
+  for (const path of [
+    "/transactions/abc",
+    "/accounts/abc",
+    "/goals/abc",
+    "/recurring/abc",
+    "/budgets/abc/edit",
+  ]) {
+    await other.goto(path);
+    await expect(other.getByRole("heading", { name: /not found|couldn't find/i })).toBeVisible();
+  }
   await context.close();
 });
 
