@@ -37,7 +37,9 @@ const nextConfig: NextConfig = {
       // API responses are JSON or downloads, never pages: nothing may load or frame them (SEC-7).
       {
         source: "/api/:path*",
-        headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; frame-ancestors 'none'" }],
+        headers: [
+          { key: "Content-Security-Policy", value: "default-src 'none'; frame-ancestors 'none'" },
+        ],
       },
     ];
   },
