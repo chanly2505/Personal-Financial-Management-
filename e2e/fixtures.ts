@@ -59,6 +59,24 @@ export async function chooseMenuItem(page: Page, trigger: Locator, item: string)
   await option.click();
 }
 
+/**
+ * Open a confirmation dialog from a row's menu. Retries the whole sequence: a
+ * refresh from the previous action (e.g. "Restore") can re-render the row while
+ * its menu or dialog is opening, which closes them.
+ */
+export async function openMenuDialog(page: Page, trigger: Locator, item: string) {
+  const dialog = page.getByRole("alertdialog");
+  await expect(async () => {
+    if (!(await dialog.isVisible())) {
+      const option = page.getByRole("menuitem", { name: item });
+      if (!(await option.isVisible())) await trigger.click({ timeout: 2_000 });
+      await option.click({ timeout: 2_000 });
+    }
+    await expect(dialog).toBeVisible({ timeout: 2_000 });
+  }).toPass();
+  return dialog;
+}
+
 export const test = base.extend<{ user: TestUser }>({
   // (Playwright's fixture callback is conventionally named `use`; renamed so the
   // React hooks lint rule does not mistake it for React's use().)

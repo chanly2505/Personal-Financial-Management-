@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 
-import { test } from "./fixtures";
+import { openMenuDialog, test } from "./fixtures";
 
 test("shows the default income and expense categories", async ({ page, user }) => {
   expect(user).toBeTruthy();
@@ -45,18 +45,30 @@ test("adds, edits, archives, restores and deletes a custom category", async ({ p
   await edit.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Coffee and tea", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Actions for Coffee and tea" }).click();
-  await page.getByRole("menuitem", { name: "Archive" }).click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
+  await (
+    await openMenuDialog(
+      page,
+      page.getByRole("button", { name: "Actions for Coffee and tea" }),
+      "Archive",
+    )
+  )
+    .getByRole("button", { name: "Archive" })
+    .click();
   await expect(page.getByRole("heading", { name: "Archived (1)" })).toBeVisible();
 
   await page.getByRole("button", { name: "Actions for Coffee and tea" }).click();
   await page.getByRole("menuitem", { name: "Restore" }).click();
   await expect(page.getByRole("heading", { name: "Archived (1)" })).toBeHidden();
 
-  await page.getByRole("button", { name: "Actions for Coffee and tea" }).click();
-  await page.getByRole("menuitem", { name: "Delete" }).click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
+  await (
+    await openMenuDialog(
+      page,
+      page.getByRole("button", { name: "Actions for Coffee and tea" }),
+      "Delete",
+    )
+  )
+    .getByRole("button", { name: "Delete" })
+    .click();
   await expect(page.getByText("Coffee and tea", { exact: true })).toHaveCount(0);
 });
 

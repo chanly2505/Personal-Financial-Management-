@@ -2,7 +2,7 @@ import "dotenv/config";
 import { type Page } from "@playwright/test";
 import { Client } from "pg";
 
-import { chooseMenuItem, expect, newUser, register, test } from "./fixtures";
+import { chooseMenuItem, expect, newUser, openMenuDialog, register, test } from "./fixtures";
 
 /** Budgets through the real UI: limits, live spending, warnings, archive, months. */
 
@@ -176,12 +176,15 @@ test.describe("with accounts", () => {
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(row.getByText("$55.25 left")).toBeVisible();
 
-    await chooseMenuItem(
-      page,
-      row.getByRole("button", { name: "Actions for Transportation" }),
-      "Archive",
-    );
-    await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
+    await (
+      await openMenuDialog(
+        page,
+        row.getByRole("button", { name: "Actions for Transportation" }),
+        "Archive",
+      )
+    )
+      .getByRole("button", { name: "Archive" })
+      .click();
     await expect(page.getByRole("heading", { name: /^No budgets for/ })).toBeVisible();
     await page.getByText("Archived budgets (1)").click();
     await chooseMenuItem(
@@ -191,12 +194,15 @@ test.describe("with accounts", () => {
     );
     await expect(page.getByRole("heading", { name: "Budgets", level: 2 })).toBeVisible();
 
-    await chooseMenuItem(
-      page,
-      row.getByRole("button", { name: "Actions for Transportation" }),
-      "Delete",
-    );
-    await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
+    await (
+      await openMenuDialog(
+        page,
+        row.getByRole("button", { name: "Actions for Transportation" }),
+        "Delete",
+      )
+    )
+      .getByRole("button", { name: "Delete" })
+      .click();
     await expect(page.getByRole("heading", { name: /^No budgets for/ })).toBeVisible();
   });
 
