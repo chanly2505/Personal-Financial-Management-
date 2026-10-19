@@ -130,8 +130,7 @@ Recurring rules (PRD §6.6) are posted by one engine, `runDueRules()` in `src/fe
 | A platform with HTTP cron (a Railway cron service, GitHub Actions, cron + curl) | Set `CRON_SECRET` (32+ random characters) and call `GET` or `POST /api/cron/recurring` hourly with `Authorization: Bearer $CRON_SECRET` | Returns only counts: `{ rules, posted, failed, paused, busy }`. 503 while `CRON_SECRET` is unset, 401 for a wrong secret (constant-time comparison). |
 | A machine with system cron / launchd / a job runner | `npm run recurring:run` hourly | Loads `.env`, runs once, exits 1 if any rule failed. Example crontab: `5 * * * * cd /srv/personal-finance && npm run recurring:run >> /var/log/pf-recurring.log 2>&1` |
 
-
-Production scheduling is **off by default** (`RECURRING_SCHEDULER="off"`, no `CRON_SECRET`). Enable it only after the idempotency tests pass in CI (`tests/integration/recurring*.test.ts`).
+The app default is off (`RECURRING_SCHEDULER="off"`, no `CRON_SECRET`). **Production (Railway) runs `RECURRING_SCHEDULER="in-process"`** on its single always-on service; the idempotency tests (`tests/integration/recurring*.test.ts`) run in CI on every push.
 
 ### Catch-up policy
 
