@@ -16,7 +16,7 @@
 **Settings in the Cloudflare dashboard** (Workers & Pages → `personal-financial-management`):
 
 1. **Plan:** Workers & Pages → Plans → **Workers Paid**.
-2. **Settings → Build → Build configuration:** Build command `npm run cf:build`; Deploy command `npx wrangler deploy`; root directory `/`.
+2. **Settings → Build → Build configuration:** Build command `npm run build` (on Workers Builds it runs the Cloudflare build automatically; `npm run cf:build` is equivalent); Deploy command `npx wrangler deploy`; root directory `/`.
 3. **Settings → Build → Variables and secrets** (used while building): `MIGRATION_DATABASE_URL` (secret) = Neon owner, connection pooling **off**.
 4. **Settings → Variables and Secrets** (used by the running app; type **Secret** for the first three):
    - `DATABASE_URL` = `postgresql://finance_app:<app password>@<Neon pooled host>/neondb?sslmode=verify-full`
