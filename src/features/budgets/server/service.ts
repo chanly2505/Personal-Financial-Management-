@@ -149,6 +149,20 @@ async function reconcile(userId: string, rows: repo.BudgetRow[]) {
   );
 }
 
+/**
+ * Scheduled safety net (FIN-6): alerts are synced best-effort after each write,
+ * so a crash between the write and the sync could leave a warning missing or
+ * stale until /budgets is opened. The hourly job reconciles every user's
+ * current month instead. Returns the number of users checked.
+ */
+export async function reconcileCurrentMonthAlerts(): Promise<number> {
+  const users = await repo.usersWithActiveBudgets();
+  for (const user of users) {
+    await reconcile(user.id, await repo.listMonth(user.id, monthStart(currentMonth(user))));
+  }
+  return users.length;
+}
+
 function toAlertView(
   row: Awaited<ReturnType<typeof repo.listActiveAlerts>>[number],
 ): BudgetAlertView {

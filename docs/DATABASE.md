@@ -35,7 +35,7 @@ erDiagram
 | `accounts` | Cash / bank / digital wallet / other. One currency, fixed. Opening balance. Active or archived (`is_archived` + `archived_at`). |
 | `categories` | Income or expense label, per user; colour token; active or archived (`is_archived` + `archived_at`). |
 | `transactions` | Income or expense on one account with one category. |
-| `transfers` | Movement between two of the user's accounts; two amounts for cross-currency. |
+| `transfers` | Movement between two of the user's accounts in the **same** currency (v1); the two amount columns are always equal (CHECK + trigger) and exist for a future cross-currency feature. |
 | `recurring_rules` | Schedule template for income/expense. |
 | `budgets` | Monthly limit per expense category per currency. |
 | `savings_goals` | Target amount, optional date and account. |
@@ -56,7 +56,7 @@ Primary keys are UUIDv7 (`uuid(7)`): unguessable in URLs, time-ordered for index
 - Opening balances may be negative; contributions may be negative (withdrawal) but not zero.
 - Maximum single value: 999,999,999,999,999 minor units (fits `BIGINT` and is below `Number.MAX_SAFE_INTEGER`).
 - Currency lives on `accounts`, `budgets` and `savings_goals`. A transaction's currency is its account's currency; account currency cannot change, so history stays consistent.
-- `users.exchange_rate_khr_per_usd` is `DECIMAL(12,4)` and only used for clearly-labelled approximate combined totals.
+- `users.exchange_rate_khr_per_usd` is `DECIMAL(12,4)`, reserved and **not used** (PRD Q-2): v1 never converts between USD and KHR; every total is per currency.
 
 ## 3. Dates and time
 

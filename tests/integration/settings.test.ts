@@ -303,7 +303,13 @@ describe("data export", () => {
       amount: "9.00",
       currency: "USD",
     });
-    expect(data.transfers[0]).toMatchObject({ amount: "5.00", currency: "USD" });
+    // Both sides of a transfer are in the file (FIN-7).
+    expect(data.transfers[0]).toMatchObject({
+      amount: "5.00",
+      currency: "USD",
+      toAmount: "5.00",
+      toCurrency: "USD",
+    });
     expect(data.budgets[0]).toMatchObject({ limit: "10.00", alertThresholdPercent: 80 });
     expect(data.recurringRules[0]).toMatchObject({ name: "Phone bill", amount: "5.00" });
     expect(data.savingsGoals[0]).toMatchObject({ name: "Trip", target: "500.00" });

@@ -3,6 +3,7 @@ import "server-only";
 import { type RunSummary, runDueRules } from "@/features/recurring/server/service";
 
 import { pruneExpiredAuthSessions } from "@/features/auth/server/repository";
+import { reconcileCurrentMonthAlerts } from "@/features/budgets/server/service";
 
 import { pruneRateLimits } from "./auth/rate-limit";
 import { describeError, logger } from "./logger";
@@ -20,6 +21,11 @@ export async function runScheduledJobs(options?: { now?: Date }): Promise<RunSum
     if (pruned > 0) logger.info("auth.rate_limits_pruned", { count: pruned });
   } catch (error) {
     logger.error("auth.rate_limit_prune_failed", describeError(error));
+  }
+  try {
+    await reconcileCurrentMonthAlerts();
+  } catch (error) {
+    logger.error("budgets.alert_reconcile_failed", describeError(error));
   }
   try {
     const expired = await pruneExpiredAuthSessions();

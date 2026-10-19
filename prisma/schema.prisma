@@ -208,8 +208,9 @@ model Transaction {
 }
 
 /// Movement of money between two of the user's own accounts. Never income or expense.
-/// For cross-currency transfers the two amounts differ (implied exchange rate);
-/// for same-currency transfers the service layer requires them to be equal.
+/// Both accounts use the same currency in v1, so the two amounts are always equal
+/// (CHECK transfers_same_amount_chk; trigger transfers_same_currency, FIN-4).
+/// Two columns are kept so cross-currency transfers can be added later.
 model Transfer {
   id                 String   @id @default(uuid(7)) @db.Uuid
   userId             String   @map("user_id") @db.Uuid

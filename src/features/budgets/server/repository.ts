@@ -399,3 +399,11 @@ export async function findDefaultThreshold(userId: string): Promise<number> {
   });
   return user?.defaultAlertThreshold ?? 80;
 }
+
+/** Users with at least one active budget (for the scheduled alert check). */
+export function usersWithActiveBudgets() {
+  return prisma.user.findMany({
+    where: { budgets: { some: { archivedAt: null } } },
+    select: { id: true, timezone: true },
+  });
+}

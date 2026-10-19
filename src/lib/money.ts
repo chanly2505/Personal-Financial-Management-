@@ -216,8 +216,9 @@ export function parseRate(rate: string): { scaled: bigint; scale: bigint } {
 
 /**
  * Convert between USD and KHR using a user-maintained "KHR per 1 USD" rate.
- * Used only for approximate, clearly-labelled cross-currency totals; stored
- * records are never converted.
+ * RESERVED — not used by the app (PRD Q-2, §6.1): v1 never converts between
+ * currencies; every total is kept per currency. Kept, with its tests, for a
+ * future clearly-labelled approximate total.
  */
 export function convertMinor(
   amountMinor: bigint,

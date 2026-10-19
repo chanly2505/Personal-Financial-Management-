@@ -12,6 +12,7 @@ import {
   getBudget,
   getBudgetMonth,
   markAlertsRead,
+  reconcileCurrentMonthAlerts,
   restoreBudget,
   updateBudget,
 } from "@/features/budgets/server/service";
@@ -23,6 +24,7 @@ import {
   deleteEntry,
   updateEntry,
 } from "@/features/transactions/server/service";
+import { todayInTimeZone } from "@/lib/dates";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
 import { registerTestUser } from "../helpers/auth";
@@ -544,5 +546,24 @@ describe("alerts", () => {
     expect(
       (await prisma.budgetAlert.findMany()).map((a) => [a.budgetId, a.thresholdPercent]),
     ).toEqual([[id, 80]]);
+  });
+});
+
+describe("scheduled alert check (FIN-6)", () => {
+  it("restores a warning lost by a failed sync, without anyone opening Budgets", async () => {
+    const f = await setup();
+    const today = todayInTimeZone(TZ);
+    await foodBudget(f, "200", 80, today.slice(0, 7));
+    await expense(f, "170", today); // 85 %: one warning
+    expect((await getAlertsSummary(f.user, 10)).alerts).toHaveLength(1);
+
+    // Simulate a crash between saving and syncing: the stored warning is gone.
+    await prisma.budgetAlert.deleteMany({ where: { userId: f.user.id } });
+    expect((await getAlertsSummary(f.user, 10)).alerts).toHaveLength(0);
+
+    expect(await reconcileCurrentMonthAlerts()).toBe(1);
+    const { alerts } = await getAlertsSummary(f.user, 10);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]!.thresholdPercent).toBe(80);
   });
 });
