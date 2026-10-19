@@ -327,3 +327,29 @@ Implemented, tested (`npm run check` 545/545; e2e 306 passed + the 4 failures fi
 | PROD-8 | Done | `/api/health` reports the Railway commit |
 | PROD-1, SEC-4 | Owner action | Delete or disconnect the Cloudflare Worker and any Netlify/Vercel projects; then rotate the `finance_app` password and `AUTH_SECRET` |
 | SEC-1 | Partly | Registration abuse is removed by the allowlist. The `X-Real-IP` spoofing test needs requests to the live site, which this environment's network policy blocks; per-email sign-in limits still protect each account. A global failed-sign-in cap was **not** added: it would let anyone lock the owner out |
+
+## P2 status (branch `audit/production-readiness`)
+
+Implemented and tested on the branch; goes live only with the owner's approval.
+
+| Finding | Status | Change |
+|---|---|---|
+| UX-7 | Done | Plain wording: Left over, Share of income kept, Starting balance, Money in and out, Balance at start/end, set aside, past dates |
+| UX-2 | Done | "Balances today" above the period picker |
+| UX-3 | Done | Confirmation dialogs keep their error inline and stay open; other error toasts stay until dismissed (`showError`) |
+| UX-5 | Done | Starting balance uses the full keyboard (minus sign on phones) |
+| UX-6 | Done | "Mark all read" is a menu item reachable with the arrow keys |
+| UX-8 | Done | Field borders 3.4:1 / 3.2:1, dark error text 4.8:1, dark chart colours ≥ 3:1 |
+| UX-9 | Done | 40 px buttons, inputs, selects and period presets on phones |
+| UX-10 | Done | Chart card titles and in-card empty states are h3 |
+| UX-11 | Done | Busy Apply button; match count announced |
+| FIN-2 | Done | "+0.0%" for tiny increases; `changePercent` unit-tested |
+| FIN-3 | Done | Category re-checked under a row lock when an entry is saved |
+| FIN-4 | Done (migration `20261019130000_currency_integrity`, additive; production data checked first) | Triggers: same-currency transfers; account currency fixed once used |
+| FIN-8 | Done (partly, deliberately) | "4.100.000" accepted; a single dotted group ("1.500") stays rejected because it may be a mistyped decimal |
+| SEC-3 | Done | `GET /api/auth/session` answers "no session" |
+| SEC-6 | Done | IP header must be a single value |
+| PROD-5 | Done | OPERATIONS.md and README describe Railway |
+| PROD-10 | Partly | Node pinned to 22.x; Firebase kept because the owner asked for it |
+| PROD-6 | Owner action | Delete `TEST_DATABASE_URL` and `E2E_DATABASE_URL` from Railway (the connector has no delete) |
+| PROD-11 | Not changed | Documented: keep App Sleeping off; watch for `recurring.run_finished` |
