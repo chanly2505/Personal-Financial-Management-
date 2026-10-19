@@ -11,7 +11,8 @@
 | Config | `railway.json`: start `npm start`, health check `/api/health` (a deploy only goes live when the database answers) |
 | Build | Railway detects Node.js and runs `npm ci` and `npm run build` (a plain `next build` outside Cloudflare) |
 | Region | **US East (Virginia)**, closest to Neon in AWS US East 2 (Ohio) |
-| Database | Neon `personal-finance`; schema already applied (all migrations). New migrations: run `npx prisma migrate deploy` with the owner URL, or through the Neon connector, before deploying code that needs them |
+| Database | Neon `personal-finance`. Pending migrations are applied by the pre-deploy command (`scripts/migrate-deploy.sh`, owner role via `MIGRATION_DATABASE_URL`) before each new version starts; a failure keeps the previous version running |
+| Checks | GitHub Actions (`.github/workflows/ci.yml`) runs `npm run check` and the build on every push; turn on **Wait for CI** (service → Settings) so a red run blocks the deploy |
 | Scheduler | `RECURRING_SCHEDULER=in-process`: one always-on server runs recurring items hourly (no separate cron service) |
 
 **Variables** (service → Variables; Railway sets `PORT`):
@@ -24,6 +25,10 @@
 | `AUTH_TRUST_HOST` | `true` (Auth.js uses the request's address; or set `AUTH_URL` to the Railway domain) |
 | `TRUSTED_IP_HEADER` | `x-real-ip` (Railway's documented client-IP header; community reports say it is not guaranteed spoof-proof, so per-email limits remain the main protection) |
 | `RECURRING_SCHEDULER` | `in-process` |
+| `AUTH_URL` | `https://personal-financial-management-production-c29c.up.railway.app` |
+| `MIGRATION_DATABASE_URL` | Neon **owner** (`neondb_owner`) direct address, `?sslmode=verify-full`; used only by the pre-deploy migration step |
+| `REGISTRATION_MODE` | `allowlist` |
+| `REGISTRATION_ALLOWLIST` | the owner's email |
 
 **Steps:** railway.com → New Project → Deploy from GitHub repo → `Personal-Financial-Management-` → Settings → Region **US East** → Variables (above) → Settings → Networking → **Generate Domain** → open `/api/health`.
 

@@ -23,9 +23,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   env: {
-    // Short commit id of the build, shown by /api/health. Vercel, Netlify and
-    // Cloudflare expose it only while building, so it is fixed into the build here.
+    // Short commit id of the build, shown by /api/health. Railway, Vercel, Netlify
+    // and Cloudflare expose it only while building, so it is fixed into the build here.
     APP_COMMIT: (
+      process.env.RAILWAY_GIT_COMMIT_SHA ??
       process.env.VERCEL_GIT_COMMIT_SHA ??
       process.env.COMMIT_REF ??
       process.env.WORKERS_CI_COMMIT_SHA ??

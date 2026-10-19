@@ -20,8 +20,8 @@ Credentials: the app uses `finance_app` (rows only, no schema changes, no role c
 ### Production migrations
 
 - Migrations are committed SQL in `prisma/migrations/` and are **additive** (new tables, columns with defaults, constraints, data normalizations) so that the previous app version keeps working on the new schema.
-- On every production deploy Vercel runs `vercel-build`: `prisma migrate deploy` (as the owner) → `next build`. Pending migrations are applied in order and recorded in `_prisma_migrations`; already-applied ones are skipped.
-- To apply by hand (e.g. if you removed the owner URL from Vercel): on your computer, `MIGRATION_DATABASE_URL="<owner direct URL>" npx prisma migrate deploy`, then `npx prisma migrate status`.
+- **Railway (current):** every deploy runs the pre-deploy command in `railway.json` (`scripts/migrate-deploy.sh` → `prisma migrate deploy` as the owner, using the Railway variable `MIGRATION_DATABASE_URL`) before the new version starts. Pending migrations are applied in order and recorded in `_prisma_migrations`; already-applied ones are skipped. If the variable is missing or a migration fails, Railway stops that deploy and keeps the previous version running — fix the cause and redeploy. (On the Vercel alternative, `vercel-build` does the same.)
+- To apply by hand: on your computer, `MIGRATION_DATABASE_URL="<owner direct URL>" npx prisma migrate deploy`, then `npx prisma migrate status`.
 - **Never** run `prisma migrate reset`, `prisma db push` or hand-written `DROP`/`TRUNCATE` against production. A destructive schema change (drop/rename) needs, in this order: explicit approval, a fresh backup verified with `scripts/verify-backup.sh`, an expand-and-contract plan across two releases, and a written rollback.
 
 ### Backups
@@ -30,9 +30,26 @@ Credentials: the app uses `finance_app` (rows only, no schema changes, no role c
 |---|---|---|---|
 | Point-in-time history | Neon keeps WAL history; restore to any moment inside the window (hours on Free, days on paid plans — check Project settings → Storage/History) | automatic | per plan |
 | Logical dump | `BACKUP_DATABASE_URL="<owner direct URL>" scripts/backup-db.sh` → `~/Documents/personal-finance-backups/personal-finance-<UTC time>.dump` (pg_dump custom format, owner-only file permissions, read-only on the database) | weekly, and before any risky change | keep 8 weekly + 12 monthly; store a copy off the laptop (encrypted drive or cloud folder) |
+| Neon snapshot | Neon console → Backup & restore → Create snapshot (or the Neon connector). First one: `p1-before-recurring-request-id-2026-10-19` (19 Oct 2026). Scheduled snapshots are **not available on the Free plan** (checked 19 Oct 2026) | before every release with a migration | until deleted |
 | Users' own copies | Settings → Your data (CSV, full JSON) | any time | — |
 
+**Current gap (PROD-4):** on Neon Free the point-in-time window is **6 hours**, and scheduled snapshots are unavailable, so anything noticed later than that depends on the most recent manual snapshot or `pg_dump`. Take a snapshot before each release, and run the weekly dump from the Mac; or upgrade the Neon plan for daily snapshots.
+
 `pg_dump` must be at least the server's major version (Neon 17): `brew install libpq && brew link --force libpq`.
+
+### Reset a forgotten password
+
+There is no email provider yet (`MAIL_TRANSPORT=none`), so "Forgot password?" is replaced by a note on the sign-in page. To reset a user's password, on a computer with the project:
+
+```bash
+DATABASE_URL="<production DATABASE_URL from Railway>" npm run user:reset-password -- someone@example.com
+```
+
+It prints a temporary password once, signs that user out on every device and clears their sign-in lockout. Give it to them privately; they sign in and change it under Settings → Security. Nothing else about the account changes.
+
+### Who can register
+
+`REGISTRATION_MODE` on Railway: `allowlist` with `REGISTRATION_ALLOWLIST` set to the owner's email (current), `open`, or `closed`. Changing it only affects new sign-ups; existing accounts keep working.
 
 ### Recovery test
 
