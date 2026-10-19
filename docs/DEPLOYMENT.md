@@ -13,18 +13,15 @@
 | Build | `npm run cf:build` → `scripts/cloudflare-build.sh`: migrations on `main` builds only, Prisma client for workerd, OpenNext build |
 | Scheduler | Cron trigger `5 * * * *` (hourly) → `/api/cron/recurring` with `CRON_SECRET` |
 
+**Database schema:** applied to Neon on 19 Oct 2026 through the Neon connector, statement by statement from `prisma/migrations/*/migration.sql`, with `_prisma_migrations` rows identical to `prisma migrate deploy` (checksums = SHA-256 of each file; verified locally: `prisma migrate status` → up to date, schema dump identical). The build applies new migrations only when the build variable `MIGRATION_DATABASE_URL` is set; otherwise it prints a note and skips them — apply them before deploying code that needs them.
+
 **Settings in the Cloudflare dashboard** (Workers & Pages → `personal-financial-management`):
 
 1. **Plan:** Workers & Pages → Plans → **Workers Paid**.
-2. **Settings → Build → Build configuration:** Build command `npm run build` (on Workers Builds it runs the Cloudflare build automatically; `npm run cf:build` is equivalent); Deploy command `npx wrangler deploy`; root directory `/`.
-3. **Settings → Build → Variables and secrets** (used while building): `MIGRATION_DATABASE_URL` (secret) = Neon owner, connection pooling **off**.
-4. **Settings → Variables and Secrets** (used by the running app; type **Secret** for the first three):
-   - `DATABASE_URL` = `postgresql://finance_app:<app password>@<Neon pooled host>/neondb?sslmode=verify-full`
-   - `AUTH_SECRET`, `CRON_SECRET` = each `openssl rand -base64 32`
-   - `TRUSTED_IP_HEADER` = `cf-connecting-ip`
-   - `AUTH_URL` = the worker's address, e.g. `https://personal-financial-management.<account>.workers.dev`
-5. Rotate the two Neon passwords first if they were ever shared (see the Vercel section, steps 1–2).
-6. **Deployments → Retry build** (or push to `main`). Then verify: `/api/health`, and `RELEASE_URL=… RELEASE_CRON_SECRET=… npm run release:check`.
+2. **Settings → Build:** Build command `npm run build`, Deploy command `npx wrangler deploy` (defaults are fine).
+3. **Settings → Variables and Secrets → Add**, type **Secret**: `DATABASE_URL` (`finance_app`, pooled host, `?sslmode=verify-full`), `AUTH_SECRET`, `CRON_SECRET` (each `openssl rand -base64 32`).
+4. Non-secret settings come from `wrangler.jsonc` (`vars`): `TRUSTED_IP_HEADER=cf-connecting-ip`, `AUTH_TRUST_HOST=true` (Auth.js uses the request's own address, so `AUTH_URL` is optional).
+5. **Deployments → Retry build.** Then verify: `/api/health`, and `RELEASE_URL=… RELEASE_CRON_SECRET=… npm run release:check`.
 
 Verified locally on the workerd runtime (`npm run cf:build`, then `npm run cf:preview` with a `.dev.vars` file): health, release checks 4/4, the scheduled handler, and the full end-to-end suite (see docs/QA_REPORT.md).
 

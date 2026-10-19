@@ -15,4 +15,13 @@
   // a page makes several queries, each a round trip to the database.
   "placement": { "mode": "smart" },
   "observability": { "enabled": true },
+  // Non-secret settings. Secrets (DATABASE_URL, AUTH_SECRET, CRON_SECRET) are
+  // added in the dashboard: Settings → Variables and Secrets.
+  "vars": {
+    // Cloudflare's header with the visitor's real IP (per-IP rate limits).
+    "TRUSTED_IP_HEADER": "cf-connecting-ip",
+    // Auth.js uses the address the request came in on (any workers.dev or
+    // custom domain), so AUTH_URL does not have to be set by hand.
+    "AUTH_TRUST_HOST": "true",
+  },
 }

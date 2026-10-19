@@ -2,7 +2,8 @@
 # Build for Cloudflare Workers (docs/DEPLOYMENT.md §Cloudflare).
 #
 # 1. Production builds only (Workers Builds on the `main` branch): apply
-#    pending database migrations with MIGRATION_DATABASE_URL (build variable).
+#    pending database migrations when MIGRATION_DATABASE_URL (build variable)
+#    is set; otherwise they are applied separately and the build says so.
 # 2. Generate the Prisma client for the workerd runtime (its query engine is
 #    imported as a WebAssembly module; Workers cannot compile it at runtime).
 # 3. Build the Next.js app with the OpenNext adapter into .open-next/, without
@@ -16,11 +17,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [ "${WORKERS_CI_BRANCH:-}" = "main" ] || [ "${CF_RUN_MIGRATIONS:-}" = "1" ]; then
-  if [ -z "${MIGRATION_DATABASE_URL:-}" ]; then
-    echo "MIGRATION_DATABASE_URL is not set: add it as a build variable (Settings → Build)." >&2
-    exit 1
+  if [ -n "${MIGRATION_DATABASE_URL:-}" ]; then
+    npx prisma migrate deploy
+  else
+    # Without the owner's address the schema is managed outside the build
+    # (docs/DEPLOYMENT.md §Cloudflare: migrations applied through Neon).
+    echo "NOTE: MIGRATION_DATABASE_URL is not set, so database migrations are not applied by this build." >&2
+    echo "      Apply new migrations before deploying code that needs them (docs/DEPLOYMENT.md)." >&2
   fi
-  npx prisma migrate deploy
 fi
 
 restore() {
