@@ -288,7 +288,9 @@ test("a dropped connection while saving shows a message and keeps what was typed
 
   await context.setOffline(true);
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("We couldn't reach the server");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "We couldn't reach the server" }),
+  ).toBeVisible();
   await expect(page.getByLabel("Amount")).toHaveValue("7.25");
   const save = page.getByRole("button", { name: "Save", exact: true });
   await expect(save).toBeEnabled();
