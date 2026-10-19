@@ -126,8 +126,6 @@ describe("registration mode", () => {
   it("closed admits nobody and rejects unknown modes", () => {
     const env = parseEnv({ ...valid, REGISTRATION_MODE: "closed" });
     expect(registrationAllowed("owner@example.com", env)).toBe(false);
-    expect(() => parseEnv({ ...valid, REGISTRATION_MODE: "invite" })).toThrow(
-      /REGISTRATION_MODE/,
-    );
+    expect(() => parseEnv({ ...valid, REGISTRATION_MODE: "invite" })).toThrow(/REGISTRATION_MODE/);
   });
 });
