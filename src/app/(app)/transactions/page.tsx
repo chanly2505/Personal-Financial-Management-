@@ -42,7 +42,7 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
     : "/transactions/new";
   const addButton = (
     <Button asChild>
-      <Link href={addHref}>
+      <Link href={addHref} aria-keyshortcuts="Alt+N" title="Add transaction (Alt+N)">
         <Plus aria-hidden="true" />
         Add transaction
       </Link>

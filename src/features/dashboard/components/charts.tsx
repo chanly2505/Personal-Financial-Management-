@@ -12,6 +12,9 @@ import {
 } from "recharts";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 
+import { useFormatPrefs } from "@/components/shared/format-provider";
+import { withSeparators } from "@/lib/format/number";
+
 /**
  * Recharts column charts for the dashboard. They receive already-aggregated,
  * server-computed points (numbers for geometry plus formatted text for every
@@ -32,6 +35,11 @@ export interface ChartPoint {
 }
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+/** Axis ticks ("1.5K") with the user's decimal separator (UX-13). */
+function useTickFormatter() {
+  const prefs = useFormatPrefs();
+  return (v: number) => withSeparators(compact.formatToParts(v), prefs);
+}
 const axisTick = { fill: "var(--muted-foreground)", fontSize: 12 };
 
 function TooltipBox({
@@ -95,6 +103,7 @@ export function CashFlowChart({
   /** Draw both series, or only income / only expenses (reports). */
   series?: "both" | "income" | "expense";
 }) {
+  const formatTick = useTickFormatter();
   const showIncome = series !== "expense";
   const showExpense = series !== "income";
   const tooltip = ({ active, payload }: TooltipContentProps<ValueType, NameType>) => {
@@ -142,7 +151,7 @@ export function CashFlowChart({
               tickLine={false}
               axisLine={false}
               width={48}
-              tickFormatter={(v: number) => compact.format(v)}
+              tickFormatter={formatTick}
             />
             <Tooltip content={tooltip} cursor={{ fill: "var(--muted)", opacity: 0.6 }} />
             {showIncome && (
@@ -168,13 +177,13 @@ export function CashFlowChart({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <figcaption className="sr-only">{summary}</figcaption>
     </figure>
   );
 }
 
 /** Spending per month: one series, one colour; no legend (the title names it). */
 export function TrendChart({ points, summary }: { points: ChartPoint[]; summary: string }) {
+  const formatTick = useTickFormatter();
   const tooltip = ({ active, payload }: TooltipContentProps<ValueType, NameType>) => {
     const point = active ? (payload?.[0]?.payload as ChartPoint | undefined) : undefined;
     if (!point) return null;
@@ -207,7 +216,7 @@ export function TrendChart({ points, summary }: { points: ChartPoint[]; summary:
               tickLine={false}
               axisLine={false}
               width={48}
-              tickFormatter={(v: number) => compact.format(v)}
+              tickFormatter={formatTick}
             />
             <Tooltip content={tooltip} cursor={{ fill: "var(--muted)", opacity: 0.6 }} />
             <Bar
@@ -221,7 +230,6 @@ export function TrendChart({ points, summary }: { points: ChartPoint[]; summary:
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <figcaption className="sr-only">{summary}</figcaption>
     </figure>
   );
 }

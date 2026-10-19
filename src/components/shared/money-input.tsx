@@ -14,14 +14,18 @@ export function MoneyInput({
   currency,
   allowNegative = false,
   className,
+  "aria-describedby": describedBy,
   ...props
 }: Omit<React.ComponentProps<"input">, "type"> & {
   currency: CurrencyCode;
   allowNegative?: boolean;
 }) {
+  const currencyId = React.useId();
   return (
     <div className="relative">
+      {/* Also announced: the field's description includes the currency (UX-13). */}
       <span
+        id={currencyId}
         aria-hidden="true"
         className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground"
       >
@@ -33,6 +37,7 @@ export function MoneyInput({
         autoComplete="off"
         placeholder={currency === "KHR" ? "0" : "0.00"}
         className={cn("pl-12 amount", className)}
+        aria-describedby={[currencyId, describedBy].filter(Boolean).join(" ")}
         {...props}
       />
     </div>

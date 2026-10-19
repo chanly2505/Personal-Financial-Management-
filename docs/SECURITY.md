@@ -121,7 +121,7 @@ Fonts are self-hosted by `next/font` at build time, so no third-party origins ar
 
 - All secrets come from environment variables, validated in `src/server/env.ts`; the app refuses to start if a required one is missing or malformed.
 - `.env*` files are git-ignored except `.env.example`, which documents every variable with placeholder values only.
-- No secrets in source, tests, logs, error messages or client bundles. Only variables prefixed `NEXT_PUBLIC_` reach the browser, and none are secret (there are none in v1).
+- No secrets in source, tests, logs, error messages or client bundles. Only variables prefixed `NEXT_PUBLIC_` reach the browser, and none are secret: the only ones are the Firebase web config identifiers (`NEXT_PUBLIC_FIREBASE_*`, public by design; see below).
 - Development database credentials in `.env.example` are local-only placeholders and must never be used in a deployed environment.
 - Development-only settings (`MAIL_TRANSPORT=console`) live in `.env.development`, which `next build`/`next start` never load; env validation also refuses `console` in production.
 
@@ -189,3 +189,7 @@ Each phase's exit criteria include:
 | Settings and data export (Phase 10): settings saved only for the session user (client-supplied ids stripped); email not changeable without verification (not offered); password change needs the current password; `/api/me/export` requires a session, contains only the user's rows and no password hash, session version, tokens or idempotency keys, `no-store`; account deletion needs password + DELETE and removes every owned row | `tests/integration/authorization.test.ts` (profile and preferences ignore a client `userId`), `settings.test.ts` "never changes another user's settings", "contains every record of the user, exact amounts, and no secrets", "removes every kind of record…" · `e2e/settings.spec.ts` "all data downloads as JSON without secrets" |
 | Phase 11 audit (docs/QA_REPORT.md): timezones readable by the database (one user cannot stop others' recurring postings); archived accounts frozen under lock; goal currency/running-balance rules under lock; registration limited without a client IP; rate-limit pruning; single-use reset tokens under concurrency; least-privilege Neon role created by SQL | `tests/integration/audit-regressions.test.ts` (QA-01…QA-14), `tests/integration/reconciliation.test.ts`, `e2e/accounts.spec.ts` |
 | Ledger search input is parameterised and LIKE wildcards are escaped; invalid filter params are dropped | `ledger.test.ts` "searches … literally", "ignores invalid filter values" |
+
+## Session lifetime (decision, Oct 2026)
+
+Sessions last 7 days from sign-in (absolute) and end on sign-out, "Sign out everywhere" and password change. There is **no idle timeout**: the app is used by one owner on personal devices, and a short idle limit would mostly mean re-typing a long password on the phone. Revisit if the app gets more users or is used on shared computers (SEC-11 in docs/security-audit.md).

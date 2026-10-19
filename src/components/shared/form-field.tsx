@@ -44,14 +44,9 @@ export function FormField({
   return (
     <div data-slot="form-field" className={cn("grid gap-2", className)}>
       <div className="flex items-center gap-1">
+        {/* No asterisk (UX-14): the app marks the few optional fields "(optional)"
+            instead; required controls still carry aria-required. */}
         <Label htmlFor={id}>{label}</Label>
-        {/* Visual marker only: the control itself carries aria-required. Kept outside
-            the <label> so the accessible name is exactly the label text. */}
-        {required && (
-          <span className="text-sm text-muted-foreground" aria-hidden="true">
-            *
-          </span>
-        )}
       </div>
       {description && (
         <p id={descriptionId} className="-mt-1 text-xs text-muted-foreground">

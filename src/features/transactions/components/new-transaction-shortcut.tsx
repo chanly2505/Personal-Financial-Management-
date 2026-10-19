@@ -3,12 +3,17 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-/** Keyboard shortcut: "n" opens the new-transaction form (ignored while typing). */
+/**
+ * Keyboard shortcut: Alt+N (Option+N on a Mac) opens the new-transaction form.
+ * A modifier is required so speech input or a stray key press never navigates
+ * (WCAG 2.1.4, UX-12). Ignored while typing or in dialogs.
+ */
 export function NewTransactionShortcut({ href = "/transactions/new" }: { href?: string }) {
   const router = useRouter();
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key !== "n" || event.metaKey || event.ctrlKey || event.altKey) return;
+      // event.code, not event.key: Option+N on a Mac types "˜".
+      if (event.code !== "KeyN" || !event.altKey || event.metaKey || event.ctrlKey) return;
       const target = event.target as HTMLElement | null;
       if (
         target?.closest(
