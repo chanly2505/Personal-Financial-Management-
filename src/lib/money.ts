@@ -60,6 +60,12 @@ const AMOUNT_PATTERN = /^(?<int>\d{1,3}(?:,\d{3})+|\d+)(?:\.(?<frac>\d+))?$/;
  * exactly three digits ("1,234") is always a thousands separator, as before, so
  * no input that was valid changes meaning; anything else is left for the
  * pattern below to accept or reject.
+ *
+ * Dots as thousands separators without a decimal part (FIN-8) are accepted
+ * only where they cannot be a decimal point: two or more groups ("4.100.000"
+ * was rejected before). A single group ("1.500") stays ambiguous and is still
+ * rejected rather than guessed: it may be a mistyped decimal, and reading it as
+ * thousands would record an amount 1,000 times too large.
  */
 function normalizeSeparators(text: string): string {
   const t = text.replace(/[\u00A0\u202F]/g, " ");
@@ -67,6 +73,7 @@ function normalizeSeparators(text: string): string {
   if (spaced) return spaced[1]!.replaceAll(" ", "") + (spaced[2] ? `.${spaced[2]}` : "");
   const dotted = /^(\d{1,3}(?:\.\d{3})+),(\d{1,2})$/.exec(t);
   if (dotted) return `${dotted[1]!.replaceAll(".", "")}.${dotted[2]}`;
+  if (/^\d{1,3}(?:\.\d{3}){2,}$/.test(t)) return t.replaceAll(".", "");
   const comma = /^(\d+),(\d{1,2})$/.exec(t);
   if (comma) return `${comma[1]}.${comma[2]}`;
   return t;

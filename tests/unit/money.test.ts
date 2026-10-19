@@ -36,7 +36,9 @@ describe("parseMoney", () => {
     ["1,23.00", "USD"],
     ["1,2345", "USD"],
     ["12,5", "KHR"],
-    ["1.234", "KHR"],
+    ["1.234", "KHR"], // one dotted group may be a mistyped decimal: never guessed
+    ["1.500", "KHR"],
+    ["1.234.5", "USD"],
     ["1.234,567", "USD"],
     ["$12", "USD"],
     ["Infinity", "USD"],
@@ -146,6 +148,9 @@ describe("comma-decimal input (number format preferences)", () => {
     ["1 234,56", "USD", 123456n],
     ["1\u202F234,56", "USD", 123456n],
     ["4 100 000", "KHR", 4100000n],
+    // Dotted thousands without decimals: only when unambiguous (FIN-8).
+    ["4.100.000", "KHR", 4100000n],
+    ["1.234.567", "USD", 123456700n],
     // A comma before exactly three digits stays a thousands separator.
     ["1,234", "USD", 123400n],
     ["1,234", "KHR", 1234n],

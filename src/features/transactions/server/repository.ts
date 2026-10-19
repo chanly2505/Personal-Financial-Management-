@@ -4,7 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { type IsoDate, dbDateToIso, isoDateToDb } from "@/lib/dates";
 import type { CurrencyCode } from "@/lib/money";
 import { prisma } from "@/server/db";
-import { ConflictError, NotFoundError } from "@/server/errors";
+import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
 import { type EntryType, type LedgerKind, type LedgerSort, PAGE_SIZE } from "../constants";
 import type { EntryDetail, LedgerItem, TransferDetail } from "../types";
@@ -49,6 +49,23 @@ async function lockAccounts(tx: Tx, userId: string, ids: string[]) {
       { id: r.id, name: r.name, currency: r.currency, isArchived: r.is_archived },
     ]),
   );
+}
+
+export const ARCHIVED_CATEGORY = "This category is archived. Choose another, or restore it first.";
+
+/**
+ * Re-check, under a row lock, that a newly chosen category is still active.
+ * Archiving updates the row, so it waits for this write (or this write sees it
+ * archived); a record can no longer slip into a just-archived category (FIN-3).
+ */
+async function lockActiveCategory(tx: Tx, userId: string, categoryId: string) {
+  const rows = await tx.$queryRaw<{ is_archived: boolean }[]>`
+    SELECT is_archived FROM categories
+    WHERE user_id = ${userId}::uuid AND id = ${categoryId}::uuid
+    FOR SHARE`;
+  if (!rows[0] || rows[0].is_archived) {
+    throw new ValidationError(ARCHIVED_CATEGORY, { categoryId: ARCHIVED_CATEGORY });
+  }
 }
 
 /** Unlocked read of the user's accounts (for checks before a write starts). */
@@ -120,6 +137,7 @@ export async function createEntry(
   try {
     return await prisma.$transaction(async (tx) => {
       verify(await lockAccounts(tx, userId, [data.accountId]));
+      await lockActiveCategory(tx, userId, data.categoryId);
       const row = await tx.transaction.create({
         data: { userId, clientRequestId, ...entryData(data) },
         select: { id: true },
@@ -155,11 +173,14 @@ export async function updateEntry(
   expectedUpdatedAt: string,
   data: EntryWrite,
   verify: VerifyAccounts,
+  /** True when the edit picks a different category (keeping an archived one is allowed). */
+  categoryChanged = true,
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const current = await lockEntry(tx, userId, id);
     if (!sameVersion(current.updated_at, expectedUpdatedAt)) throw new ConflictError(STALE);
     verify(await lockAccounts(tx, userId, [current.account_id, data.accountId]));
+    if (categoryChanged) await lockActiveCategory(tx, userId, data.categoryId);
     await tx.transaction.update({ where: { id, userId }, data: entryData(data) });
   }, TX_OPTIONS);
 }

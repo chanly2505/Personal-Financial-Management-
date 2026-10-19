@@ -167,11 +167,18 @@ export async function updateEntry(
   // Keeping an archived category on an existing record is fine; switching to one is not.
   const keepCategoryId = input.type === existing.type ? existing.category.id : undefined;
   const { currency, ...data } = await prepareEntry(user, input, keepCategoryId);
-  await repo.updateEntry(user.id, input.id, input.expectedUpdatedAt, data, (accounts) => {
-    // Covers the old account too: moving a record off an archived account would change its balance.
-    assertAllActive(accounts);
-    requireAccount(accounts, data.accountId, "accountId");
-  });
+  await repo.updateEntry(
+    user.id,
+    input.id,
+    input.expectedUpdatedAt,
+    data,
+    (accounts) => {
+      // Covers the old account too: moving a record off an archived account would change its balance.
+      assertAllActive(accounts);
+      requireAccount(accounts, data.accountId, "accountId");
+    },
+    data.categoryId !== keepCategoryId,
+  );
   // Both the budget it left and the budget it joined change.
   await syncAlertsForExpenses(user.id, [
     ...budgetKey({ ...existing, categoryId: existing.category.id }),

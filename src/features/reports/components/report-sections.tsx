@@ -14,7 +14,13 @@ import { type CurrencyCode, formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 import type { Granularity } from "../constants";
-import { GRANULARITY_COLUMN, GRANULARITY_UNIT, bucketLabel, bucketTitle } from "../format";
+import {
+  GRANULARITY_COLUMN,
+  GRANULARITY_UNIT,
+  bucketLabel,
+  bucketTitle,
+  changePercent,
+} from "../format";
 import type {
   AccountHistory,
   BreakdownLine,
@@ -641,16 +647,6 @@ export function BudgetReport({ performance }: { performance: BudgetPerformance }
 /* ------------------------------------------------------------------------- */
 /* Period-over-period comparison                                              */
 /* ------------------------------------------------------------------------- */
-
-/** Change in words and signs: "+12.5%", "−3.0%", "New" (nothing before), "No change". */
-function changePercent(current: bigint, previous: bigint): string {
-  if (current === previous) return "No change";
-  if (previous === 0n) return "New";
-  const scaled = ((current - previous) * 2000n) / (previous < 0n ? -previous : previous);
-  const tenths = scaled >= 0n ? (scaled + 1n) / 2n : (scaled - 1n) / 2n;
-  const value = Number(tenths) / 10;
-  return `${value > 0 ? "+" : "−"}${formatPercent(Math.abs(value))}`;
-}
 
 function ChangeCell({
   current,

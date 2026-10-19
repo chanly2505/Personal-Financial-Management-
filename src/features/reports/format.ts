@@ -1,5 +1,6 @@
 import type { IsoDate } from "@/lib/dates";
 import { formatDate, formatDayMonth, formatMonthShort, formatMonthYear } from "@/lib/format/dates";
+import { formatPercent } from "@/lib/format/number";
 
 import type { Granularity } from "./constants";
 
@@ -41,3 +42,17 @@ export const GRANULARITY_COLUMN: Record<Granularity, string> = {
   month: "Month",
   year: "Year",
 };
+
+/**
+ * Change in words and signs: "+12.5%", "−3.0%", "New" (nothing before), "No change".
+ * The sign comes from the exact amounts, not the rounded percentage, so a tiny
+ * increase reads "+0.0%", never "−0.0%" (FIN-2).
+ */
+export function changePercent(current: bigint, previous: bigint): string {
+  if (current === previous) return "No change";
+  if (previous === 0n) return "New";
+  const scaled = ((current - previous) * 2000n) / (previous < 0n ? -previous : previous);
+  const tenths = scaled >= 0n ? (scaled + 1n) / 2n : (scaled - 1n) / 2n;
+  const value = Number(tenths < 0n ? -tenths : tenths) / 10;
+  return `${current > previous ? "+" : "−"}${formatPercent(value)}`;
+}

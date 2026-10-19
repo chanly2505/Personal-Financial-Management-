@@ -19,6 +19,7 @@ import {
   updateEntry,
   updateTransfer,
 } from "@/features/transactions/server/service";
+import * as repo from "@/features/transactions/server/repository";
 import { addDays, todayInTimeZone } from "@/lib/dates";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
@@ -657,5 +658,53 @@ describe("concurrent operations", () => {
         expect(account.balanceMinor).toBe(0n);
       }
     }
+  });
+});
+
+describe("archived categories under the write lock (FIN-3)", () => {
+  // Simulates the race: the service's early check ran while the category was
+  // still active, and the archive committed before the write took its locks.
+  it("refuses to create or move a record into a category archived after the check", async () => {
+    const user = await newUser();
+    const bank = await usdAccount(user, "ABA", "100");
+    const food = await category(user.id, "EXPENSE", "Food and drinks");
+    const other = await category(user.id, "EXPENSE", "Shopping");
+    const { id } = await expense(user, bank, "5", { categoryId: other });
+    await archiveCategory(user, food);
+
+    const data = {
+      type: "EXPENSE" as const,
+      accountId: bank,
+      categoryId: food,
+      amountMinor: 700n,
+      occurredOn: today(),
+      payee: null,
+      note: null,
+    };
+    await expect(repo.createEntry(user.id, randomUUID(), data, () => {})).rejects.toBeInstanceOf(
+      ValidationError,
+    );
+    await expect(
+      repo.updateEntry(user.id, id, await version(id), data, () => {}, true),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(await prisma.transaction.count({ where: { categoryId: food } })).toBe(0);
+  });
+
+  it("still lets an existing record keep a category that was archived later", async () => {
+    const user = await newUser();
+    const bank = await usdAccount(user, "ABA", "100");
+    const food = await category(user.id, "EXPENSE", "Food and drinks");
+    const { id } = await expense(user, bank, "5", { categoryId: food });
+    await archiveCategory(user, food);
+    await updateEntry(user, {
+      id,
+      expectedUpdatedAt: await version(id),
+      type: "EXPENSE",
+      accountId: bank,
+      categoryId: food,
+      amount: "6",
+      occurredOn: today(),
+    });
+    expect((await prisma.transaction.findUniqueOrThrow({ where: { id } })).amountMinor).toBe(600n);
   });
 });
