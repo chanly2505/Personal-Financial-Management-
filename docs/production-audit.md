@@ -353,3 +353,21 @@ Implemented and tested on the branch; goes live only with the owner's approval.
 | PROD-10 | Partly | Node pinned to 22.x; Firebase kept because the owner asked for it |
 | PROD-6 | Owner action | Delete `TEST_DATABASE_URL` and `E2E_DATABASE_URL` from Railway (the connector has no delete) |
 | PROD-11 | Not changed | Documented: keep App Sleeping off; watch for `recurring.run_finished` |
+
+## P3 status (branch `audit/production-readiness`)
+
+| Finding | Status | Change |
+|---|---|---|
+| PROD-9 | Done | Cloudflare, Netlify and Vercel configuration, scripts and the `@opennextjs/cloudflare` / `wrangler` packages removed (276 packages; no other version changed); `db.ts` is a plain per-process client; docs trimmed to Railway |
+| SEC-7 | Done | `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` on `/api/*` |
+| — | Done | Privacy page corrected: data is kept by Railway and Neon in the eastern US (it said Vercel/Singapore) |
+| FIN-5 | Done | Docs and comments match the no-conversion policy; `convertMinor` marked reserved |
+| FIN-6 | Done | Hourly job reconciles current-month budget warnings |
+| FIN-7 | Done | JSON export: one read-only REPEATABLE READ transaction; both transfer amounts |
+| UX-12 | Done | Shortcut is Alt+N (`aria-keyshortcuts`) |
+| UX-13 | Done | Currency announced with amount fields; axis ticks use the user's separator |
+| UX-14 | Done | No asterisk; "(optional)" convention |
+| UX-15 | Done | Chart summary read once |
+| SEC-11 | Done (docs) | NEXT_PUBLIC statement corrected; no idle timeout, reasoning recorded |
+| SEC-10 | Waiting | Prisma 7.10.1 upgrade on or after 29 Oct 2026 |
+| FIN-9 | No change | Informational differences, documented in the PRD |
