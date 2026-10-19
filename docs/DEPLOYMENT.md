@@ -4,6 +4,8 @@
 
 ## Railway + Neon (current)
 
+**Live:** https://personal-financial-management-production-c29c.up.railway.app (Railway project `jubilant-unity`, region US East). Verified 2026-10-19: deploy healthy, app connected to Neon, owner registered and every page returned 200. Note: `DATABASE_URL` must be the Neon pooled address — a local `localhost` value makes `/api/health` report the database unreachable and sign-in fail with "Something went wrong".
+
 | | |
 |---|---|
 | Config | `railway.json`: start `npm start`, health check `/api/health` (a deploy only goes live when the database answers) |
