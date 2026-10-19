@@ -22,7 +22,7 @@ const primary = NAV_ITEMS.filter((i) => i.primaryOnMobile);
 const secondary = NAV_ITEMS.filter((i) => !i.primaryOnMobile);
 
 const itemClass =
-  "flex h-full flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset";
+  "flex h-full flex-1 flex-col items-center justify-center gap-1 text-xs font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset";
 
 /** Phone navigation: fixed bottom bar with four modules plus a "More" sheet. */
 export function MobileNav() {

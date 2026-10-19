@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, SlidersHorizontal } from "lucide-react";
@@ -54,6 +54,7 @@ export function LedgerFilters({
   categories: { id: string; name: string; type: "INCOME" | "EXPENSE"; isArchived: boolean }[];
 }) {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState(() => toDraft(filters));
   const active = activeFilterCount(filters);
   const [open, setOpen] = useState(active - (filters.q ? 1 : 0) > 0);
@@ -65,19 +66,22 @@ export function LedgerFilters({
     event.preventDefault();
     const pick = (value: string) =>
       value === ALL || value.trim() === "" ? undefined : value.trim();
-    router.push(
-      ledgerHref({
-        q: pick(draft.q),
-        kind: pick(draft.kind),
-        accountId: pick(draft.accountId),
-        categoryId: draft.kind === "TRANSFER" ? undefined : pick(draft.categoryId),
-        currency: pick(draft.currency),
-        from: pick(draft.from),
-        to: pick(draft.to),
-        min: pick(draft.min),
-        max: pick(draft.max),
-        sort: draft.sort,
-      }),
+    // A transition, so the Apply button shows it is busy while results load (UX-11).
+    startTransition(() =>
+      router.push(
+        ledgerHref({
+          q: pick(draft.q),
+          kind: pick(draft.kind),
+          accountId: pick(draft.accountId),
+          categoryId: draft.kind === "TRANSFER" ? undefined : pick(draft.categoryId),
+          currency: pick(draft.currency),
+          from: pick(draft.from),
+          to: pick(draft.to),
+          min: pick(draft.min),
+          max: pick(draft.max),
+          sort: draft.sort,
+        }),
+      ),
     );
   }
 
@@ -120,7 +124,9 @@ export function LedgerFilters({
             </span>
           )}
         </Button>
-        <Button type="submit">Apply</Button>
+        <Button type="submit" loading={pending}>
+          Apply
+        </Button>
       </div>
 
       <div
@@ -207,7 +213,9 @@ export function LedgerFilters({
           />
         </FormField>
         <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4">
-          <Button type="submit">Apply filters</Button>
+          <Button type="submit" loading={pending}>
+            Apply filters
+          </Button>
           {active > 0 && (
             <Button asChild variant="ghost">
               <Link href={ledgerHref({ sort: filters.sort })}>Clear filters</Link>

@@ -184,7 +184,7 @@ export function AccountForm(
         }
         error={errors.openingBalance?.message}
       >
-        <MoneyInput currency={currency} {...form.register("openingBalance")} />
+        <MoneyInput currency={currency} allowNegative {...form.register("openingBalance")} />
       </FormField>
 
       <FormAlert message={formError} />

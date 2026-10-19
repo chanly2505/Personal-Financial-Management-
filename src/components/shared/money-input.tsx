@@ -8,12 +8,17 @@ import { cn } from "@/lib/utils";
  * Text input for an amount, with the currency code as a visual prefix.
  * All props (id, aria-*, register()) go to the <input>, so it works as a
  * FormField child. Values stay strings; parse them with parseMoney.
+ * `allowNegative` uses the full keyboard: phone number pads have no minus key.
  */
 export function MoneyInput({
   currency,
+  allowNegative = false,
   className,
   ...props
-}: Omit<React.ComponentProps<"input">, "type"> & { currency: CurrencyCode }) {
+}: Omit<React.ComponentProps<"input">, "type"> & {
+  currency: CurrencyCode;
+  allowNegative?: boolean;
+}) {
   return (
     <div className="relative">
       <span
@@ -24,7 +29,7 @@ export function MoneyInput({
       </span>
       <Input
         type="text"
-        inputMode={currency === "KHR" ? "numeric" : "decimal"}
+        inputMode={allowNegative ? "text" : currency === "KHR" ? "numeric" : "decimal"}
         autoComplete="off"
         placeholder={currency === "KHR" ? "0" : "0.00"}
         className={cn("pl-12 amount", className)}

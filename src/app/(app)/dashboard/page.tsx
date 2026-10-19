@@ -243,6 +243,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           ))}
           {d.balances.length === 0 && (
             <EmptyState
+              headingLevel={3}
               icon={Wallet}
               title="No active accounts"
               description="Restore an archived account or add a new one."
@@ -319,6 +320,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 />
               ) : (
                 <EmptyState
+                  headingLevel={3}
                   icon={BarChart3}
                   title="No income or expenses in this period"
                   description="Choose another period, or add a transaction."
@@ -342,6 +344,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 />
               ) : (
                 <EmptyState
+                  headingLevel={3}
                   icon={PieChart}
                   title="No spending in this period"
                   className="border-none py-8"
@@ -369,6 +372,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 />
               ) : (
                 <EmptyState
+                  headingLevel={3}
                   icon={TrendingUp}
                   title="No spending in these months"
                   className="border-none py-8"
@@ -389,6 +393,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 <LedgerList items={d.recent} today={d.today} />
               ) : (
                 <EmptyState
+                  headingLevel={3}
                   icon={ArrowLeftRight}
                   title="Nothing recorded in this period"
                   action={addButton}
@@ -482,7 +487,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 Savings goals
               </h2>
               <p className="text-sm text-muted-foreground">
-                Money set aside so far. Your account balances don't change.
+                Money set aside so far. Your account balances don&apos;t change.
               </p>
             </div>
             <Button asChild variant="ghost" size="sm">

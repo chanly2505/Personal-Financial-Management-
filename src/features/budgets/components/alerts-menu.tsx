@@ -62,18 +62,7 @@ export function AlertsMenu({ unread, items }: { unread: number; items: AlertMenu
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)]">
-        <DropdownMenuLabel className="flex items-center justify-between">
-          Budget warnings
-          {unread > 0 && (
-            <button
-              type="button"
-              className="rounded text-xs font-normal text-primary underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-              onClick={() => markRead()}
-            >
-              Mark all read
-            </button>
-          )}
-        </DropdownMenuLabel>
+        <DropdownMenuLabel>Budget warnings</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {items.length === 0 ? (
           <p className="px-2 py-6 text-center text-sm text-muted-foreground">
@@ -110,6 +99,12 @@ export function AlertsMenu({ unread, items }: { unread: number; items: AlertMenu
           })
         )}
         <DropdownMenuSeparator />
+        {/* A menu item (not a button in the label) so arrow keys can reach it (UX-6). */}
+        {unread > 0 && (
+          <DropdownMenuItem className="justify-center text-sm" onSelect={() => markRead()}>
+            Mark all read
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild>
           <Link href="/budgets" className="justify-center text-sm">
             View budgets

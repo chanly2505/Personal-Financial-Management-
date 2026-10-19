@@ -132,8 +132,14 @@ test.describe("with accounts", () => {
     const menu = page.getByRole("menu");
     await expect(menu.getByText("Food and drinks: budget used up")).toBeVisible();
     await expect(menu.getByText("Food and drinks: 80% of budget used")).toBeVisible();
-    await menu.getByRole("button", { name: "Mark all read" }).click();
-    await expect(menu.getByRole("button", { name: "Mark all read" })).toHaveCount(0);
+    // Reachable with the arrow keys, like every other menu item (UX-6).
+    await page.keyboard.press("End");
+    await page.keyboard.press("ArrowUp");
+    await expect(menu.getByRole("menuitem", { name: "Mark all read" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(bell).toHaveAccessibleName("Budget warnings");
+    await bell.click();
+    await expect(page.getByRole("menuitem", { name: "Mark all read" })).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(bell).toHaveAccessibleName("Budget warnings");
   });

@@ -150,7 +150,8 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
 
           {ledger.total > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-              <p>
+              {/* Announced after filters change (UX-11). */}
+              <p role="status">
                 {formatInteger(ledger.total)}{" "}
                 {ledger.total === 1 ? "record matches" : "records match"}
               </p>

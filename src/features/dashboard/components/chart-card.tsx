@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 
 /**
  * A chart with its title, a one-line definition of what it shows, and a table
@@ -28,7 +28,10 @@ export function ChartCard({
     <Card className={className} aria-label={title} role="region">
       <CardHeader className="flex flex-row items-start justify-between gap-3">
         <div className="flex flex-col gap-1.5">
-          <CardTitle className="text-base">{title}</CardTitle>
+          {/* h3: cards sit under the page's h2 sections (dashboard, reports). */}
+          <h3 data-slot="card-title" className="text-base leading-none font-semibold">
+            {title}
+          </h3>
           <CardDescription>{description}</CardDescription>
         </div>
         {action}
