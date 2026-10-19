@@ -6,6 +6,10 @@
   "name": "personal-financial-management",
   "main": "cloudflare/worker.ts",
   "compatibility_date": "2026-10-01",
+  // Serve the app at https://personal-financial-management.<account>.workers.dev
+  // (kept on by every deploy); per-version preview URLs stay off.
+  "workers_dev": true,
+  "preview_urls": false,
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "personal-financial-management" }],
