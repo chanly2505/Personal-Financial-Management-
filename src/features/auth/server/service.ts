@@ -8,8 +8,8 @@ import {
   verifyPassword,
 } from "@/server/auth/password";
 import { RATE_LIMITS, consumeRateLimit, resetRateLimit } from "@/server/auth/rate-limit";
-import { passwordRecoveryEnabled } from "@/server/env";
-import { ConflictError, RateLimitedError, ValidationError } from "@/server/errors";
+import { passwordRecoveryEnabled, registrationAllowed } from "@/server/env";
+import { ConflictError, ForbiddenError, RateLimitedError, ValidationError } from "@/server/errors";
 import { describeError, logger } from "@/server/logger";
 import { appUrl, getMailer } from "@/server/mail";
 
@@ -31,8 +31,11 @@ export interface AuthenticatedUser {
   sessionVersion: number;
 }
 
-const REGISTRATION_CONFLICT =
-  "We couldn't create an account with these details. If you already have an account, sign in or reset your password.";
+const REGISTRATION_CONFLICT = passwordRecoveryEnabled
+  ? "We couldn't create an account with these details. If you already have an account, sign in or reset your password."
+  : "We couldn't create an account with these details. If you already have an account, sign in.";
+export const REGISTRATION_NOT_ALLOWED =
+  "New accounts can't be created here. Ask the person who runs this app.";
 const INVALID_RESET = "This reset link is invalid or has expired. Please request a new one.";
 
 async function enforce(rule: Parameters<typeof consumeRateLimit>[0], subject: string | undefined) {
@@ -85,6 +88,10 @@ export async function registerUser(
 ): Promise<AuthenticatedUser> {
   if (ip) await enforce(RATE_LIMITS.registerPerIp, ip);
   else await enforce(RATE_LIMITS.registerWithoutIp, "all");
+  if (!registrationAllowed(input.email)) {
+    logger.warn("auth.registration_refused");
+    throw new ForbiddenError(REGISTRATION_NOT_ALLOWED);
+  }
 
   const existing = await repo.findUserCredentialsByEmail(input.email);
   if (existing) throw new ConflictError(REGISTRATION_CONFLICT);
@@ -167,6 +174,21 @@ export async function changePassword(userId: string, currentPassword: string, ne
   await confirmPassword(userId, currentPassword, "currentPassword");
   await repo.replacePassword(userId, await hashPassword(newPassword));
   logger.info("auth.password_changed");
+}
+
+/**
+ * Owner-run recovery while no email provider is configured (scripts/reset-password.ts).
+ * Sets a random temporary password, signs the user out everywhere and clears the
+ * sign-in lockout. Returns the temporary password, or null for an unknown email.
+ */
+export async function resetPasswordByOperator(email: string): Promise<string | null> {
+  const user = await repo.findUserCredentialsByEmail(email.trim().toLowerCase());
+  if (!user) return null;
+  const temporary = randomBytes(12).toString("base64url");
+  await repo.replacePassword(user.id, await hashPassword(temporary));
+  await resetRateLimit(RATE_LIMITS.signInPerEmail, user.email);
+  logger.info("auth.password_reset_by_operator", { userId: user.id });
+  return temporary;
 }
 
 export async function signOutEverywhere(userId: string) {

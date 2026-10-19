@@ -27,6 +27,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
     "recurring:run": "tsx --conditions=react-server scripts/run-recurring.ts",
+    "user:reset-password": "tsx --conditions=react-server scripts/reset-password.ts",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",

@@ -7,7 +7,7 @@ import { AuthCard } from "@/features/auth/components/auth-card";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 import { safeCallbackPath } from "@/lib/safe-redirect";
 import { getCurrentUser } from "@/server/auth/session";
-import { passwordRecoveryEnabled } from "@/server/env";
+import { passwordRecoveryEnabled, registrationOpen } from "@/server/env";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -30,15 +30,17 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
       title="Sign in"
       description="Welcome back. Enter your details to continue."
       footer={
-        <>
-          New here?{" "}
-          <Link
-            href="/register"
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Create an account
-          </Link>
-        </>
+        registrationOpen ? (
+          <>
+            New here?{" "}
+            <Link
+              href="/register"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Create an account
+            </Link>
+          </>
+        ) : undefined
       }
     >
       <div className="flex flex-col gap-4">

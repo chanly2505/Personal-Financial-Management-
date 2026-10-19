@@ -52,13 +52,17 @@ export function SignInForm({
       <FormField id="password" label="Password" error={errors.password?.message}>
         <PasswordInput autoComplete="current-password" {...form.register("password")} />
       </FormField>
-      {recoveryEnabled && (
+      {recoveryEnabled ? (
         <Link
           href="/forgot-password"
           className="-mt-2 self-end rounded-sm text-sm text-primary underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
         >
           Forgot password?
         </Link>
+      ) : (
+        <p className="-mt-2 text-sm text-muted-foreground">
+          Forgot your password? Ask the person who runs this app to reset it.
+        </p>
       )}
       <FormAlert message={formError} />
       <Button type="submit" loading={isSubmitting} className="w-full">

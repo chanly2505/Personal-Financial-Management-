@@ -64,8 +64,31 @@ const envSchema = z
      * default elsewhere.
      */
     REGISTRATION_LIMIT_WITHOUT_IP: z.coerce.number().int().min(1).max(1_000_000).default(30),
+    /**
+     * Who may create an account. "open" (default): anyone. "allowlist": only the
+     * emails in REGISTRATION_ALLOWLIST. "closed": nobody; /register is hidden.
+     * Existing accounts are never affected.
+     */
+    REGISTRATION_MODE: z.enum(["open", "allowlist", "closed"]).default("open"),
+    /** Comma-separated emails allowed to register when REGISTRATION_MODE is "allowlist". */
+    REGISTRATION_ALLOWLIST: z
+      .string()
+      .optional()
+      .transform((value) =>
+        (value ?? "")
+          .split(",")
+          .map((email) => email.trim().toLowerCase())
+          .filter(Boolean),
+      ),
   })
   .superRefine((value, ctx) => {
+    if (value.REGISTRATION_MODE === "allowlist" && value.REGISTRATION_ALLOWLIST.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["REGISTRATION_ALLOWLIST"],
+        message: 'must list at least one email when REGISTRATION_MODE is "allowlist"',
+      });
+    }
     if (value.MAIL_TRANSPORT === "console" && value.NODE_ENV === "production") {
       ctx.addIssue({
         code: "custom",
@@ -121,3 +144,13 @@ export const env = parseEnv(process.env);
 
 /** True when users can recover a forgotten password. */
 export const passwordRecoveryEnabled = env.MAIL_TRANSPORT !== "none";
+
+/** True when anyone may create an account (the sign-in page links to /register). */
+export const registrationOpen = env.REGISTRATION_MODE === "open";
+
+/** Whether this (normalised, lower-case) email may create an account. */
+export function registrationAllowed(email: string, source: Env = env): boolean {
+  if (source.REGISTRATION_MODE === "open") return true;
+  if (source.REGISTRATION_MODE === "closed") return false;
+  return source.REGISTRATION_ALLOWLIST.includes(email.toLowerCase());
+}
