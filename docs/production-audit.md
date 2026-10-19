@@ -310,3 +310,20 @@ Severity scale: Critical (data loss or exposure now), High (likely serious harm 
 - UX-12 to UX-15.
 - SEC-7, SEC-11.
 - Prisma 7.10.1 upgrade on or after 29 Oct 2026 (SEC-10).
+
+## P1 status (branch `audit/production-readiness`)
+
+Implemented and tested on the branch; nothing below is live until the branch is merged into `main` with the owner's approval.
+
+| Finding | Status | Change |
+|---|---|---|
+| SEC-2, PROD-7, UX-4 | Done (code) | `REGISTRATION_MODE=open\|allowlist\|closed` + `REGISTRATION_ALLOWLIST`; sign-in page explains password resets; `npm run user:reset-password` for the owner. Railway variables to set at go-live: `REGISTRATION_MODE=allowlist`, `REGISTRATION_ALLOWLIST=<owner email>` |
+| UX-1 | Done | `callAction()` in every form and action menu; offline e2e test |
+| FIN-1 | Done (needs migration `20261019120000_recurring_client_request_id`, additive) | One rule per form submission; race test |
+| SEC-5 | Done | Malformed ids → "Not found" for accounts, transactions, goals, recurring, budgets |
+| PROD-2 | Done (code); needs `MIGRATION_DATABASE_URL` on Railway set to the Neon owner address before merging | `railway.json` pre-deploy runs `scripts/migrate-deploy.sh` |
+| PROD-3 | Done (code); owner to turn on Railway "Wait for CI" | `.github/workflows/ci.yml` |
+| PROD-4 | Partly | Manual Neon snapshot taken 19 Oct 2026. Scheduled snapshots are not available on the Neon Free plan, and point-in-time history is 6 hours. Remaining: weekly `pg_dump` from the Mac, or a paid Neon plan |
+| PROD-8 | Done | `/api/health` reports the Railway commit |
+| PROD-1, SEC-4 | Owner action | Delete or disconnect the Cloudflare Worker and any Netlify/Vercel projects; then rotate the `finance_app` password and `AUTH_SECRET` |
+| SEC-1 | Partly | Registration abuse is removed by the allowlist. The `X-Real-IP` spoofing test needs requests to the live site, which this environment's network policy blocks; per-email sign-in limits still protect each account. A global failed-sign-in cap was **not** added: it would let anyone lock the owner out |
