@@ -27,7 +27,7 @@ export default async function GoalsPage() {
     <PageContainer>
       <PageHeader
         title="Savings goals"
-        description="Targets you're saving toward. Setting money aside only earmarks it — your account balances don't change."
+        description="Targets you're saving toward. Setting money aside only marks it for the goal — your account balances don't change."
         actions={active.length + archived.length > 0 ? addButton : undefined}
       />
       {active.length + archived.length === 0 ? (

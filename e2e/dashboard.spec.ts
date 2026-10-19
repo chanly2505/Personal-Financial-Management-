@@ -106,11 +106,13 @@ test.describe("with records", () => {
   test("summarises this month per currency, excluding transfers", async ({ page }) => {
     await expect(tile(page, "Income · USD")).toContainText("$1,000.00");
     await expect(tile(page, "Expenses · USD")).toContainText("$300.00");
-    await expect(tile(page, "Net cash flow · USD")).toContainText("$700.00");
-    await expect(tile(page, "Savings rate · USD")).toContainText("70.0%");
+    await expect(tile(page, "Left over · USD")).toContainText("$700.00");
+    await expect(tile(page, "Share of income kept · USD")).toContainText("70.0%");
     await expect(tile(page, "Expenses · KHR")).toContainText("៛20,000");
-    await expect(tile(page, "Savings rate · KHR")).toContainText("—");
-    await expect(tile(page, "Savings rate · KHR")).toContainText("No income in this period");
+    await expect(tile(page, "Share of income kept · KHR")).toContainText("—");
+    await expect(tile(page, "Share of income kept · KHR")).toContainText(
+      "No income in this period",
+    );
 
     // Balances are today's, separate from the period, and include last month:
     // ABA 1,000 − 250 − 50 − 100 + 500 − 125 = 975.00; Wing 100.00; total 1,075.00.
@@ -144,8 +146,8 @@ test.describe("with records", () => {
     await expect(page).toHaveURL(/period=last_month/);
     await expect(tile(page, "Income · USD")).toContainText("$500.00");
     await expect(tile(page, "Expenses · USD")).toContainText("$125.00");
-    await expect(tile(page, "Net cash flow · USD")).toContainText("$375.00");
-    await expect(tile(page, "Savings rate · USD")).toContainText("75.0%");
+    await expect(tile(page, "Left over · USD")).toContainText("$375.00");
+    await expect(tile(page, "Share of income kept · USD")).toContainText("75.0%");
     await expect(tile(page, "Expenses · KHR")).toContainText("៛0");
     const recent = page.getByRole("region", { name: "Recent transactions" });
     await expect(recent.getByText("Employer (last month)")).toBeVisible();

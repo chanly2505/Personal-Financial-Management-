@@ -237,15 +237,14 @@ export async function createRecurring(
   };
   if (input.catchUp && data.startOn < today && data.startOn < addDays(today, -366)) {
     const message =
-      "Past occurrences can be recorded for up to one year back. Choose a later start date.";
+      "Past dates can be recorded for up to one year back. Choose a later start date.";
     throw new ValidationError(message, { startOn: message });
   }
   const next = input.catchUp
     ? nextScheduled(schedule, data.startOn)
     : nextScheduled(schedule, today);
   if (!next) {
-    const message =
-      "This schedule has no dates left. Change the end date, or record past occurrences.";
+    const message = "This schedule has no dates left. Change the end date, or record past dates.";
     throw new ValidationError(message, { endOn: message });
   }
   return repo.createRule(user.id, data, next, input.clientRequestId);

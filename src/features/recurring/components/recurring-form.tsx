@@ -300,14 +300,14 @@ export function RecurringForm(props: Props) {
             {...form.register("catchUp")}
           />
           <span>
-            Also record the {past.length} past {past.length === 1 ? "occurrence" : "occurrences"} (
+            Also record the {past.length} past {past.length === 1 ? "date" : "dates"} (
             {formatCalendarDate(past[0]!, undefined, prefs)}
             {past.length > 1 &&
               ` – ${formatCalendarDate(past[past.length - 1]!, undefined, prefs)}`}
             ).
             <span className="block text-xs text-muted-foreground">
-              Off by default: past dates are only recorded if you choose this. They post on the next
-              scheduled run.
+              Off by default: past dates are only recorded if you choose this. They are added within
+              the hour.
             </span>
           </span>
         </label>

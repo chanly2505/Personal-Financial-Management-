@@ -54,7 +54,10 @@ export default async function ReportsPage({ searchParams }: PageProps<"/reports"
   if (accounts.length === 0) {
     return (
       <PageContainer>
-        <PageHeader title="Reports" description="Income, spending and cash flow over time." />
+        <PageHeader
+          title="Reports"
+          description="Income, spending and money in and out over time."
+        />
         <EmptyState
           icon={Wallet}
           title="Nothing to report yet"
@@ -159,7 +162,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/reports"
     <PageContainer className="group/reports">
       <PageHeader
         title="Reports"
-        description="Income, spending and cash flow over time, from your recorded transactions."
+        description="Income, spending and money in and out over time, from your recorded transactions."
         actions={exportAction}
       />
 

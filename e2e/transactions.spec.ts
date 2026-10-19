@@ -9,7 +9,7 @@ import { expect, newUser, register, test } from "./fixtures";
 async function addAccount(page: Page, preset: string, opening: string) {
   await page.goto("/accounts/new");
   await page.getByRole("button", { name: preset, exact: true }).click();
-  await page.getByLabel("Opening balance").fill(opening);
+  await page.getByLabel("Starting balance").fill(opening);
   await page.getByRole("button", { name: "Add account" }).click();
   await expect(page).toHaveURL(/\/accounts\/[0-9a-f-]{36}$/);
   return page.url().split("/").pop() ?? "";

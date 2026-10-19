@@ -44,7 +44,7 @@ function toView(
     ...row,
     ...progress,
     accountWarning: short
-      ? `Goals linked to ${row.account!.name} earmark ${formatMoney(short.earmarkedMinor, row.currency)}, but it holds ${formatMoney(short.balanceMinor, row.currency)}.`
+      ? `Goals linked to ${row.account!.name} have ${formatMoney(short.earmarkedMinor, row.currency)} set aside, but it holds ${formatMoney(short.balanceMinor, row.currency)}.`
       : null,
   };
 }

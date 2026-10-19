@@ -98,7 +98,7 @@ export default async function AccountDetailPage({ params }: PageProps<"/accounts
               </div>
             </div>
             <dl className="grid grid-cols-2 gap-y-2">
-              <dt className="text-muted-foreground">Opening balance</dt>
+              <dt className="text-muted-foreground">Starting balance</dt>
               <dd className="text-right">
                 <Money minor={account.openingBalanceMinor} currency={account.currency} />
               </dd>

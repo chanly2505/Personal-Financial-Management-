@@ -84,11 +84,11 @@ function PeriodSummary({ totals, multi }: { totals: PeriodTotals; multi: boolean
       <StatTile label={`Expenses${suffix}`}>
         <Money minor={totals.expenseMinor} currency={c} />
       </StatTile>
-      <StatTile label={`Net cash flow${suffix}`} note="Income − expenses">
+      <StatTile label={`Left over${suffix}`} note="Income − expenses">
         <Money minor={totals.netMinor} currency={c} />
       </StatTile>
       <StatTile
-        label={`Savings rate${suffix}`}
+        label={`Share of income kept${suffix}`}
         note={
           totals.savingsRatePercent === null
             ? "No income in this period"
@@ -208,6 +208,48 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         description="Your balances, income and spending at a glance."
         actions={<div className="hidden md:block">{addButton}</div>}
       />
+
+      <section aria-labelledby="balances-heading" className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 id="balances-heading" className="text-lg font-semibold">
+            Balances today
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            What your active accounts hold now. The period you choose below does not change these.
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {d.balances.map((b) => (
+            <ChartCard
+              key={b.currency}
+              title={`Total in ${currencyName(b.currency)}`}
+              description={`${b.accountCount} active ${b.accountCount === 1 ? "account" : "accounts"}`}
+            >
+              <p className="text-3xl font-semibold">
+                <Money minor={b.balanceMinor} currency={b.currency} />
+              </p>
+              <BarList
+                label={`Account balances in ${b.currency}`}
+                items={d.accounts
+                  .filter((a) => a.currency === b.currency)
+                  .map((a) => ({
+                    key: a.id,
+                    label: a.name,
+                    value: toChartNumber(a.balanceMinor, a.currency),
+                    valueText: formatMoney(a.balanceMinor, a.currency),
+                  }))}
+              />
+            </ChartCard>
+          ))}
+          {d.balances.length === 0 && (
+            <EmptyState
+              icon={Wallet}
+              title="No active accounts"
+              description="Restore an archived account or add a new one."
+            />
+          )}
+        </div>
+      </section>
 
       <PeriodPicker
         preset={period.preset}
@@ -440,7 +482,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 Savings goals
               </h2>
               <p className="text-sm text-muted-foreground">
-                Money set aside so far — earmarked, not taken out of your balances.
+                Money set aside so far. Your account balances don't change.
               </p>
             </div>
             <Button asChild variant="ghost" size="sm">
@@ -460,48 +502,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
               ))}
             </div>
           )}
-        </section>
-
-        <section aria-labelledby="balances-heading" className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <h2 id="balances-heading" className="text-lg font-semibold">
-              Balances today
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              What your active accounts hold now — not affected by the period above.
-            </p>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {d.balances.map((b) => (
-              <ChartCard
-                key={b.currency}
-                title={`Total in ${currencyName(b.currency)}`}
-                description={`${b.accountCount} active ${b.accountCount === 1 ? "account" : "accounts"}`}
-              >
-                <p className="text-3xl font-semibold">
-                  <Money minor={b.balanceMinor} currency={b.currency} />
-                </p>
-                <BarList
-                  label={`Account balances in ${b.currency}`}
-                  items={d.accounts
-                    .filter((a) => a.currency === b.currency)
-                    .map((a) => ({
-                      key: a.id,
-                      label: a.name,
-                      value: toChartNumber(a.balanceMinor, a.currency),
-                      valueText: formatMoney(a.balanceMinor, a.currency),
-                    }))}
-                />
-              </ChartCard>
-            ))}
-            {d.balances.length === 0 && (
-              <EmptyState
-                icon={Wallet}
-                title="No active accounts"
-                description="Restore an archived account or add a new one."
-              />
-            )}
-          </div>
         </section>
       </div>
 

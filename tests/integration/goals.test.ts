@@ -258,7 +258,7 @@ describe("earmark warning", () => {
     await put(user, b, "250"); // 550 > 500
     const { active } = await listGoals(user);
     expect(active.find((g) => g.id === a)?.accountWarning).toMatch(
-      /earmark \$550\.00, but it holds \$500\.00/,
+      /have \$550\.00 set aside, but it holds \$500\.00/,
     );
     await archiveGoal(user, b); // archived goals don't count
     expect((await listGoals(user)).active.every((g) => g.accountWarning === null)).toBe(true);

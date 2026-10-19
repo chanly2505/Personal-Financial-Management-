@@ -169,7 +169,7 @@ export async function archiveAccount(
     );
     const upcoming = outcome.balanceMinor === 0n ? " (including upcoming records)" : "";
     throw new ValidationError(
-      `This account still holds ${amount}${upcoming}. Move the money to another account (or correct the opening balance) so the balance is zero, then archive it.`,
+      `This account still holds ${amount}${upcoming}. Move the money to another account (or correct the starting balance) so the balance is zero, then archive it.`,
     );
   }
 }

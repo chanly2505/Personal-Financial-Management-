@@ -7,7 +7,7 @@ import { expect, test } from "./fixtures";
 async function addAccount(page: Page, opening = "500") {
   await page.goto("/accounts/new");
   await page.getByRole("button", { name: "ABA Bank", exact: true }).click();
-  await page.getByLabel("Opening balance").fill(opening);
+  await page.getByLabel("Starting balance").fill(opening);
   await page.getByRole("button", { name: "Add account" }).click();
   await expect(page).toHaveURL(/\/accounts\/[0-9a-f-]{36}$/);
 }
@@ -75,7 +75,7 @@ test("cannot take back more than was saved; achieved state; warning when earmark
   await contribute(page, "100");
   const card = page.getByRole("article", { name: "Phone" });
   await expect(card.getByText("Achieved")).toBeVisible();
-  await expect(card.getByText(/earmark \$150\.00, but it holds \$100\.00/)).toBeVisible();
+  await expect(card.getByText(/have \$150\.00 set aside, but it holds \$100\.00/)).toBeVisible();
 });
 
 test("edit, archive, restore and delete a goal", async ({ page, user }) => {

@@ -19,7 +19,7 @@ function monthsAgo(n: number): string {
 async function addAccount(page: Page) {
   await page.goto("/accounts/new");
   await page.getByRole("button", { name: "ABA Bank", exact: true }).click();
-  await page.getByLabel("Opening balance").fill("1000");
+  await page.getByLabel("Starting balance").fill("1000");
   await page.getByRole("button", { name: "Add account" }).click();
   await expect(page).toHaveURL(/\/accounts\/[0-9a-f-]{36}$/);
 }

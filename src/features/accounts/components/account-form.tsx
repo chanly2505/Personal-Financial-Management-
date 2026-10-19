@@ -174,7 +174,7 @@ export function AccountForm(
 
       <FormField
         id="openingBalance"
-        label="Opening balance"
+        label="Starting balance"
         description={
           editing && props.hasHistory
             ? "Changing this also changes the balance after every past record."

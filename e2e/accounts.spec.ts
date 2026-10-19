@@ -18,7 +18,7 @@ async function addAccount(
     await page.getByRole("combobox", { name: "Currency" }).click();
     await page.getByRole("option", { name: opts.currency }).click();
   }
-  if (opts.opening !== undefined) await page.getByLabel("Opening balance").fill(opts.opening);
+  if (opts.opening !== undefined) await page.getByLabel("Starting balance").fill(opts.opening);
   await page.getByRole("button", { name: "Add account" }).click();
   await expect(page).toHaveURL(/\/accounts\/[0-9a-f-]{36}$/);
 }
@@ -60,7 +60,7 @@ test("validates names and amounts on the client and server", async ({ page, user
   await expect(page.getByText("Enter a name.")).toBeVisible();
 
   await page.getByRole("button", { name: "Cash (riel)", exact: true }).click();
-  await page.getByLabel("Opening balance").fill("100.50");
+  await page.getByLabel("Starting balance").fill("100.50");
   await page.getByRole("button", { name: "Add account" }).click();
   await expect(page.getByText("KHR amounts must be whole numbers.")).toBeVisible();
 
@@ -78,7 +78,7 @@ test("edits an account but keeps its currency fixed", async ({ page, user }) => 
   await expect(page.getByRole("combobox", { name: "Currency" })).toBeDisabled();
   await expect(page.getByRole("combobox", { name: "Type" })).toHaveText("Bank account");
   await page.getByLabel("Account name").fill("ACLEDA Savings");
-  await page.getByLabel("Opening balance").fill("20.75");
+  await page.getByLabel("Starting balance").fill("20.75");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("ACLEDA Savings");
   await expect(page.getByText("$20.75").first()).toBeVisible();
@@ -94,7 +94,7 @@ test("archives only at zero balance, then restores", async ({ page, user }) => {
   await expect(page.getByText(/still holds \$3\.00/)).toBeVisible();
 
   await page.getByRole("link", { name: "Edit" }).click();
-  await page.getByLabel("Opening balance").fill("");
+  await page.getByLabel("Starting balance").fill("");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page).toHaveURL(accountUrl);
 
@@ -105,7 +105,7 @@ test("archives only at zero balance, then restores", async ({ page, user }) => {
   await expect(page.getByRole("link", { name: "Edit" })).toHaveCount(0);
   await page.goto(`${accountUrl}/edit`);
   await expect(page.getByRole("heading", { name: "Cash is archived" })).toBeVisible();
-  await expect(page.getByLabel("Opening balance")).toHaveCount(0);
+  await expect(page.getByLabel("Starting balance")).toHaveCount(0);
 
   await page.goto("/accounts");
   await expect(page.getByRole("heading", { name: "No active accounts" })).toBeVisible();

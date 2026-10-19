@@ -119,7 +119,7 @@ test.describe("with records", () => {
     await expect(totals(page, "Expenses · USD")).toContainText("$520.00");
     await expect(totals(page, "Net · USD")).toContainText("$1,520.00");
     await expect(totals(page, "Expenses · KHR")).toContainText("៛20,000");
-    const table = page.getByRole("table", { name: "Cash flow per day in USD" });
+    const table = page.getByRole("table", { name: "Money in and out per day in USD" });
     await expect(table.getByRole("row", { name: /^1 Mar 2026/ })).toContainText("$2,000.00");
     await expect(table.locator("tfoot")).toContainText("+$1,520.00");
     await expect(page.getByRole("link", { name: "View the 7 records" })).toHaveAttribute(
@@ -157,10 +157,10 @@ test.describe("with records", () => {
     await tabs.getByRole("link", { name: "Account history" }).click();
     await page.getByRole("link", { name: "ABA · USD" }).click();
     // 100 + 1,000 opening; +2,000 −500 −12.50 −100 → 2,487.50.
-    await expect(totals(page, "Opening balance")).toContainText("$1,100.00");
-    await expect(totals(page, "Closing balance")).toContainText("$2,487.50");
+    await expect(totals(page, "Balance at start")).toContainText("$1,100.00");
+    await expect(totals(page, "Balance at end")).toContainText("$2,487.50");
     await expect(
-      page.getByText("Opening balance + money in − money out = closing balance."),
+      page.getByText("Balance at start + money in − money out = balance at end."),
     ).toBeVisible();
     await expect(page).toHaveURL(/from=2026-03-01/);
 
@@ -187,9 +187,9 @@ test.describe("with records", () => {
     await page.getByRole("option", { name: "Yearly" }).click();
     await page.getByRole("button", { name: "Apply filters" }).click();
     await expect(page).toHaveURL(/granularity=year/);
-    await expect(page.getByRole("table", { name: "Cash flow per year in KHR" })).toContainText(
-      "2026",
-    );
+    await expect(
+      page.getByRole("table", { name: "Money in and out per year in KHR" }),
+    ).toContainText("2026");
   });
 
   test("exports the report's records as CSV, safely escaped", async ({ page }) => {

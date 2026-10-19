@@ -411,9 +411,9 @@ export function CashFlowReport({
   );
   const hasActivity = report.totals.incomeMinor > 0n || report.totals.expenseMinor > 0n;
   return (
-    <section className="flex flex-col gap-4" aria-label={`Cash flow in ${c}`}>
+    <section className="flex flex-col gap-4" aria-label={`Money in and out in ${c}`}>
       <SectionHeading
-        title={`Cash flow · ${c}`}
+        title={`Money in and out · ${c}`}
         description={`Income − expenses per ${unit}, ${context.range}. Transfers move money between your own accounts and are counted separately.`}
       />
       <ChartCard title="Income vs expenses" description={`Per ${unit}, in ${c}.`}>
@@ -432,7 +432,7 @@ export function CashFlowReport({
         )}
       </ChartCard>
       <ReportTable
-        caption={`Cash flow per ${unit} in ${c}`}
+        caption={`Money in and out per ${unit} in ${c}`}
         tall
         columns={[
           { label: GRANULARITY_COLUMN[context.granularity] },
@@ -486,11 +486,11 @@ export function AccountHistoryReport({
     <section className="flex flex-col gap-4" aria-label={`History of ${account.name}`}>
       <SectionHeading
         title={`${account.name} · ${c}${account.isArchived ? " (archived)" : ""}`}
-        description={`${range}. Balances are at the end of the day and include the opening balance.`}
+        description={`${range}. Balances are at the end of the day and include the starting balance.`}
       />
       <dl className="grid grid-cols-2 gap-3 rounded-xl border bg-card px-4 py-3 text-sm sm:grid-cols-4">
         <div className="flex flex-col gap-0.5">
-          <dt className="text-xs text-muted-foreground">Opening balance</dt>
+          <dt className="text-xs text-muted-foreground">Balance at start</dt>
           <dd>
             <Money minor={history.openingMinor} currency={c} className="font-medium" />
           </dd>
@@ -504,7 +504,7 @@ export function AccountHistoryReport({
           <dd className="font-medium tabular-nums">{signedMoney(-history.outMinor, c)}</dd>
         </div>
         <div className="flex flex-col gap-0.5">
-          <dt className="text-xs text-muted-foreground">Closing balance</dt>
+          <dt className="text-xs text-muted-foreground">Balance at end</dt>
           <dd>
             <Money minor={history.closingMinor} currency={c} className="font-medium" />
           </dd>
@@ -513,7 +513,7 @@ export function AccountHistoryReport({
       {history.showsRunningBalance ? (
         <p className="text-xs text-muted-foreground">
           {balanced
-            ? "Opening balance + money in − money out = closing balance."
+            ? "Balance at start + money in − money out = balance at end."
             : "Opening + in − out differs from the closing balance — please report this."}
         </p>
       ) : (

@@ -15,7 +15,7 @@ export const REPORT_LABELS: Record<ReportTab, string> = {
   income: "Income",
   expenses: "Expenses",
   categories: "By category",
-  "cash-flow": "Cash flow",
+  "cash-flow": "Money in and out",
   account: "Account history",
   budgets: "Budgets",
   compare: "Compare periods",
