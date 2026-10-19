@@ -110,7 +110,7 @@ export type Env = z.infer<typeof envSchema>;
 /**
  * `next build` loads server modules to collect route configuration, but never
  * connects to the database or issues session cookies, and every page renders
- * per request. Build servers (e.g. Cloudflare Workers Builds) only receive
+ * per request. Build servers may only receive
  * build variables, so the two required runtime secrets get inert placeholders
  * there. The running app always validates the real values.
  */

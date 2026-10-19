@@ -4,12 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "bash scripts/build.sh",
-    "vercel-build": "if [ \"$VERCEL_ENV\" = \"production\" ]; then prisma migrate deploy; fi && next build",
-    "netlify-build": "if [ \"$CONTEXT\" = \"production\" ]; then prisma migrate deploy; fi && next build",
-    "cf:build": "bash scripts/cloudflare-build.sh",
-    "cf:preview": "wrangler dev --port 8787",
-    "cf:deploy": "wrangler deploy",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
@@ -39,7 +34,6 @@
     "@firebase/app": "0.16.3",
     "@hookform/resolvers": "5.9.1",
     "@noble/hashes": "2.4.0",
-    "@opennextjs/cloudflare": "1.20.12",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "class-variance-authority": "0.7.1",
@@ -77,15 +71,13 @@
     "tsx": "4.23.15",
     "tw-animate-css": "1.4.0",
     "typescript": "^5",
-    "vitest": "4.1.11",
-    "wrangler": "4.151.1"
+    "vitest": "4.1.11"
   },
   "engines": {
     "node": "22.x"
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
-    "workerd@1.20261012.1": true,
     "prisma@7.10.0": true,
     "@prisma/engines@7.10.0": true
   }

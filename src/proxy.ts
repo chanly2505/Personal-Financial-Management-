@@ -64,7 +64,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(signIn);
   }
 
-  // btoa rather than Buffer: hosts may run the proxy in an edge runtime (Netlify).
+  // btoa rather than Buffer: works in every runtime the proxy may run in.
   const nonce = btoa(crypto.randomUUID());
   const csp = contentSecurityPolicy(nonce, request);
 

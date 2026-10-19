@@ -89,9 +89,9 @@ export default function PrivacyPage() {
         <section aria-labelledby="where" className="flex flex-col gap-2">
           <h2 id="where">Where it is kept</h2>
           <p>
-            In a PostgreSQL database run by the site&apos;s hosting providers (for the standard
-            setup: Vercel for the website and Neon for the database, both in Singapore). Connections
-            are encrypted. The people who run the site keep private backup copies to recover from
+            In a PostgreSQL database run by the site&apos;s hosting providers: Railway runs the
+            website and Neon the database, both in the eastern United States. Connections are
+            encrypted. The people who run the site keep private backup copies to recover from
             accidents, for up to 12 months.
           </p>
         </section>

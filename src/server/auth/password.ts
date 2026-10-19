@@ -9,7 +9,7 @@ import { argon2idAsync } from "@noble/hashes/argon2.js";
  * verify, and `needsRehash` flags them.
  *
  * Implementation: @noble/hashes (audited, pure JavaScript) rather than a
- * native module, so the same code runs on Node.js and on Cloudflare Workers,
+ * native module, so the same code runs anywhere JavaScript runs,
  * which cannot load native addons or compile WebAssembly at runtime. Hashes
  * are byte-for-byte compatible with the previous native library
  * (tests/unit/password.test.ts).

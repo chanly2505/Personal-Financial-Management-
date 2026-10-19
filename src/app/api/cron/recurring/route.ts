@@ -5,7 +5,6 @@ import { env } from "@/server/env";
 import { describeError, logger } from "@/server/logger";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
 
 /**
  * Scheduler entry point for hosted environments (e.g. Vercel Cron, GitHub

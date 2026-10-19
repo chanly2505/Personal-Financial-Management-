@@ -21,7 +21,7 @@ Built with Next.js 16.4, TypeScript, Tailwind CSS 4, shadcn/ui, PostgreSQL (16 l
 | [docs/UI_GUIDELINES.md](docs/UI_GUIDELINES.md) | Design tokens, layouts, components, accessibility |
 | [docs/REPORTS.md](docs/REPORTS.md) | Report definitions and CSV export format and limits |
 | [docs/I18N.md](docs/I18N.md) | Text catalog and how to add Khmer |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production setup on Railway + Neon (Vercel, Netlify and Cloudflare as alternatives) |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production setup on Railway + Neon |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Production runbook: migrations, backups, recovery, rollback, outages, scheduler |
 | [docs/QA_REPORT.md](docs/QA_REPORT.md) | Phase 11 audit and Phase 13 security review: findings, fixes, accepted risks, release recommendation |
 | [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | What to verify before and after each release (automated and manual) |
@@ -111,7 +111,7 @@ npm run build && npm start     # production build and server (set AUTH_URL to th
 
 ## Deployment
 
-**Hosting:** Railway + Neon, live at https://personal-financial-management-production-c29c.up.railway.app (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#railway--neon-current)). Cloudflare Workers + Neon remains a documented alternative (needs the Workers Paid plan; `wrangler.jsonc`, `npm run cf:build`). Settings and steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). In short:
+**Hosting:** Railway + Neon, live at https://personal-financial-management-production-c29c.up.railway.app (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#railway--neon-current)). Settings and steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). In short:
 
 1. Neon project in AWS US East 2 (Ohio); create the limited `finance_app` role with `prisma/sql/app-role-neon.sql`.
 2. Railway service from this GitHub repository, region US East; variables `DATABASE_URL` (app role, pooled), `MIGRATION_DATABASE_URL` (owner, direct), `AUTH_SECRET`, `AUTH_URL`, `AUTH_TRUST_HOST=true`, `TRUSTED_IP_HEADER=x-real-ip`, `RECURRING_SCHEDULER=in-process`, `REGISTRATION_MODE`/`REGISTRATION_ALLOWLIST`.

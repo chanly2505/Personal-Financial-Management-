@@ -1,6 +1,8 @@
 # Deploying
 
-**Current target: Railway + Neon** (chosen by the owner on 19 Oct 2026). Railway runs the app as a normal Node.js server (no per-request CPU limit), next to the existing Neon database. The Cloudflare, Vercel and Netlify setups below remain documented alternatives; all use the same Neon database.
+**Production: Railway + Neon** (chosen by the owner on 19 Oct 2026). Railway runs the app as a normal, always-on Node.js server next to the Neon PostgreSQL database.
+
+Cloudflare Workers, Vercel and Netlify were tried in October 2026. Their configuration was removed from the repository in the P3 clean-up (it is in the git history before that commit). If any of those projects still exist in your accounts, delete them: they could still reach the database with old secrets.
 
 ## Railway + Neon (current)
 
@@ -9,7 +11,7 @@
 | | |
 |---|---|
 | Config | Service settings (set 19 Oct 2026 via the Railway connector, mirrored in `railway.json`): pre-deploy `bash scripts/migrate-deploy.sh`, start `npm start`, health check `/api/health` (120 s), restart on failure ×5. **Railway was not applying `railway.json` on this service** (its settings never appeared in the service config and the first P1 deploy skipped the migration), so change these in the dashboard (service → Settings → Deploy) and keep `railway.json` in sync |
-| Build | Railway detects Node.js and runs `npm ci` and `npm run build` (a plain `next build` outside Cloudflare) |
+| Build | Railway detects Node.js and runs `npm ci` and `npm run build` (`next build`) |
 | Region | **US East (Virginia)**, closest to Neon in AWS US East 2 (Ohio) |
 | Database | Neon `personal-finance`. Pending migrations are applied by the pre-deploy command (`scripts/migrate-deploy.sh`, owner role via `MIGRATION_DATABASE_URL`) before each new version starts; a failure keeps the previous version running |
 | Checks | GitHub Actions (`.github/workflows/ci.yml`) runs `npm run check` and the build on every push; turn on **Wait for CI** (service → Settings) so a red run blocks the deploy |
@@ -19,14 +21,14 @@
 
 | Name | Value |
 |---|---|
-| `DATABASE_URL` | `finance_app` pooled Neon address, `?sslmode=verify-full` (the same value as on Cloudflare) |
+| `DATABASE_URL` | `finance_app` pooled Neon address, `?sslmode=verify-full` |
 | `AUTH_SECRET` | 32+ random characters (`openssl rand -base64 32`) |
 | `CRON_SECRET` | optional; enables `/api/cron/recurring` for an external scheduler |
 | `AUTH_TRUST_HOST` | `true` (Auth.js uses the request's address; or set `AUTH_URL` to the Railway domain) |
 | `TRUSTED_IP_HEADER` | `x-real-ip` (Railway's documented client-IP header; community reports say it is not guaranteed spoof-proof, so per-email limits remain the main protection) |
 | `RECURRING_SCHEDULER` | `in-process` |
 | `AUTH_URL` | `https://personal-financial-management-production-c29c.up.railway.app` |
-| `MIGRATION_DATABASE_URL` | Neon **owner** (`neondb_owner`) direct address, `?sslmode=verify-full`; used only by the pre-deploy migration step |
+| `MIGRATION_DATABASE_URL` | Neon **owner** (`neondb_owner`) direct address, `?sslmode=require` (copy the current one from Neon → Connect; an old password fails the deploy with P1000); used only by the pre-deploy migration step |
 | `REGISTRATION_MODE` | `allowlist` |
 | `REGISTRATION_ALLOWLIST` | the owner's email |
 
@@ -34,104 +36,13 @@
 
 Verified locally the way Railway runs it (`npm run build`, `npm start` with `PORT` and the variables above): health ok, release checks 4/4, in-process scheduler runs.
 
-## Cloudflare Workers + Neon (alternative; needs Workers Paid)
 
-**Live (19 Oct 2026):** <https://personal-financial-management.cly541913.workers.dev> — secrets set in the Cloudflare dashboard and confirmed working by the owner. The automated release checks (`npm run release:check`) have not yet been run against it from a Claude session (this environment's network policy blocks `*.workers.dev`).
-
-| | |
-|---|---|
-| Worker | `personal-financial-management` (`wrangler.jsonc`), built by Workers Builds from GitHub `main` |
-| Plan | **Workers Paid (US$5/month) is required**: password hashing (argon2id, OWASP minimum) needs ~0.2–0.4 s of CPU, above the free plan's 10 ms per request |
-| Adapter | `@opennextjs/cloudflare` (Next.js ≥ 16.4.1); entry `cloudflare/worker.ts` adds the hourly cron handler |
-| Database | Neon `personal-finance` (AWS US East 2). Smart Placement runs the worker next to it. One Prisma client per request on Workers (`src/server/db.ts`). |
-| Build | `npm run cf:build` → `scripts/cloudflare-build.sh`: migrations on `main` builds only, Prisma client for workerd, OpenNext build |
-| Scheduler | Cron trigger `5 * * * *` (hourly) → `/api/cron/recurring` with `CRON_SECRET` |
-
-**Database schema:** applied to Neon on 19 Oct 2026 through the Neon connector, statement by statement from `prisma/migrations/*/migration.sql`, with `_prisma_migrations` rows identical to `prisma migrate deploy` (checksums = SHA-256 of each file; verified locally: `prisma migrate status` → up to date, schema dump identical). The build applies new migrations only when the build variable `MIGRATION_DATABASE_URL` is set; otherwise it prints a note and skips them — apply them before deploying code that needs them.
-
-**Settings in the Cloudflare dashboard** (Workers & Pages → `personal-financial-management`):
-
-1. **Plan:** Workers & Pages → Plans → **Workers Paid**.
-2. **Settings → Build:** Build command `npm run build`, Deploy command `npx wrangler deploy` (defaults are fine).
-3. **Settings → Variables and Secrets → Add**, type **Secret**: `DATABASE_URL` (`finance_app`, pooled host, `?sslmode=verify-full`), `AUTH_SECRET`, `CRON_SECRET` (each `openssl rand -base64 32`).
-4. Non-secret settings come from `wrangler.jsonc` (`vars`): `TRUSTED_IP_HEADER=cf-connecting-ip`, `AUTH_TRUST_HOST=true` (Auth.js uses the request's own address, so `AUTH_URL` is optional).
-5. **Deployments → Retry build.** Then verify: `/api/health`, and `RELEASE_URL=… RELEASE_CRON_SECRET=… npm run release:check`.
-
-Verified locally on the workerd runtime (`npm run cf:build`, then `npm run cf:preview` with a `.dev.vars` file): health, release checks 4/4, the scheduled handler, and the full end-to-end suite (see docs/QA_REPORT.md).
-
----
-
-## Vercel + Neon (alternative)
-
-| | |
-|---|---|
-| Database | Neon project `personal-finance` (`raspy-waterfall-82036981`), PostgreSQL 17, AWS US East 2 (Ohio). Limited role `finance_app` created and verified; no tables yet — the first production build creates them. |
-| App | Vercel Hobby, functions in `cle1` (`vercel.json`), daily job at 17:05 UTC (`/api/cron/recurring`) |
-| Build | `vercel-build`: `prisma migrate deploy` on production builds only, then `next build` |
-
-**Credentials to rotate first.** The `finance_app` and `neondb_owner` passwords used during the Netlify attempt passed through a chat session, so both are replaced before Vercel is set up (steps 1–2).
-
-**Steps (the owner, in the browser):**
-
-1. **New app password** — Neon console → project `personal-finance` → **SQL Editor**. On your Mac run `openssl rand -hex 24`, then run in the editor (with that value):
-   `ALTER ROLE finance_app PASSWORD 'PASTE_THE_VALUE';`
-2. **New owner password** — Neon console → **Roles** → `neondb_owner` → **Reset password**.
-3. **Connection strings** — Neon → **Connect**:
-   - `MIGRATION_DATABASE_URL`: role `neondb_owner`, **Connection pooling off**, copy exactly as shown.
-   - `DATABASE_URL`: `postgresql://finance_app:PASSWORD_FROM_STEP_1@ep-morning-resonance-b5x68340-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=verify-full`
-4. **Two secrets** — on your Mac run `openssl rand -base64 32` twice: `AUTH_SECRET`, `CRON_SECRET`.
-5. **Vercel** — vercel.com → Continue with GitHub → **Add New… → Project** → import **Personal-Financial-Management-** → Environment Variables (each **Production only**; mark the two URLs **Sensitive**): `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `AUTH_SECRET`, `CRON_SECRET`, `TRUSTED_IP_HEADER=x-real-ip` → **Deploy**.
-6. **Pin the address** — Settings → Environment Variables → `AUTH_URL=https://<your-address>` (Production) → Deployments → **Redeploy**.
-7. **Verification (Claude)** — `/api/health`, then `RELEASE_URL=… RELEASE_CRON_SECRET=… npm run release:check` from a session whose network policy allows the address.
-8. **Clean-up (Claude, with the owner's OK)** — remove the Netlify site's environment variables (or the site), then add the live address to README.md and mark Phase 12 done.
-
----
-
-## Netlify + Neon (alternative, configured)
-
-| | |
-|---|---|
-| Netlify site | `chanly-personal-finance` — <https://chanly-personal-finance.netlify.app> (team `chanly2505`, site id `5347deed-b7a4-4839-8ede-87d3306b8b0a`) |
-| Server region | Netlify Functions run in US East (Ohio, `cmh`) on the free plan (choosing a region needs Pro) |
-| Database | Neon PostgreSQL 17 in **AWS US East 2 (Ohio)** — next to the functions, so the several queries per page stay fast |
-| Build | `netlify.toml` → `npm run netlify-build`: `prisma migrate deploy` on production deploys only (`CONTEXT=production`), then `next build`; Netlify's Next.js runtime is added automatically |
-| Scheduler | `netlify/functions/scheduled-jobs.mts`, hourly at :05 UTC, calls `/api/cron/recurring` with `CRON_SECRET` (recurring items post hourly) |
-| Client IP header | `TRUSTED_IP_HEADER=x-nf-client-connection-ip` |
-
-**Status (18 Oct 2026):** Neon project `personal-finance` (`raspy-waterfall-82036981`, PostgreSQL 17, AWS US East 2) created; `finance_app` role created and verified (no superuser/createrole/createdb, cannot create in `public`); Netlify Production environment variables set (`MIGRATION_DATABASE_URL` scoped to builds only, so the running app cannot read the owner password). First deploy attempt blocked: the Claude cloud environment's network policy refuses `netlify-mcp.netlify.app`, `api.netlify.com` and `*.netlify.app` (proxy 403). Next: once those are allowed (environment settings → Network access → Allowed domains), deploy and run the release checks. Upload with `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` so Node's fetch uses the proxy.
-
-**Remaining steps (Claude, in the next session):**
-
-1. Neon (connector): create project `personal-finance`, PostgreSQL 17, region `aws-us-east-2`.
-2. Create the limited `finance_app` role: run `prisma/sql/app-role-neon.sql` with a freshly generated password (`openssl rand -hex 24`), never committed.
-3. Connection strings: `MIGRATION_DATABASE_URL` = owner, direct (as Neon shows it); `DATABASE_URL` = `finance_app`, pooled host (`-pooler`), ending `?sslmode=verify-full`.
-4. Netlify environment variables (manage-env-vars), **Production context only**, scopes builds + functions, marked secret: `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `AUTH_SECRET` and `CRON_SECRET` (each `openssl rand -base64 32`), `AUTH_URL=https://chanly-personal-finance.netlify.app`, `TRUSTED_IP_HEADER=x-nf-client-connection-ip`.
-5. Deploy with the Netlify deploy tool **from a clean export of the committed files** (`git archive HEAD | tar -x -C <empty dir>`), so a local `.env` can never be uploaded.
-6. Verify: `/api/health` (status ok, version = commit), then `RELEASE_URL=https://chanly-personal-finance.netlify.app RELEASE_CRON_SECRET=… npm run release:check`; check the scheduled function in Netlify → Logs → Functions.
-7. Only after that: add the address to README.md and mark Phase 12 done.
-
----
-
-## Vercel + Neon — detailed guide (fresh setup)
-
-The app runs on **Vercel** (free *Hobby* plan, made for Next.js) with its data in **Neon** (free PostgreSQL). Both sign in with your GitHub account. No credit card is needed. Every time new code is pushed to `main`, Vercel rebuilds the site and applies any database changes automatically.
-
-> Why not Firebase? Firebase can host this kind of app only on its paid Blaze plan, and it has no PostgreSQL database. The Firebase web settings (`NEXT_PUBLIC_FIREBASE_*`) still work on Vercel if you add them.
-
-**What the free plans include (enough for personal use)**
-
-| | Free limit | What it means for you |
-|---|---|---|
-| Neon | 0.5 GB of data; the database sleeps after 5 minutes without use | Hundreds of thousands of transactions fit. The first page after a quiet period takes about a second longer. |
-| Vercel Hobby | Personal, non-commercial use; generous traffic | Fine for you and your family. |
-| Vercel Cron (Hobby) | Once a day | Recurring transactions post once a day, just after midnight Cambodia time (§5). |
-
-Configured in the repository: `vercel.json` (servers in Cleveland `cle1`, next to the Ohio database; the daily recurring job), the `vercel-build` script in `package.json` (applies database migrations on production builds only, then builds), and `prisma/sql/app-role-neon.sql` (a limited database user for the app).
+## Fresh setup (from nothing)
 
 ### 1. Create the database (Neon)
 
 1. Go to <https://neon.tech> → **Sign up** → **Continue with GitHub**.
-2. Create a project: name `personal-finance`, PostgreSQL version 17, region **AWS US East 2 (Ohio)** (it must match the `vercel.json` region `cle1`). The database is called `neondb` and its owner `neondb_owner`. Keep those names.
+2. Create a project: name `personal-finance`, PostgreSQL version 17, region **AWS US East 2 (Ohio)** (close to Railway's US East region). The database is called `neondb` and its owner `neondb_owner`. Keep those names.
 
 ### 2. Add a limited user for the app
 
@@ -146,66 +57,42 @@ Create this user **with the SQL script, not with the "New role" button**: Neon g
 
 On the Neon project **Dashboard**, click **Connect**:
 
-| Setting in Vercel | Role | "Connection pooling" | Looks like |
+| Variable in Railway | Role | "Connection pooling" | Looks like |
 |---|---|---|---|
-| `MIGRATION_DATABASE_URL` | `neondb_owner` | **Off** | `postgresql://neondb_owner:…@ep-…ap-southeast-1.aws.neon.tech/neondb?sslmode=require` |
-| `DATABASE_URL` | Neon only lists console roles, so copy the `neondb_owner` string with pooling **on** (the host contains `-pooler`) and replace `neondb_owner:<its password>` with `finance_app:<your password from step 2>`, and the ending `?sslmode=require…` with `?sslmode=verify-full` | **On** | `postgresql://finance_app:…@ep-…-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=verify-full` |
+| `MIGRATION_DATABASE_URL` | `neondb_owner` | **Off** | `postgresql://neondb_owner:…@ep-….us-east-2.aws.neon.tech/neondb?sslmode=require` |
+| `DATABASE_URL` | Neon only lists console roles, so copy the `neondb_owner` string with pooling **on** (the host contains `-pooler`) and replace `neondb_owner:<its password>` with `finance_app:<your password from step 2>`, and the ending `?sslmode=require…` with `?sslmode=verify-full` | **On** | `postgresql://finance_app:…@ep-…-pooler.us-east-2.aws.neon.tech/neondb?sslmode=verify-full` |
 
 `verify-full` is what the app's database driver does anyway for `require` (full certificate check); writing it explicitly avoids a warning in the logs on every start. Leave `MIGRATION_DATABASE_URL` exactly as Neon shows it — the migration tool reads it differently.
 
 Keep them private: they contain passwords. Never put them in the code or in a GitHub issue.
 
-### 4. Make two random secrets
+### 4. Make a random secret
 
-On your Mac, open **Terminal** and run this **twice**, copying each result:
+On your Mac, open **Terminal** and run this, copying the result:
 
 ```bash
 openssl rand -base64 32
 ```
 
-The first is `AUTH_SECRET` (protects sign-in cookies), the second is `CRON_SECRET` (protects the recurring job). Use new values, not the ones in your Mac's `.env`.
+Use it as `AUTH_SECRET` (protects sign-in cookies). Use a new value, not the one in your Mac's `.env`. (`CRON_SECRET` is only needed if an outside scheduler calls `/api/cron/recurring`; make it the same way.)
 
-### 5. Create the site (Vercel)
+### 5. Create the service (Railway)
 
-1. Go to <https://vercel.com/signup> → **Hobby** → **Continue with GitHub**.
-2. **Add New… → Project** → find **Personal-Financial-Management-** → **Import**. (If it is not listed, click *Adjust GitHub App Permissions* and allow that repository.)
-3. Leave Framework (Next.js) and the build settings as they are. Open **Environment Variables** and add the values below. For **each** one, set *Environments* to **Production only** (untick Preview and Development): otherwise every pushed branch would run with your real database and secrets.
-
-   | Name | Value |
-   |---|---|
-   | `DATABASE_URL` | from step 3 (finance_app, pooled) |
-   | `MIGRATION_DATABASE_URL` | from step 3 (neondb_owner, direct) |
-   | `AUTH_SECRET` | first value from step 4 |
-   | `CRON_SECRET` | second value from step 4 |
-   | `TRUSTED_IP_HEADER` | `x-real-ip` |
-   | `NEXT_PUBLIC_FIREBASE_…` | optional — the same six values as in your Mac's `.env` |
-
-4. Click **Deploy**. The first build takes a few minutes; it creates all the tables in Neon. When it finishes, Vercel shows your address, e.g. `https://personal-financial-management.vercel.app`.
-
-Sign-in works on Vercel without `AUTH_URL` (Auth.js detects the Vercel address). If you later add your own domain, add `AUTH_URL=https://your-domain` and redeploy.
+1. <https://railway.com> → **New Project → Deploy from GitHub repo** → `Personal-Financial-Management-`.
+2. Service → **Settings**: region **US East**; Deploy → pre-deploy command `bash scripts/migrate-deploy.sh`, start command `npm start`, health check path `/api/health`; turn on **Wait for CI**. (Railway did not pick these up from `railway.json` on the current service, so set them here.)
+3. Service → **Variables**: the table above.
+4. Settings → Networking → **Generate Domain**, then set `AUTH_URL` to that address.
 
 ### 6. Check that it works
 
-1. Open `https://<your-address>/api/health` → it should show `"status":"ok","database":"ok"` and a `version` that matches the latest commit on GitHub.
-2. **Pin the address:** Vercel → Settings → Environment Variables → add `AUTH_URL` = `https://<your-address>` (Production) → **Deployments → Redeploy**. Sign-in already works without it; pinning it makes every sign-in link use your real address.
-3. **Send the address to Claude** (or run it yourself on your Mac): `RELEASE_URL=https://<your-address> RELEASE_CRON_SECRET=<your CRON_SECRET> npm run release:check`. It signs up a throwaway `release-check-…@example.test` account, checks registration, sign-in, protected pages, accounts, income/expense, transfers, balances, budgets, dashboard, reports and CSV export, isolation between users, phone layout and the scheduled job — then deletes the two test accounts (also when a check fails). Run it at most twice an hour: production allows 5 sign-ups per IP per hour.
-4. The next day, Vercel → your project → **Settings → Cron Jobs** shows the recurring job's last run (it calls `/api/cron/recurring` daily at 17:05 UTC = 00:05 in Phnom Penh).
-
-The data on Vercel is separate from your Mac. To start fresh online, just register there.
-
-### 7. After the first deploy
-
-- **Uptime alert (optional, free):** create a monitor at <https://uptimerobot.com> for `https://<your-address>/api/health` every 5 minutes; you get an e-mail if it fails.
-- **First backup:** on your Mac, `brew install libpq && brew link --force libpq`, then `BACKUP_DATABASE_URL="<neondb_owner direct URL>" scripts/backup-db.sh` and `scripts/verify-backup.sh <the file it printed>`. Repeat weekly — see [OPERATIONS.md §Backups](OPERATIONS.md#backups).
-- **Updating:** nothing to do — every push to `main` redeploys and applies database changes (`vercel-build`). If a build fails, the previous version stays online; the build log is under **Deployments**. To undo a bad release: **Deployments → last good one → ⋯ → Instant Rollback** ([OPERATIONS.md](OPERATIONS.md#rolling-back-an-application-deployment)).
+1. Open `https://<your-address>/api/health` → `"status":"ok","database":"ok"` and the deployed commit as `version`.
+2. Run the release checks: `RELEASE_URL=https://<your-address> RELEASE_CRON_SECRET=<CRON_SECRET, if set> npm run release:check`. They sign up throwaway `release-check-…@example.test` accounts (allow them in `REGISTRATION_ALLOWLIST` for the run, or set `REGISTRATION_MODE=open` briefly), check every main flow and isolation, then delete the test accounts.
+3. Within the hour, the logs show `recurring.run_finished` from the in-process scheduler.
 
 ### Notes and limits
 
-- **Owner password on Vercel:** `MIGRATION_DATABASE_URL` is needed by the build to create and update tables, but Vercel also makes it visible to the running app (the app itself never reads it). Mark it **Sensitive** in Vercel. For a stricter setup, run `npx prisma migrate deploy` yourself before each release with that URL set only on your Mac, and remove it from Vercel.
-- **Direct database access:** authorization (who may see which records) is enforced by the app; anyone holding a database password could read every user's rows. So the passwords live only in Vercel's Production variables (and the owner's on your Mac for backups), connections require TLS, and the app's own role cannot change the schema or create roles. Neon's IP allow-list (paid plans) can additionally restrict who may connect.
-- **Rate limits:** keep `TRUSTED_IP_HEADER=x-real-ip`. Without it, per-IP sign-in and registration limits are off (the app logs `security.ip_rate_limits_disabled` at start-up).
-
-- **Password reset e-mails** are off until an e-mail provider is chosen (PRD Q-12). Users can still change their password in Settings while signed in.
-- **Recurring transactions post once a day** on the free plan. A rule that is due is posted by the next daily run; the Recurring page shows "Due — posts on the next scheduled run" until then. For hourly runs, upgrade Vercel or call `/api/cron/recurring` hourly from any scheduler with `Authorization: Bearer <CRON_SECRET>` (docs/OPERATIONS.md).
-- **Backups:** Neon's free plan keeps only a short restore window, so keep the weekly `scripts/backup-db.sh` dumps (see step 7 and OPERATIONS.md).
-- **Preview deployments** (other branches) do not run migrations. Leave the environment variables on *Production* only unless you set up a separate preview database.
+- **Owner password on Railway:** `MIGRATION_DATABASE_URL` is only read by the pre-deploy step, but it is visible to the service. For a stricter setup, remove the pre-deploy command and the variable, and run `npx prisma migrate deploy` from your computer before each release with a migration.
+- **Direct database access:** authorization is enforced by the app; anyone holding a database password could read every user's rows. Passwords live only in Railway's variables (and the owner's on your Mac for backups); connections require TLS; the app's own role cannot change the schema or create roles.
+- **Rate limits:** keep `TRUSTED_IP_HEADER=x-real-ip`. Without it, per-IP limits are off (the app logs `security.ip_rate_limits_disabled`).
+- **Password reset e-mails** are off until an e-mail provider is chosen (PRD Q-12); the owner can reset a password with `npm run user:reset-password` (OPERATIONS.md).
+- **Backups:** Neon Free keeps 6 hours of history and one manual snapshot; keep the weekly `scripts/backup-db.sh` dumps (OPERATIONS.md).

@@ -23,42 +23,23 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   env: {
-    // Short commit id of the build, shown by /api/health. Railway, Vercel, Netlify
-    // and Cloudflare expose it only while building, so it is fixed into the build here.
-    APP_COMMIT: (
-      process.env.RAILWAY_GIT_COMMIT_SHA ??
-      process.env.VERCEL_GIT_COMMIT_SHA ??
-      process.env.COMMIT_REF ??
-      process.env.WORKERS_CI_COMMIT_SHA ??
-      ""
-    ).slice(0, 7),
+    // Short commit id of the build, shown by /api/health (Railway provides it while building).
+    APP_COMMIT: (process.env.RAILWAY_GIT_COMMIT_SHA ?? "").slice(0, 7),
   },
   logging: {
     // `next dev` otherwise prints every server action call *with its arguments* —
     // which would put passwords and financial data in the terminal (docs/SECURITY.md §9).
     serverFunctions: false,
   },
-  // Cloudflare builds (scripts/cloudflare-build.sh): keep Prisma's CLI, dev
-  // database and engines for other databases out of the server bundle. The
-  // Workers client loads its own PostgreSQL engine from src/generated, and the
-  // Worker upload has a size limit. Other hosts build exactly as before.
-  ...(process.env.CF_BUILD === "1" && {
-    outputFileTracingExcludes: {
-      "*": [
-        "node_modules/prisma/**",
-        "node_modules/@prisma/dev/**",
-        "node_modules/@prisma/engines/**",
-        "node_modules/@prisma/studio-core/**",
-        "node_modules/@prisma/fetch-engine/**",
-        "node_modules/@electric-sql/**",
-        "node_modules/@prisma/client/runtime/*.wasm",
-        "node_modules/@prisma/client/runtime/*wasm-base64*",
-        "node_modules/@prisma/client/runtime/*.{mysql,sqlite,sqlserver,cockroachdb}.*",
-      ],
-    },
-  }),
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // API responses are JSON or downloads, never pages: nothing may load or frame them (SEC-7).
+      {
+        source: "/api/:path*",
+        headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; frame-ancestors 'none'" }],
+      },
+    ];
   },
 };
 

@@ -1,9 +1,0 @@
-# Netlify build settings (docs/DEPLOYMENT.md). Secrets are set in the Netlify UI
-# or API (Production context only), never here.
-[build]
-  # Applies database migrations on production deploys only, then builds.
-  command = "npm run netlify-build"
-  publish = ".next"
-
-[build.environment]
-  NODE_VERSION = "22"

@@ -4,7 +4,7 @@ How to run the background work the app depends on, and how to recover when somet
 
 ## Production runbook
 
-Production = **Railway** (one always-on Node.js service, region US East / Virginia, project `jubilant-unity`) + **Neon** PostgreSQL 17 (AWS US East 2, Ohio — close by, to keep each query a few milliseconds). Live at https://personal-financial-management-production-c29c.up.railway.app. Set-up steps: [DEPLOYMENT.md](DEPLOYMENT.md). The Vercel, Netlify and Cloudflare notes below and in DEPLOYMENT.md are alternatives, not production.
+Production = **Railway** (one always-on Node.js service, region US East / Virginia, project `jubilant-unity`) + **Neon** PostgreSQL 17 (AWS US East 2, Ohio — close by, to keep each query a few milliseconds). Live at https://personal-financial-management-production-c29c.up.railway.app. Set-up steps: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Environments
 
@@ -127,10 +127,9 @@ Recurring rules (PRD §6.6) are posted by one engine, `runDueRules()` in `src/fe
 | Hosting | Configure | Notes |
 |---|---|---|
 | A single self-hosted server (e.g. your Mac) | `RECURRING_SCHEDULER="in-process"` | Runs 30 s after the server starts, then hourly, inside the app process (`src/instrumentation.ts`). The Mac launcher (`scripts/start-mac.sh`) turns this on. Posts only while the app is running; missed hours catch up on the next run. |
-| A platform with HTTP cron (Vercel Cron, Render, Railway, GitHub Actions, cron + curl) | Set `CRON_SECRET` (32+ random characters) and call `GET` or `POST /api/cron/recurring` hourly with `Authorization: Bearer $CRON_SECRET` | Returns only counts: `{ rules, posted, failed, paused, busy }`. 503 while `CRON_SECRET` is unset, 401 for a wrong secret (constant-time comparison). |
+| A platform with HTTP cron (a Railway cron service, GitHub Actions, cron + curl) | Set `CRON_SECRET` (32+ random characters) and call `GET` or `POST /api/cron/recurring` hourly with `Authorization: Bearer $CRON_SECRET` | Returns only counts: `{ rules, posted, failed, paused, busy }`. 503 while `CRON_SECRET` is unset, 401 for a wrong secret (constant-time comparison). |
 | A machine with system cron / launchd / a job runner | `npm run recurring:run` hourly | Loads `.env`, runs once, exits 1 if any rule failed. Example crontab: `5 * * * * cd /srv/personal-finance && npm run recurring:run >> /var/log/pf-recurring.log 2>&1` |
 
-On the Vercel alternative only: the repository's `vercel.json` schedules `/api/cron/recurring` **daily at 17:05 UTC** (00:05 in Phnom Penh), because Vercel's free Hobby plan allows one run per day (docs/DEPLOYMENT.md). On a paid plan, change the schedule to hourly (`5 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET` automatically when `CRON_SECRET` is set in the project.
 
 Production scheduling is **off by default** (`RECURRING_SCHEDULER="off"`, no `CRON_SECRET`). Enable it only after the idempotency tests pass in CI (`tests/integration/recurring*.test.ts`).
 
