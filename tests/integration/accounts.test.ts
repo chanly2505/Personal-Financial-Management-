@@ -196,7 +196,8 @@ describe("balances", () => {
           occurredOn: day(0),
         },
       }),
-    ).rejects.toThrow(/transfers_same_amount_chk/);
+      // The same-currency trigger (FIN-4) now fires before the equal-amounts check.
+    ).rejects.toThrow(/same currency|transfers_same_amount_chk/);
     expect((await getAccount(user, usdId)).balanceMinor).toBe(10000n);
   });
 

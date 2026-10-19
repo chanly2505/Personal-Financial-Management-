@@ -211,6 +211,50 @@ describe("transfers", () => {
       }),
     ).rejects.toThrow(/Foreign key constraint/i);
   });
+
+  it("rejects a transfer between accounts in different currencies, even with equal amounts (FIN-4)", async () => {
+    const { user, account } = await seedOwner();
+    const riel = await prisma.financialAccount.create({
+      data: { userId: user.id, name: "Cash riel", type: "CASH", currency: "KHR" },
+    });
+    await expect(
+      prisma.transfer.create({
+        data: {
+          userId: user.id,
+          fromAccountId: account.id,
+          toAccountId: riel.id,
+          fromAmountMinor: 100n,
+          toAmountMinor: 100n,
+          occurredOn: day("2026-10-15"),
+        },
+      }),
+    ).rejects.toThrow(/same currency/);
+  });
+});
+
+describe("account currency (FIN-4)", () => {
+  it("cannot change once the account has records, but can before", async () => {
+    const { user, account, expenseCategory } = await seedOwner();
+    // No records yet: allowed (nothing in the app does this, but it is harmless).
+    await prisma.financialAccount.update({ where: { id: account.id }, data: { currency: "KHR" } });
+    await prisma.financialAccount.update({ where: { id: account.id }, data: { currency: "USD" } });
+
+    await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        accountId: account.id,
+        categoryId: expenseCategory.id,
+        type: "EXPENSE",
+        amountMinor: 500n,
+        occurredOn: day("2026-10-15"),
+      },
+    });
+    await expect(
+      prisma.financialAccount.update({ where: { id: account.id }, data: { currency: "KHR" } }),
+    ).rejects.toThrow(/currency cannot change/);
+    // Other edits to the account still work.
+    await prisma.financialAccount.update({ where: { id: account.id }, data: { name: "Purse" } });
+  });
 });
 
 describe("budgets", () => {
